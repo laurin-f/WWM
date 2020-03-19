@@ -39,7 +39,7 @@ split_chamber<-function(data,
                         gas="CO2",
                         adj_openings = T){
 
-  data <- na.omit(data)
+  data <- data[!is.na(data[,gas]) & !is.na(data$date),]
 
   hourminute<-round(data$date,unit="mins")
   #data$hourminute<-paste0(format(data$date,"%Y-%m-%d %H:%M"),":00")
