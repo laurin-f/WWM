@@ -10,7 +10,7 @@ gdusbpfad<-paste0(hauptpfad,"Daten/Urdaten/Druckschwankung/")
 
 
 #Packages laden
-packages<-c("stringr","lubridate","ggplot2","RSQLite","readxl")
+packages<-c("stringr","lubridate","ggplot2","RSQLite","readxl","egg")
 check.packages(packages)
 
 all.dirs<-list.dirs(gdusbpfad)
@@ -34,7 +34,7 @@ data_gmsd <- do.call("rbind",data_gmsd_list)
 data_gmsd[,-1] <- apply(data_gmsd[,-1],2,function(x) ifelse(x > 9e+07, NA, x))
 
 
-datelim <- c("2020.03.02 00:00:00","2020.03.04 23:00:00")
+datelim <- c("2020.03.01 00:00:00","2020.03.04 23:00:00")
 data_gga <- read_db("GGA.db","micro",datelim = datelim)
 
 
@@ -46,12 +46,13 @@ data_gmsd_agg$p_diff <- data_gmsd_agg$maxpeakwert - data_gmsd_agg$minpeakwert
 
 data <- merge(data_gga,data_gmsd_agg,all.x = T)
 colnames(data) <- str_replace(colnames(data), "peakwert", "")
+
 data.split <- split_chamber(data,
                       closing_before = 5,
                       closing_after = 10,
                       opening_before = -5,
                       opening_after = -15,
-                      t_max=Inf,
+                      t_max=30,
                       t_init=0,
                       t_min=2,
                       adj_openings = T)
