@@ -39,99 +39,149 @@ split_chamber<-function(data,
                         gas="CO2",
                         adj_openings = T){
 
+  ##############################
+  #datensatz aggregieren
+
+  #remove na rows of gas and date
   data <- data[!is.na(data[,gas]) & !is.na(data$date),]
 
-  hourminute<-round(data$date,unit="mins")
-  #data$hourminute<-paste0(format(data$date,"%Y-%m-%d %H:%M"),":00")
-  #data.agg<-aggregate(data[,-grep("hourminute", colnames(data))],list(hourminute = data$hourminute),mean)
+  #spalte mit minutenwerten
+  hourminute<-round_date(data$date,unit="mins")
+
+  #nach minutenwerten aggregieren
   data.agg<-aggregate(data,list(hourminute = as.character(hourminute)),mean)
+  #date formatieren
   data.agg$date<-ymd_hms(data.agg$hourminute)
 
+  #########################################################
+  #am aggregierten Datensatz kammermessungen identifizieren
+
+  #differenz der Gaswerte before und after sind identisch nur um eins verschoben
   before<-c(NA,diff(data.agg[,gas]))
   after<-c(diff(data.agg[,gas]),NA)
+  #Zeitdifferenz in Minuten before und after sind identisch nur um eins verschoben
+  timediff_before <- c(NA,as.numeric(diff(data.agg$date)))
+  timediff_after <- c(as.numeric(diff(data.agg$date)),NA)
 
-  closing<-which(before < closing_before & after > closing_after)
+  #Alle Punkte an denen voriger und folgender Wert eine Minute abstand haben
+  timediff_1 <- timediff_before <= 1 & timediff_after <= 1
 
-  opening<-which(before > opening_before & after < opening_after)
+  #Punkte an denen die Schwellenwerte für closing bzw. opening vorliegen
+  closing<-which(before < closing_before & after > closing_after & timediff_1)
+  opening<-which(before > opening_before & after < opening_after & timediff_1)
 
-
+  ###################################################################
+  #adjust openings
+  #adj openings bedeutet opening wird so umgeschrieben das immer closing und opening im Wechsel vorkommen
   if(adj_openings == T){
+    #solange der erste wert bei opening kleiner ist als bei closing
+    #wird solange der erste opening-wert gelöscht bis dies nicht mehr der fall ist
     while(opening[1] <= closing[1]){
       opening <- opening[-1]
     }
 
+    #alle weiteren Werte von closing werden iterativ getestet
     for(i in 2:length(closing)){
+      #wenn opening[i-1] na ist wird an dieser stelle closing[i] -1 eingesetzt
       if(is.na(opening[i-1])){
         opening[i-1]<-closing[i]-1
       }
+      #wenn opening[i-1] größer ist als closing[i] wird zwischen opening[i-2] und
+      #opening[i-1] closing[i]-1 eingefügt
       if(opening[i-1] > closing[i]){
         opening <- c(opening[0:(i-2)],closing[i]-1,opening[(i-1):length(opening)])
       }
+      #wenn opening[i] NA ist wird an diese stelle nrow(data.agg) geschrieben
       if(is.na(opening[i])){
         opening[i]<-nrow(data.agg)
       }
+      #solange opening[i] kleiner gleich closing[i] ist wird opening[i] entfernt
+      #wenn kein opening[i] mehr da ist wird nrow(data.agg) eingefügt
       while(opening[i] <= closing[i]){
         opening <- opening[-i]
         if(is.na(opening[i])){
           opening[i]<-nrow(data.agg)
-        }
-      }
-    }
-  }
+        }#ende if
+      }#ende while
+    }#ende for
+  }#ende adj_openings
 
+  #differenz der längen opening und closing
   open_close <- length(opening) - length(closing)
+  #wenn closing länger ist wird am ende von opening nrow(data.agg) angehängt
   if(open_close < 0){
     opening <- c(opening,rep(nrow(data.agg),abs(open_close)))
+    #wenn opening länger ist wird das ende von opening abgeschnitten
   }else if(open_close > 0){
     opening <- opening[1:(length(opening)-open_close)]
   }
 
+  #nur die closing opening perioden die mindestens
+  #t_min minutenwerte enthalten wählen
   diff_open_close <- (opening - closing) > t_min
   opening <- opening[diff_open_close]
   closing <- closing[diff_open_close]
 
-  opening.time <- as.character(data.agg$date[opening])
-  closing.time <- as.character(data.agg$date[closing])
+  #################################################################
+  #Kammermesszeiträume vom aggregierten auf nicht aggregierten
+  #Datensatz übertragen
 
+  #zeitpunkte von closing und opening als character
+  closing.time <- data.agg$hourminute[closing]
+  opening.time <- data.agg$hourminute[opening]
+
+  #data nach datum sortieren und hourminute aus date ausschneiden
   data <- data[order(data$date),]
   data$hourminute<-paste0(format(data$date,"%Y-%m-%d %H:%M"),":00")
+  #duplicate von hourminute entfernen
+  #sodass immer nur der erste Werte pro minute bleibt
   data$hourminute[duplicated(data$hourminute)]<-NA
 
+  #index von closing und opening des nicht aggregierten data.frames
+  closingID <- which(data$hourminute %in% closing.time)
   openingID <- which(data$hourminute %in% opening.time)
-  closingID <- which(as.character(data$hourminute) %in% closing.time)
 
-
+  #zeit und messid an data anfügen
   data$zeit<-NA
   data$messid<-NA
   for(i in 1:length(openingID)){
+    #zeit in minuten nach closing
     data$zeit[closingID[i]:openingID[i]] <-
       difftime(data$date[closingID[i]:openingID[i]],data$date[closingID[i]],unit="mins")
+    #messid als durchlaufende Nummer für jede closing opening periode
     data$messid[closingID[i]:openingID[i]] <- i
   }
 
+  #zeiträume zuschneiden um nur werte zwischen t_init und t_max zu haben
   data$zeit[data$zeit > t_max | data$zeit < t_init] <- NA
+  #diese Zeiträume auch bei messid mit NA überschreiben
   data$messid[is.na(data$zeit)] <- NA
 
+  ##################################################
+  #plot um ergebnis zu teste
 
+  #spalte mit opening und closing punkten
   data.agg$change <- ""
   data.agg$change[opening]<-"opening"
   data.agg$change[closing]<-"closing"
 
+  #messidspalte
   data.agg$messid <- NA
   data.agg$messid[opening]<-seq_along(opening)
   data.agg$messid[closing]<-seq_along(closing)
 
-
+  #Farben für plot
+  #kein ggplot da funktion dann schneller ist
   messid_cols <-  scales::hue_pal()(max(data$messid,na.rm=T))[data$messid]
+
+  #plot
   plot(data.agg$date, data.agg[,gas], col = ifelse(data.agg$change == "",1,NA), pch=20)
   points(data$date,data[,gas], col = messid_cols)
   points(data.agg$date,data.agg[,gas], col = ifelse(data.agg$change == "",NA,
                                                   ifelse(data.agg$change == "opening",2,3)),
          pch=as.character(data.agg$messid))
 
-
   legend("topleft",c("opening","closing",unique(data$messid)),col = c(2:3,unique(messid_cols)),pch=20, bty = "n")
-
 
   return(data)
 }
@@ -161,31 +211,46 @@ calc_flux <- function(data,
                       P_kPA = 101.3,
                       T_deg = 15,
                       tracer_conc=NULL){#percent
+
+  #Formel für glm
   formula <- paste(gas,"~ zeit")
+  #vektor mit allen werten die in der spalte "group" vorkommen
   group_unique <- na.omit(unique(data[,group]))
+
+  #für jeden werte von group wird eine regression zwische gas und zeit durchgeführt
   fm_list <- lapply(group_unique, function(x) glm(formula,data = data[which(data[,group] == x),]))
 
+  #aus der fm_liste wird jeweils der zweite coeffizient (steigung) ausgeschnitten
   ppm_per_min <- sapply(fm_list,"[[","coefficients")[2,]#ppm/min
-  #Konstanten
+
+  #Konstanten um Einheiten umzurechnen
+  #Luftdruck
   p_Pa <- P_kPA*1000#PA = N/m2 = kg/(m s2)
+  #Temperatur
   T_K <- T_deg+273.15 #K
+  #allgemeine Gaskonstante
   R <- 8.314 #kg m2/(s2 mol K)
+  #Molare Masse CO2 und CH4
   M<-data.frame(CO2 = 44.01, CH4 = 16.04)#g/mol
-  m_g_per_m3 <- p_Pa*M/(R*T_K) #kg/(m s2) * g/mol / kg m2 * (s2 mol K)/ K = g/m3
 
-  m <- m_g_per_m3 / 10^6 #g/cm3 = g/ml
+  #dichte
+  ro_g_per_m3 <- p_Pa*M/(R*T_K) #kg/(m s2) * g/mol / kg m2 * (s2 mol K)/ K = g/m3
+  ro<- ro_g_per_m3 / 10^6 #g/cm3 = g/ml
 
-  #berechnung Flux
+  #berechnung Flux in unterschiedlichen Einheiten
   flux <- data.frame(ppm_per_min)
   flux$ml_per_min<-ppm_per_min /10^6 * Vol #cm3 / min
-  flux$g_per_min <- flux$ml_per_min * m[,gas] #g / min
+  flux$g_per_min <- flux$ml_per_min * ro[,gas] #g / min
   if(!is.null(Grundfl)){
     flux$ml_per_min_m2<-flux$cm2_per_min/(Grundfl/10^4) #cm3 /(min m2)
     flux$g_per_min_m2 <- flux$ml_per_min_m2*m[gas] #g/(min m2)
   }
+  #falls eine Tracerkonzentration angegeben wurde wird
+  #eine effektive Einspeiserate berechnet
   if(!is.null(tracer_conc)){
     flux$tracer_ml_per_min <- flux$ml_per_min * tracer_conc / 100
   }
+  #group spalte an flux anfügen
   flux[group] <- group_unique
   return(flux)
 }

@@ -151,7 +151,10 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
 #' @import lubridate
 #' @import RSQLite
 #' @examples update_dynament.db("dynament_test")
-update_dynament.db<-function(table.name="dynament_test",path=dynpfad,sqlpath=sqlpfad,metapath=metapfad_dyn){
+update_dynament.db<-function(table.name="dynament_test",
+                             path=dynpfad,
+                             sqlpath=sqlpfad,
+                             metapath=metapfad_dyn){
 
   #namen der bereits in der db existierenden files laden
   if(file.exists(paste0(path,"db_log_",table.name,".txt"))){
@@ -161,7 +164,7 @@ update_dynament.db<-function(table.name="dynament_test",path=dynpfad,sqlpath=sql
   }
 
   #alle csv-Dateien aus dem dynament Ordner auflisten
-  dyn.files<-list.files(path,".csv",full.names = T)
+  dyn.files<-list.files(path,".csv",full.names = F)
 
   #neue files auswählen
   files.new<-dyn.files[!dyn.files %in% files.old$x]
@@ -170,7 +173,7 @@ update_dynament.db<-function(table.name="dynament_test",path=dynpfad,sqlpath=sql
   if(length(files.new)>0){
     print(paste("loading",length(files.new),"files"))
     #neue files laden
-    dyn.list<-lapply(files.new, read.csv,skip=1,stringsAsFactors=F)
+    dyn.list<-lapply(paste0(path,files.new), read.csv,skip=1,stringsAsFactors=F)
 
     #spaltennamen der neuen files
     if(table.name=="dynament_test"){
@@ -183,7 +186,7 @@ update_dynament.db<-function(table.name="dynament_test",path=dynpfad,sqlpath=sql
 
 
 
-    dyn.colnames<-lapply(files.new, read.csv,nrows=1,header=F,stringsAsFactors=F)
+    dyn.colnames<-lapply(paste0(path,files.new), read.csv,nrows=1,header=F,stringsAsFactors=F)
 
     #die ersten beidne Spalten sind daymonthyear und HourMinSec
     for(i in seq_along(dyn.colnames)){
@@ -332,7 +335,7 @@ read_db <- function(db.name="dynament.db", #name der db
   update_fun(table.name)
 
   #db verbinden
-  con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,db.name))
+  con<-odbc::dbConnect(RSQLite::SQLite(),paste0(sqlpath,db.name))
 
   #date_int wird als datum formatiert
   query<-paste0("SELECT datetime(date_int,'unixepoch') AS date,",cols," FROM ",table.name)
@@ -341,9 +344,11 @@ read_db <- function(db.name="dynament.db", #name der db
   if(!is.null(datelim)){
     from <- as.numeric(ymd_hms(datelim[1]))
     to <- as.numeric(ymd_hms(datelim[2]))
+    #falls from oder to nicht ins ymd_hms format passt wird gestoppt
     if(any(is.na(c(from,to)))){
       stop("datelim has to be in the ymd_hms format")
     }
+    #datelim in die SQL abfrage einbinden
     query<-paste0(query," WHERE date_int >= ",from," AND date_int <= ",to)
   }
 
@@ -358,15 +363,21 @@ read_db <- function(db.name="dynament.db", #name der db
   na.cols <- apply(data,2,function(x) any(is.na(x)==F))
   data<-data[,na.cols]
 
+  #wenn bei dynament.db die tabelle dynament_test ausgewählt ist können die korrektur_faktoren angewandt werden
   if(db.name=="dynament.db" & table.name == "dynament_test" & korrektur_dyn==T){
+    #RData mit Korrekturfaktoren laden
     load(paste0(metapath,"korrektur_fm.RData"))
+    #Vektor mit namen die sowohl bei den Korekturfaktoren als auch im Data.frame vorkommen
     same.names <- names(fm_kal_5000)[names(fm_kal_5000) %in% colnames(data)]
+    #Sensor nummern für die noch kein Korrekturfaktor vorliegt
+    missing.names <- colnames(data)[!colnames(data) %in% c("date",names(fm_kal_5000))]
+    if(length(missing.names)>0){
+      warning(paste("no correction factor for",missing.names,collapse =" "))
+    }
+
+    #Kalibrierfunktion anwenden
     data[same.names] <-
       sapply(same.names,function(x) predict(fm_kal_5000[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
-    #rm(fm_kal_5000)
-  }
+  }#ende if korrektur
   return(data)
 }#ende function
-
-
-
