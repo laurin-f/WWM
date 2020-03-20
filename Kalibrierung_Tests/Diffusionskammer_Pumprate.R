@@ -1,3 +1,6 @@
+
+
+
 #pfade definieren
 detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
@@ -12,9 +15,9 @@ Vol.xlsx<-readxl::read_xlsx(paste0(metapfad,"Diffusionskammer.xlsx"))
 Vol_ml<-Vol.xlsx$Volumen_effektiv_ml
 
 datelim <- c("2020.03.11 09:00:00","2020.03.17 18:00:00")
- # datelim <- c("2020.03.11 08:00:00","2020.03.11 18:00:00")
- # datelim <- c("2020.03.12 08:00:00","2020.03.12 18:00:00")
- # datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
+#  datelim <- c("2020.03.11 08:00:00","2020.03.11 18:00:00")
+  datelim <- c("2020.03.12 08:00:00","2020.03.12 18:00:00")
+ datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
 data <- read_db("dynament.db","dynament_test",datelim = datelim)
 
 colnames(data) <- str_replace(colnames(data),"(?<=CO2).*","_raw")
@@ -42,8 +45,8 @@ split <- split_chamber(data,
 
 ggplot(split)+geom_point(aes(zeit,CO2,col=as.factor(messid)))+facet_wrap(~messid)
 
-Pumpstufen <- c(1:5,5,rep(NA,4),1:4,1:4)
-sampler_included <- c(rep(0,14),rep(1,4))
+Pumpstufen <- c(1:5,5,rep(NA,4),1:4,1:5)
+sampler_included <- c(rep(0,14),rep(1,5))
 split$Pumpstufe <- as.numeric(as.character(factor(split$messid,levels = unique(split$messid),labels=Pumpstufen)))
 split$sampler_included <- as.numeric(as.character(factor(split$messid,levels = unique(split$messid),labels=sampler_included)))
 
@@ -71,10 +74,10 @@ Pumpstufen_plot
 
 
 ggplot(subset(split,!is.na(Pumpstufe)))+
-  geom_point(aes(zeit,CO2.tara,shape=as.factor(sampler_included),col=as.factor(Pumpstufe)))+
-  geom_smooth(aes(zeit,CO2.tara,col=as.factor(Pumpstufe),linetype=as.factor(sampler_included)),method="glm")
+  geom_point(aes(zeit,CO2.tara,shape=as.factor(sampler_included),col=as.factor(Pumpstufe)))#+
+  #geom_smooth(aes(zeit,CO2.tara,col=as.factor(Pumpstufe),linetype=as.factor(sampler_included)),method="glm")
 
-plot(Pumpstufen,CO2_per_minute)
+ggplot(flux)+geom_point(aes(Pumpstufe,tracer_ml_per_min))+geom_abline(intercept=0,slope=0.1)
 
 
 #########

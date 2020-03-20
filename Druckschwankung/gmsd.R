@@ -34,7 +34,7 @@ data_gmsd <- do.call("rbind",data_gmsd_list)
 data_gmsd[,-1] <- apply(data_gmsd[,-1],2,function(x) ifelse(x > 9e+07, NA, x))
 
 
-datelim <- c("2020.03.01 00:00:00","2020.03.04 23:00:00")
+datelim <- c("2020.03.02 00:00:00","2020.03.04 23:00:00")
 data_gga <- read_db("GGA.db","micro",datelim = datelim)
 
 

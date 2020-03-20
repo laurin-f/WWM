@@ -25,14 +25,18 @@ check.packages(packages)
 Pumpzeiten <- readxl::read_xlsx(paste0(metapfad,"Tracereinspeisung_Sandkiste.xlsx"))
 Pumpzeiten$ende[is.na(Pumpzeiten$ende)] <- Pumpzeiten$start[which(is.na(Pumpzeiten$ende))+1]
 Versuch_x <- unique(Pumpzeiten$Versuch)
+#Versuch_x <- 3
 Versuch_sub <- subset(Pumpzeiten,Versuch %in% Versuch_x)
 datelim <- range(c(Versuch_sub$start, Versuch_sub$ende),na.rm = T)
 datelim[2] <- datelim[2]+3600*12
 data <- read_sampler("sampler1",datelim = datelim, format = "long")
 
 data$Pumpstufe <- NA
+data$Versuch <- NA
 for(i in seq_along(Pumpzeiten$Pumpstufe)){
-data$Pumpstufe[data$date > Pumpzeiten$start[i] + 7*60*60 & data$date < Pumpzeiten$ende[i] - 2*60*60] <- Pumpzeiten$Pumpstufe[i]
+  Pumpzeiten_lim <- data$date > Pumpzeiten$start[i] + 7*60*60 & data$date < Pumpzeiten$ende[i] - 2*60*60
+data$Pumpstufe[Pumpzeiten_lim] <- Pumpzeiten$Pumpstufe[i]
+data$Versuch[Pumpzeiten_lim] <- Pumpzeiten$Versuch[i]
 }
 
 ggplot(data)+
@@ -45,7 +49,7 @@ ggplot(subset(data, !is.na(Pumpstufe)))+
   geom_point(aes(date, CO2_rollapply,col=as.factor(tiefenstufe)))
 
 ggplot(subset(data,!is.na(Pumpstufe)))+
-  geom_point(aes(CO2_rollapply,tiefe,col=as.factor(Pumpstufe)))
+  geom_point(aes(CO2_rollapply,tiefe,col=as.factor(paste("Pumpstufe",Pumpstufe,"Versuch",Versuch))))+labs(col="treat")
 
 ggplot(subset(data,!is.na(Pumpstufe) & tiefe < -3.5), aes(CO2_rollapply, tiefe, col=as.factor(Pumpstufe)))+
   geom_point()+

@@ -1,5 +1,5 @@
 #pfade definieren
-
+detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 
 #Packages laden
