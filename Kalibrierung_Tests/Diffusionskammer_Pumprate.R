@@ -16,8 +16,8 @@ Vol_ml<-Vol.xlsx$Volumen_effektiv_ml
 
 datelim <- c("2020.03.11 09:00:00","2020.03.17 18:00:00")
 #  datelim <- c("2020.03.11 08:00:00","2020.03.11 18:00:00")
-  datelim <- c("2020.03.12 08:00:00","2020.03.12 18:00:00")
- datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
+#  datelim <- c("2020.03.12 08:00:00","2020.03.12 18:00:00")
+# datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
 data <- read_db("dynament.db","dynament_test",datelim = datelim)
 
 colnames(data) <- str_replace(colnames(data),"(?<=CO2).*","_raw")
@@ -27,9 +27,9 @@ data$CO2[spikes[spikes %in% (spikes + 1)]] <- NA
 data$CO2[spikes] <- NA
 
 
-ggplot(data)+
-  geom_point(aes(date,CO2_raw,col="raw"))+
-  geom_point(aes(date,CO2,col="korr"))#+
+# ggplot(data)+
+#   geom_point(aes(date,CO2_raw,col="raw"))+
+#   geom_point(aes(date,CO2,col="korr"))#+
   #xlim(ymd_hms("2020.03.11 13:00:00","2020.03.17 14:00:00"))
   
 #erster Zeitrahmen
@@ -43,7 +43,7 @@ split <- split_chamber(data,
                        t_min=3,adj_openings = T)
 
 
-ggplot(split)+geom_point(aes(zeit,CO2,col=as.factor(messid)))+facet_wrap(~messid)
+#ggplot(split)+geom_point(aes(zeit,CO2,col=as.factor(messid)))+facet_wrap(~messid)
 
 Pumpstufen <- c(1:5,5,rep(NA,4),1:4,1:5)
 sampler_included <- c(rep(0,14),rep(1,5))
@@ -79,6 +79,7 @@ ggplot(subset(split,!is.na(Pumpstufe)))+
 
 ggplot(flux)+geom_point(aes(Pumpstufe,tracer_ml_per_min))+geom_abline(intercept=0,slope=0.1)
 
+write.csv(flux,file = paste0(metapfad,"Pumpstufen_flux.txt"),row.names = F)
 
 #########
 #

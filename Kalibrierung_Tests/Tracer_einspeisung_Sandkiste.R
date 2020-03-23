@@ -24,12 +24,15 @@ check.packages(packages)
 #Metadata xlsx
 Pumpzeiten <- readxl::read_xlsx(paste0(metapfad,"Tracereinspeisung_Sandkiste.xlsx"))
 Pumpzeiten$ende[is.na(Pumpzeiten$ende)] <- Pumpzeiten$start[which(is.na(Pumpzeiten$ende))+1]
-Versuch_x <- unique(Pumpzeiten$Versuch)
-#Versuch_x <- 3
+#Versuch_x <- unique(Pumpzeiten$Versuch)
+Versuch_x <- 3
 Versuch_sub <- subset(Pumpzeiten,Versuch %in% Versuch_x)
 datelim <- range(c(Versuch_sub$start, Versuch_sub$ende),na.rm = T)
 datelim[2] <- datelim[2]+3600*12
 data <- read_sampler("sampler1",datelim = datelim, format = "long")
+
+#Metadata Pumpstufen flux
+flux <- read.csv(paste0(metapfad,"Pumpstufen_flux.txt"))
 
 data$Pumpstufe <- NA
 data$Versuch <- NA
@@ -62,8 +65,36 @@ data_agg$gradient <- NA
 for(i in unique(data_agg$Pumpstufe)){
 data_agg$gradient[data_agg$Pumpstufe==i] <- c(diff(data_agg$CO2[data_agg$Pumpstufe==i])/diff(-data_agg$tiefe[data_agg$Pumpstufe==i]),NA) #ppm/cm
 }
+data_agg$dz <- NA
+data_agg$dC <- NA
+for(i in unique(data_agg$Pumpstufe)){
+data_agg$dC[data_agg$Pumpstufe==i] <- c(diff(data_agg$CO2[data_agg$Pumpstufe==i]),NA) #cm3/cm3
+data_agg$dz[data_agg$Pumpstufe==i] <- c(diff(-data_agg$tiefe[data_agg$Pumpstufe==i]),NA)
+}
 ggplot(data_agg)+geom_point(aes(gradient,tiefe,col=as.character(Pumpstufe)))
+ggplot(data_agg)+
+  geom_point(aes(CO2,tiefe,col=as.character(Pumpstufe)))+
+  geom_smooth(aes(CO2,tiefe,col=as.character(Pumpstufe)),method = "glm")
 ggplot(data_agg)+
   geom_point(aes(Pumpstufe,gradient,col=as.character(tiefenstufe)))+
   geom_smooth(aes(Pumpstufe,gradient,col=as.character(tiefenstufe)),method="glm")
+
+
+versuch3 <- subset(data,Versuch == 3)
+ggplot(versuch3)+geom_point(aes(date,CO2_rollapply,col=as.factor(tiefenstufe)))
+ggplot(versuch3)+
+  geom_point(aes(CO2_rollapply,tiefe))+
+  geom_smooth(aes(CO2_rollapply,tiefe),method="glm")
+
+#Fick's Law
+#Fz = -DS * (dC / dz)
+D0_CO2 <- 0.159#cm2/s
+#Fläche
+A <-20^2*pi
+Pumpstufe <- unique(versuch3$Pumpstufe)
+Fz <- flux$tracer_ml_per_min[flux$Pumpstufe == Pumpstufe]
+
+data_agg$DS <- -Fz/60/A * data_agg$dz / (data_agg$dC/10^6) #cm3 s-1 cm-2 * cm = cm2 s-1
+-data_agg$DS/D0_CO2
+ggplot(data_agg)+geom_point(aes(-DS/D0_CO2,tiefe))
 
