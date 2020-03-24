@@ -3,6 +3,7 @@
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
+plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2")
@@ -24,9 +25,10 @@ check.packages(packages)
 #Metadata xlsx
 Pumpzeiten <- readxl::read_xlsx(paste0(metapfad,"Tracereinspeisung_Sandkiste.xlsx"))
 Pumpzeiten$ende[is.na(Pumpzeiten$ende)] <- Pumpzeiten$start[which(is.na(Pumpzeiten$ende))+1]
-#Versuch_x <- unique(Pumpzeiten$Versuch)
-Versuch_x <- 3
+Versuch_x <- unique(Pumpzeiten$Versuch)
+#Versuch_x <- 3
 Versuch_sub <- subset(Pumpzeiten,Versuch %in% Versuch_x)
+Versuch_sub$period <-Versuch_sub$Versuch 
 datelim <- range(c(Versuch_sub$start, Versuch_sub$ende),na.rm = T)
 datelim[2] <- datelim[2]+3600*12
 data <- read_sampler("sampler1",datelim = datelim, format = "long")
@@ -34,67 +36,95 @@ data <- read_sampler("sampler1",datelim = datelim, format = "long")
 #Metadata Pumpstufen flux
 flux <- read.csv(paste0(metapfad,"Pumpstufen_flux.txt"))
 
+#Pumpstufe und Versuch aus metadaten auf dataframe übetragen
 data$Pumpstufe <- NA
 data$Versuch <- NA
 for(i in seq_along(Pumpzeiten$Pumpstufe)){
-  Pumpzeiten_lim <- data$date > Pumpzeiten$start[i] + 7*60*60 & data$date < Pumpzeiten$ende[i] - 2*60*60
+  Pumpzeiten_lim <- data$date > Pumpzeiten$start[i] + 9*60*60 & data$date < Pumpzeiten$ende[i] - 2*60*60
 data$Pumpstufe[Pumpzeiten_lim] <- Pumpzeiten$Pumpstufe[i]
 data$Versuch[Pumpzeiten_lim] <- Pumpzeiten$Versuch[i]
 }
+data$PSt_Nr <- paste("PSt",data$Pumpstufe,"Nr",data$Versuch,sep="_")
 
-ggplot(data)+
-  annotate("rect", xmin=Versuch_sub$start,xmax=Versuch_sub$ende,ymin=-Inf,ymax=Inf, alpha=Versuch_sub$Pumpstufe/max(Versuch_sub$Pumpstufe)*0.3, fill="red")+
-  geom_line(aes(date,CO2,col=as.factor(tiefenstufe)))
-
+#kurven glätten mit rollapply
 data$CO2_rollapply <- zoo::rollapply(data$CO2,width=10,mean,fill=NA)
 
-ggplot(subset(data, !is.na(Pumpstufe)))+
-  geom_point(aes(date, CO2_rollapply,col=as.factor(tiefenstufe)))
 
-ggplot(subset(data,!is.na(Pumpstufe)))+
-  geom_point(aes(CO2_rollapply,tiefe,col=as.factor(paste("Pumpstufe",Pumpstufe,"Versuch",Versuch))))+labs(col="treat")
+###################
+#Aggregate Data
+data_agg <- aggregate(list(CO2=data$CO2),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe,Versuch= data$Versuch,PSt_Nr = data$PSt_Nr),mean)
 
-ggplot(subset(data,!is.na(Pumpstufe) & tiefe < -3.5), aes(CO2_rollapply, tiefe, col=as.factor(Pumpstufe)))+
-  geom_point()+
-  geom_smooth(method="glm",formula= y ~ poly(x,2,raw=T))
-
-
-data_agg <- aggregate(list(CO2=data$CO2),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe),mean)
-
+###################
+#gradienten berechnen
 data_agg$gradient <- NA
-for(i in unique(data_agg$Pumpstufe)){
-data_agg$gradient[data_agg$Pumpstufe==i] <- c(diff(data_agg$CO2[data_agg$Pumpstufe==i])/diff(-data_agg$tiefe[data_agg$Pumpstufe==i]),NA) #ppm/cm
-}
 data_agg$dz <- NA
 data_agg$dC <- NA
-for(i in unique(data_agg$Pumpstufe)){
-data_agg$dC[data_agg$Pumpstufe==i] <- c(diff(data_agg$CO2[data_agg$Pumpstufe==i]),NA) #cm3/cm3
-data_agg$dz[data_agg$Pumpstufe==i] <- c(diff(-data_agg$tiefe[data_agg$Pumpstufe==i]),NA)
+for(i in unique(data_agg$PSt_Nr)){
+
+  data_agg$gradient[data_agg$PSt_Nr==i] <- c(diff(data_agg$CO2[data_agg$PSt_Nr==i])/diff(-data_agg$tiefe[data_agg$PSt_Nr==i]),NA) #ppm/cm
+
+  data_agg$dC[data_agg$PSt_Nr==i] <- c(diff(data_agg$CO2[data_agg$PSt_Nr==i]),NA) #cm3/cm3
+  data_agg$dz[data_agg$PSt_Nr==i] <- c(diff(-data_agg$tiefe[data_agg$PSt_Nr==i]),NA)
 }
-ggplot(data_agg)+geom_point(aes(gradient,tiefe,col=as.character(Pumpstufe)))
-ggplot(data_agg)+
-  geom_point(aes(CO2,tiefe,col=as.character(Pumpstufe)))+
-  geom_smooth(aes(CO2,tiefe,col=as.character(Pumpstufe)),method = "glm")
-ggplot(data_agg)+
-  geom_point(aes(Pumpstufe,gradient,col=as.character(tiefenstufe)))+
-  geom_smooth(aes(Pumpstufe,gradient,col=as.character(tiefenstufe)),method="glm")
 
-
-versuch3 <- subset(data,Versuch == 3)
-ggplot(versuch3)+geom_point(aes(date,CO2_rollapply,col=as.factor(tiefenstufe)))
-ggplot(versuch3)+
-  geom_point(aes(CO2_rollapply,tiefe))+
-  geom_smooth(aes(CO2_rollapply,tiefe),method="glm")
-
+##############################
 #Fick's Law
 #Fz = -DS * (dC / dz)
 D0_CO2 <- 0.159#cm2/s
 #Fläche
 A <-20^2*pi
-Pumpstufe <- unique(versuch3$Pumpstufe)
-Fz <- flux$tracer_ml_per_min[flux$Pumpstufe == Pumpstufe]
 
-data_agg$DS <- -Fz/60/A * data_agg$dz / (data_agg$dC/10^6) #cm3 s-1 cm-2 * cm = cm2 s-1
--data_agg$DS/D0_CO2
-ggplot(data_agg)+geom_point(aes(-DS/D0_CO2,tiefe))
+#flux für jeweilige Pumpstufe aus metadaten übertragen
+data_agg$Fz <- sapply(data_agg$Pumpstufe, function(x) flux$tracer_ml_per_min[flux$Pumpstufe == x])
+
+#Ficks law anwenden
+data_agg$DS <- data_agg$Fz/60/A * data_agg$dz / (data_agg$dC/10^6) #cm3 s-1 cm-2 * cm = cm2 s-1
+
+data_agg$DS_D0_CO2 <- data_agg$DS/D0_CO2
+data_agg$tiefenmittel <- rowMeans(cbind(c(data_agg$tiefe[-nrow(data_agg)],NA),c(data_agg$tiefe[-1],NA)))
+data_agg$tiefenmittel[data_agg$tiefe == -24.5] <- NA
+
+
+##################
+#plots
+ggplot(data)+
+  annotate("rect", xmin=Versuch_sub$start,xmax=Versuch_sub$ende,ymin=-Inf,ymax=Inf, alpha=Versuch_sub$Pumpstufe/max(Versuch_sub$Pumpstufe)*0.3, fill="red")+
+  geom_line(aes(date,CO2,col=as.factor(tiefenstufe)))+labs(col="tiefe")
+
+
+plt <- leave_NAtime_plot(data=data,group="CO2",plot=T)
+plt_data <- leave_NAtime_plot(data=data,group="CO2",plot=F)
+
+plt2 <- plt+
+  geom_rect(data=Versuch_sub,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
+  scale_fill_manual(values = alpha("red",seq(0.1,0.3,len=3)))+
+  labs(fill="Pumpstufe")+
+  theme(strip.text.x = element_blank())
+
+pdf(paste0(plotpfad,"Tracer_Versuche_sandkiste.pdf"),width=11,height = 5)
+adj_grob_size(plt2,plt_data,"1 day",date_labels= "%b %d")
+dev.off()
+
+ggplot(subset(data, !is.na(Pumpstufe)))+
+  geom_point(aes(date, CO2_rollapply,col=as.factor(tiefenstufe)))
+
+ggplot(subset(data,!is.na(Pumpstufe)))+
+  geom_point(aes(CO2_rollapply,tiefe,col=PSt_Nr))+labs(col="Pumpstufe Versuch-Nr")
+
+ggplot(subset(data,!is.na(Pumpstufe) & tiefe < -3.5), aes(CO2_rollapply, tiefe, col=PSt_Nr))+
+  geom_point()+
+  geom_smooth(method="glm",formula= y ~ poly(x,2,raw=T))+
+  labs(col="Pumpstufe Versuch-Nr")+labs(x="CO2 [ppm]",y="tiefe [cm]")+ggsave(paste0(plotpfad,"CO2_Tiefe_sandkiste.pdf"),width=8,height=5)
+
+
+
+ggplot(data_agg)+geom_point(aes(gradient,tiefenmittel,col=PSt_Nr))
+ggplot(data_agg,aes(CO2,tiefe,col=PSt_Nr))+
+  geom_point()+
+  geom_smooth(method = "glm")
+ggplot(data_agg,aes(Pumpstufe,gradient,col=as.character(tiefenmittel),shape=as.character(Versuch)))+
+  geom_point()#+
+  
+
+ggplot(data_agg)+geom_point(aes(DS_D0_CO2,tiefe,col=PSt_Nr))
 
