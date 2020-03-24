@@ -354,6 +354,8 @@ read_db <- function(db.name="dynament.db", #name der db
 
   #daten abrufen
   data<-dbGetQuery(con,query)
+  #von db trennen
+  odbc::dbDisconnect(con)
   #datum formatieren
   data$date<-ymd_hms(data$date)
   #date_int weglassen
