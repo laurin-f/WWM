@@ -16,16 +16,18 @@ Flow_CO2*60*10^6#ml/min
 # 
 # 
 # D0_CO2 <- 0.138#cm2/s quelle: R. C. Roberts Molecular diffusion of  Gases
-# #temperatur und Druckkorrektur nach R.C. Roberts
-# T0 <- 273 #°K
-# p0 <- 101.3 #kPa
-# p0 <- 760 #kPa
-# alpha_CO2 <- 2
-# T_C <-c(17.6,15.2,15.7)+273
-# p <- c(751,364,309)#*0.133
-# D0_Tp <- D0_CO2 *(T_C/T0)^alpha_CO2*(p0/p)
-# D0_Tp
 
+# #temperatur und Druckkorrektur nach w. j. massman 1998
+D0_CO2 <- 0.1381
+T0 <- 273.15 #°K
+p0 <- 101.325 #kPa
+
+
+alpha_CO2 <- 1.81
+T_C <-c(20)+273.15
+p <- 101.325
+D0_Tp <- D0_CO2 *(T_C/T0)^alpha_CO2*(p0/p)
+D0_Tp
 
 
 #TRANSPORT AND RATE PROCESSES

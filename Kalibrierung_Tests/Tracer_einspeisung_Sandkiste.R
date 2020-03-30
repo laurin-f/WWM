@@ -1,9 +1,10 @@
 #pfade definieren
-
+#detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
+comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2")
@@ -80,11 +81,25 @@ data_agg$Fz <- sapply(data_agg$Pumpstufe, function(x) flux$tracer_ml_per_min[flu
 #Ficks law anwenden
 data_agg$DS <- data_agg$Fz/60/A * data_agg$dz / (data_agg$dC/10^6) #cm3 s-1 cm-2 * cm = cm2 s-1
 
+mean(data_agg$DS[data_agg$Versuch==3],na.rm=T)#cm2/s
+
 data_agg$DS_D0_CO2 <- data_agg$DS/D0_CO2
 data_agg$tiefenmittel <- rowMeans(cbind(c(data_agg$tiefe[-nrow(data_agg)],NA),c(data_agg$tiefe[-1],NA)))
 data_agg$tiefenmittel[data_agg$tiefe == -24.5] <- NA
+colnames(data_agg)
+data_agg$Z_mod <- data_agg$tiefe +40
 
+p_kPa <- 101.3
+T_deg <- 20
+p_Pa <- p_kPa*1000#PA = N/m2 = kg/(m s2)
+#Temperatur
+T_K <- T_deg+273.15 #K
+#allgemeine Gaskonstante
+R <- 8.314 #kg m2/(s2 mol K)
+mol_per_m3 <- p_Pa/(R*T_K) #kg/(m s2) / kg m2 * (s2 mol K)/ K = mol/m3
 
+data_agg$CO2_mol_per_m3 <- data_agg$CO2 * mol_per_m3 * 10^-6
+write.csv(data_agg[data_agg$PSt_Nr == "PSt_5_Nr_3",c("Z_mod","CO2_mol_per_m3")],file = paste0(comsolpfad,"PSt_5_Nr_3.txt"),row.names = F)
 ##################
 #plots
 ggplot(data)+
@@ -111,7 +126,7 @@ ggplot(subset(data, !is.na(Pumpstufe)))+
 ggplot(subset(data,!is.na(Pumpstufe)))+
   geom_point(aes(CO2_rollapply,tiefe,col=PSt_Nr))+labs(col="Pumpstufe Versuch-Nr")
 
-ggplot(subset(data,!is.na(Pumpstufe) & tiefe < -3.5), aes(CO2_rollapply, tiefe, col=PSt_Nr))+
+ggplot(subset(data,!is.na(Pumpstufe)), aes(CO2_rollapply, tiefe, col=PSt_Nr))+
   geom_point()+
   geom_smooth(method="glm",formula= y ~ poly(x,2,raw=T))+
   labs(col="Pumpstufe Versuch-Nr")+labs(x="CO2 [ppm]",y="tiefe [cm]")+ggsave(paste0(plotpfad,"CO2_Tiefe_sandkiste.pdf"),width=8,height=5)
@@ -127,4 +142,5 @@ ggplot(data_agg,aes(Pumpstufe,gradient,col=as.character(tiefenmittel),shape=as.c
   
 
 ggplot(data_agg)+geom_point(aes(DS_D0_CO2,tiefe,col=PSt_Nr))
+
 

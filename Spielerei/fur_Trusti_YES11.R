@@ -23,9 +23,11 @@ startapply<-Sys.time()
 YESid <- which(df$WS=="YES")
 
 #von YESids 11:1 abziehen
-YES_apply <- sapply(11:1, function(x) YESid - x)
+YES_apply <- lapply(11:1, function(x) YESid - x)
+#YES_apply <- sapply(11:1, function(x) YESid - x)
 #alle unique werte aus der matrix als vector
-YES_vec <- unique(c(YES_apply))
+YES_vec <- unique(unlist(YES_apply))
+#YES_vec <- unique(c(YES_apply))
 #werte kleiner null raus
 YES_final <- YES_vec[YES_vec > 0]
 
