@@ -4,7 +4,7 @@
 \alias{update_Em50_data.db}
 \title{update Em50 database}
 \usage{
-update_Em50_data.db(table.name = "Em50")
+update_Em50_data.db(table.name = "Em50", path = datapfad_schaui)
 }
 \value{
 nothing returned

@@ -208,7 +208,7 @@ calc_flux <- function(data,
                       gas = "CO2",
                       Vol,#in cm3
                       Grundfl=NULL,#in cm2
-                      P_kPA = 101.3,
+                      p_kPa = 101.3,
                       T_deg = 15,
                       tracer_conc=NULL){#percent
 
@@ -225,7 +225,7 @@ calc_flux <- function(data,
 
   #Konstanten um Einheiten umzurechnen
   #Luftdruck
-  p_Pa <- P_kPA*1000#PA = N/m2 = kg/(m s2)
+  p_Pa <- p_kPa*1000#PA = N/m2 = kg/(m s2)
   #Temperatur
   T_K <- T_deg+273.15 #K
   #allgemeine Gaskonstante
@@ -254,3 +254,6 @@ calc_flux <- function(data,
   flux[group] <- group_unique
   return(flux)
 }
+
+
+
