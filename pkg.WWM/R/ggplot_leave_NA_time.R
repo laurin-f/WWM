@@ -1,23 +1,28 @@
-#' Title
+#' Function to plot data with x-axis split into facets between longer periods without data
 #'
-#' @param y
-#' @param col
-#' @param group
-#' @param data
-#' @param timestep
-#' @param plot
-#' @param ylab
+#' @param y name of the column that should be ploted on y-axis as character
+#' @param col name of the column that should be used for the colour as character
+#' @param group name of the column that should be used for finding NA times as character the plot will automatically be split into different facets if the group column is NA for a defined timestep
+#' @param data data that should be plotted
+#' @param timestep timestep in minutes that is used to split plot into facets without longer gaps on the time axis
+#' @param plot logical indicating whether output is a ggplot object (T) or a data.frame with the extra column \code{"period"} which can be used in facet_wrap to split time-axis
+#' @param ylab label for y-axis
+#' @param adj_grob_size logical whether grob size should be adjusted
+#' @param ... other parameters that should be parsed to \code{adj_grob_size()}
 #'
 #' @return
 #' @export
 #'
-#' @examples
+#' @examples leave_NAtime_plot(data=data,group="CO2",plot=T)
 leave_NAtime_plot <- function(y="CO2",
                               col="tiefe",
                               group="Pumpstufe",
                               data,
-                              timestep = 10,
-                              plot=T, ylab="CO2 [ppm]"){#minutes
+                              timestep = 10,#minutes
+                              ylab="CO2 [ppm]",
+                              plot=T,
+                              adj_grob_size=T, ...,
+                              geom="line"){
 
   data_order <- data[order(data$date),]
   data_sub <- data_order[!is.na(data_order[,group]),]
@@ -42,27 +47,36 @@ leave_NAtime_plot <- function(y="CO2",
   if(plot ==F){
     return(data_sub)
   }else{
-    p <- ggplot(data_sub)+
-      geom_line(aes(date,data_sub[,y],col=as.factor(data_sub[,col])))+
+    if(geom == "line"){
+      p <- ggplot(data_sub)+
+        geom_line(aes(date,data_sub[,y],col=as.factor(data_sub[,col])))
+    }else if(geom =="point"){
+      p <- ggplot(data_sub)+
+        geom_point(aes(date,data_sub[,y],col=as.factor(data_sub[,col])))
+    }
+    p<- p+
       facet_wrap(~period,scales="free_x",nrow=1)+
       labs(col=col,y=ylab)+
       theme(strip.text.x = element_blank())
+    if(adj_grob_size == T){
+      p <- adj_grob_size(p,data_sub,...)
+    }
     p
-    return(p)
+    #return(p)
     }
 }
 
-#' Title
+#' function to adjust the size of the facets used in \code{leave_NAtime_plot}
 #'
-#' @param p
-#' @param data
-#' @param breaks
-#' @param ...
+#' @param p ggplot object
+#' @param data data that is used for ggplot object
+#' @param breaks character indicating breaks on x-axis eg. \code{"10  hours"} (default)
+#' @param ... other parameters that should be parsed to \code{scale_x_datetime(date_breaks = breaks, ...)}
 #'
 #' @return
 #' @export
 #'
-#' @examples
+#' @examples adj_grob_size(plt2,plt_data,"1 day",date_labels= "%b %d")
 adj_grob_size <- function(p, data ,breaks="10 hours", ...){
   # convert ggplot object to grob object
   p <- p+scale_x_datetime(date_breaks = breaks, ...)

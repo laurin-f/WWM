@@ -1,16 +1,17 @@
 
-#' Title
+#' Function to convert units from ppm to mol / m^3 or reverse
 #'
-#' @param data
-#' @param unit_in
-#' @param unit_out
-#' @param p_kPa
-#' @param T_C
+#' @param data vector with values that should be converted from ppm to mol or reverse
+#' @param unit_in unit of input data if this is ppm output will be in mol / m^3 and vice versa
+#' @param out_class class of the output as character eg. \code{"numeric"} (default) or \code{"units"}
+#' @param p_kPa pressure in kPa
+#' @param T_C Temperature in °C
 #' @importFrom units set_units
-#' @return
+#' @return vector with converted units
 #' @export
 #'
-#' @examples
+#' @examples ppm_to_mol(CO2_ppm,"ppm")
+#' ppm_to_mol(0.0168,"mol/m^3")
 ppm_to_mol <- function(data,
                        unit_in="ppm",
                        out_class="numeric",

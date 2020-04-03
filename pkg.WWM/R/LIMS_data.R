@@ -1,12 +1,12 @@
 
 
-#' Title
+#' Function to read data from LIMS sb
 #'
 #' @return
 #' @export
 #' @importFrom RODBC odbcConnect sqlQuery
 #' @importFrom lubridate ymd
-#' @examples
+#' @examples read_LIMS()
 read_LIMS<-function(){
 channel <- odbcConnect("WINLIMS8")
 

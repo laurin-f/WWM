@@ -2,16 +2,25 @@
 % Please edit documentation in R/ggplot_leave_NA_time.R
 \name{adj_grob_size}
 \alias{adj_grob_size}
-\title{Title}
+\title{function to adjust the size of the facets used in \code{leave_NAtime_plot}}
 \usage{
 adj_grob_size(p, data, breaks = "10 hours", ...)
 }
 \arguments{
-\item{...}{}
+\item{p}{ggplot object}
+
+\item{data}{data that is used for ggplot object}
+
+\item{breaks}{character indicating breaks on x-axis eg. \code{"10  hours"} (default)}
+
+\item{...}{other parameters that should be parsed to \code{scale_x_datetime(date_breaks = breaks, ...)}}
 }
 \value{
 
 }
 \description{
-Title
+function to adjust the size of the facets used in \code{leave_NAtime_plot}
+}
+\examples{
+adj_grob_size(plt2,plt_data,"1 day",date_labels= "\%b \%d")
 }

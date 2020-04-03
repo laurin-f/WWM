@@ -2,7 +2,7 @@
 % Please edit documentation in R/LIMS_data.R
 \name{read_LIMS}
 \alias{read_LIMS}
-\title{Title}
+\title{Function to read data from LIMS sb}
 \usage{
 read_LIMS()
 }
@@ -10,5 +10,8 @@ read_LIMS()
 
 }
 \description{
-Title
+Function to read data from LIMS sb
+}
+\examples{
+read_LIMS()
 }
