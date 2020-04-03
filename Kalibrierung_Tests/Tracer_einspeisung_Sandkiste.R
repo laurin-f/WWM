@@ -1,5 +1,5 @@
 #pfade definieren
-#detach("package:pkg.WWM", unload = TRUE)
+detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
@@ -46,7 +46,7 @@ data$Pumpstufe[Pumpzeiten_lim] <- Pumpzeiten$Pumpstufe[i]
 data$Versuch[Pumpzeiten_lim] <- Pumpzeiten$Versuch[i]
 }
 data$PSt_Nr <- paste("PSt",data$Pumpstufe,"Nr",data$Versuch,sep="_")
-
+data$PSt_Nr[is.na(data$Pumpstufe)]<-NA
 #kurven glätten mit rollapply
 data$CO2_rollapply <- zoo::rollapply(data$CO2,width=10,mean,fill=NA)
 
@@ -121,7 +121,8 @@ ggplot(data)+
 
 #######
 #CO2 ~ Zeit leave NAtime
-plt <- leave_NAtime_plot(data=data,group="CO2",plot=T)
+
+plt <- leave_NAtime_plot(data=data,group="CO2",plot=T,adj_grob_size=F,breaks="1 day",date_labels= "%b %d")
 plt_data <- leave_NAtime_plot(data=data,group="CO2",plot=F)
 
 plt2 <- plt+
@@ -135,6 +136,7 @@ adj_grob_size(plt2,plt_data,"1 day",date_labels= "%b %d")
 dev.off()
 
 #CO2_rollapply ~ Zeit 
+leave_NAtime_plot(y="CO2_rollapply",col="PSt_Nr",data=data,group="CO2",geom="point",breaks="1 day",date_labels= "%b %d")
 ggplot(subset(data, !is.na(Pumpstufe)))+
   geom_point(aes(date, CO2_rollapply,col=as.factor(tiefenstufe)))
 

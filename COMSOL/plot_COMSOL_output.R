@@ -6,7 +6,8 @@ comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2")
+packages<-c("lubridate","stringr","ggplot2","ggforce","units")
+
 check.packages(packages)
 
 meas_depths <- (40-(1:7*3.5))
@@ -18,7 +19,7 @@ id<-rep(NA,length(meas_depths))
 for(i in seq_along(meas_depths)){
   id[i]<-which( mesh$r < 0.1 & mesh$r > 0 & abs((mesh$z) - meas_depths[i]-0.1)< 0.2)
 }
-  mesh[id,]
+
 
 CO2_obs <- read.table(paste0(comsolpfad,"PSt_5_Nr_3.txt"),col.names = c("z","CO2_mol_per_m3"))
 CO2_mod <- read.table(paste0(comsolpfad,"conc_tiefen.txt"),skip=9,col.names = c("r","z","CO2_mol_per_m3"))
@@ -40,37 +41,35 @@ sweep_long <- reshape2::melt(CO2_sweep,id=1:2,value.name="CO2_mol_per_m3",variab
 
 sweep_long$DS_sand <- as.numeric(str_extract(sweep_long$par,"(?<=DS_sand=)\\d(\\.\\d+)?E-\\d"))
 sweep_long$CO2_atm <- as.numeric(str_extract(sweep_long$par,"(?<=CO2_atm=)\\d\\.\\d+"))
-sweep_long$CO2_ppm <- ppm_to_mol(sweep_long$CO2_mol_per_m3,"mol/m^3")
-CO2_obs$CO2_ppm <- ppm_to_mol(CO2_obs$CO2_mol_per_m3,"mol/m^3")
-sweep_long$CO2_obs <- as.numeric(as.character(factor(sweep_long$tiefe,levels = CO2_obs$tiefe,labels = CO2_obs$CO2_ppm)))
-head(sweep_long,20)
-sweep_long$tiefe <- sweep_long$Z - 40
-head(sweep_long)
+sweep_long$CO2_mod <- ppm_to_mol(sweep_long$CO2_mol_per_m3,"mol/m^3","units")
+CO2_obs$CO2_ppm <- ppm_to_mol(CO2_obs$CO2_mol_per_m3,"mol/m^3","units")
+sweep_long$tiefe <- set_units(sweep_long$Z - 40,cm)
 
-ggplot(subset(sweep_long,CO2_atm==0.0188))+geom_line(aes(tiefe,CO2_ppm))
-ggplot(subset(sweep_long,CO2_atm==0.0188))+geom_line(aes(tiefe,CO2_ppm,col=as.factor(DS_sand)))+guides(col=F)+geom_point(data=CO2_obs,aes(tiefe,CO2_ppm))
+sweep_long$CO2_obs <- as.numeric(as.character(factor(sweep_long$tiefe,levels = CO2_obs$tiefe,labels = CO2_obs$CO2_ppm)))
+
+
+ggplot(subset(sweep_long,CO2_atm==0.0188))+geom_line(aes(tiefe,CO2_mod))
+ggplot(subset(sweep_long,CO2_atm==0.0188))+geom_line(aes(tiefe,CO2_mod,col=as.factor(DS_sand)))+guides(col=F)+geom_point(data=CO2_obs,aes(tiefe,CO2_ppm))
 
 
 ######################
 #fm
-sweep_long$residual <- sweep_long$CO2_obs - sweep_long$CO2_ppm
-CO2_sweep[1:7,1:10]
-RMSE <- function(mod,obs){
-  sqrt(mean((mod-obs)^2,na.rm = T))
-}
-CO2_sweep[1:6,1:3]
-tiefen <- 1:7
+
+ tiefen <- 1:7
 rmse <- apply(CO2_sweep[tiefen,-(1:2)],2,RMSE,CO2_obs$CO2_mol_per_m3[tiefen])
 best.fit.char <- names(which.min(rmse))
 best_DS <- as.numeric(str_extract(best.fit.char,"(?<=DS_sand=)\\d(\\.\\d+)?E-\\d"))
 best_CO2_atm <- as.numeric(str_extract(best.fit.char,"(?<=CO2_atm=)\\d\\.\\d+"))
 
-ggplot(subset(sweep_long,DS_sand==best_DS & CO2_atm == best_CO2_atm))+geom_line(aes(tiefe,CO2_ppm,col="mod"))+geom_point(data=CO2_obs,aes(tiefe,CO2_ppm,col="obs"))+
-  annotate("text",label=paste("DS=",best_DS,"\nCO2_atm=",best_CO2_atm),x=-10,y=6000)
+ggplot(subset(sweep_long,DS_sand==best_DS & CO2_atm == best_CO2_atm))+geom_line(aes(tiefe,CO2_mod,col="mod"))+geom_point(data=CO2_obs,aes(tiefe,CO2_ppm,col="obs"))+
+  annotate("text",x= max(CO2_obs$tiefe),y=max(CO2_obs$CO2_ppm),label=paste("DS=",best_DS,"\n CO2_atm=",best_CO2_atm),hjust=1,vjust=0.5)
+  
 ggplot(subset(sweep_long,DS_sand==2.8e-6 & CO2_atm == 0.0168))+geom_line(aes(tiefe,CO2_ppm,col=as.factor(CO2_atm)))+geom_point(data=CO2_obs,aes(tiefe,CO2_ppm))
 
 residuals<-apply(CO2_sweep[,-(1:2)],2,"-",CO2_obs$CO2_mol_per_m3)
 
+
+df <- data.frame(trt = c("a", "b", "c"), resp = c(2, 3, 4))
 
 
 
