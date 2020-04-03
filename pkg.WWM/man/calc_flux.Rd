@@ -10,7 +10,7 @@ calc_flux(
   gas = "CO2",
   Vol,
   Grundfl = NULL,
-  P_kPA = 101.3,
+  p_kPa = 101.3,
   T_deg = 15,
   tracer_conc = NULL
 )
@@ -26,11 +26,11 @@ calc_flux(
 
 \item{Grundfl}{area in m2}
 
-\item{P_kPA}{pressure in kPa}
-
 \item{T_deg}{Temperature in °C}
 
 \item{tracer_conc}{tracer gas concentration in volum percent (if a tracer is used)}
+
+\item{P_kPA}{pressure in kPa}
 }
 \value{
 data.frame with flux in different units for each group
