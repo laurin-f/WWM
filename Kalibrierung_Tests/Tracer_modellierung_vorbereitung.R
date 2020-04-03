@@ -19,6 +19,6 @@ CO2_mol_per_m3
 flux <- read.csv(paste0(metapfad,"Pumpstufen_flux.txt"))
 ml_per_min_PSt5 <-flux$tracer_ml_per_min[flux$Pumpstufe == 5]
 A_inj <- pi * 1^2  / 10^6 #m^2
-ml_per_min_PSt5 / 10^6 *60 * mol_per_m3 / A_inj#m3/s *mol/m3 /m2 = #mol/(s m2)
+ml_per_min_PSt5 / 10^6 / 60 * mol_per_m3 / A_inj#m3/s *mol/m3 /m2 = #mol/(s m2)
 
 
