@@ -70,7 +70,7 @@ Pumpstufen_plot <- ggplot(subset(split,!is.na(Pumpstufe)))+
   geom_line(aes(zeit,CO2.tara,linetype=as.factor(sampler_included),col=as.factor(messid)))+
   geom_smooth(aes(zeit,CO2.tara,col=as.factor(messid),linetype=as.factor(sampler_included)),method="glm")+
   facet_wrap(~Pumpstufe,labeller = lbl)
-Pumpstufen_plot
+Pumpstufen_plot+guides(col=F)+labs(linetype="sampler included")
 
 
 ggplot(subset(split,!is.na(Pumpstufe)))+
@@ -79,6 +79,7 @@ ggplot(subset(split,!is.na(Pumpstufe)))+
 
 ggplot(flux)+geom_point(aes(Pumpstufe,tracer_ml_per_min))+geom_abline(intercept=0,slope=0.1)
 
+flux[nrow(flux)+1,]<-0
 write.csv(flux,file = paste0(metapfad,"Pumpstufen_flux.txt"),row.names = F)
 
 #########

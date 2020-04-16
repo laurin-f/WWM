@@ -119,7 +119,7 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
       data<-data[!duplicated(data$date_int),]
 
       #mit db verbinden
-      con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,"GGA.db"))
+      con<-odbc::dbConnect(RSQLite::SQLite(),paste0(sqlpath,"GGA.db"))
       #falls tabelle in db nicht vorhanden wird sie hier erstellt
       dbExecute(con, str_replace(createquery,"tablename",i))
 
@@ -179,7 +179,7 @@ update_dynament.db<-function(table.name="dynament_test",
     if(table.name=="dynament_test"){
       db.colnames<-c("date_int",paste0("CO2_Dyn_",sprintf("%02d",0:21)))
     }else if(!is.na(str_extract(table.name,"sampler"))){
-     db.colnames <- c("date_int",paste0("CO2_tiefe",1:7))
+     db.colnames <- c("date_int",paste0("CO2_tiefe",0:7))
     }else{
       stop('table.name has to be either \n "dynament_test" \nor \n "samplerX"')
     }
@@ -201,7 +201,10 @@ update_dynament.db<-function(table.name="dynament_test",
     if(!is.na(str_extract(table.name,"sampler"))){
 
       col.ids<-lapply(dyn.colnames,function(x) {
+        #die Spaltennamen aus der .csv werden so formatiert das sie der Namen in der .db enstprechen
+        #beim sampler werden dabei keine Dyn Nummern abgelegt
         colnames_x_formatiert <- str_replace_all(x,c("_Dyn\\d+"="","dpth"="tiefe","smp"="sampler"))
+        #die spaltennamen der db mit dem tablename zusammengefügt entsprechen nun den Spaltennamen der csv
         ids.temp <- colnames_x_formatiert %in% paste(db.colnames,table.name,sep="_")
         ids.temp[1:2]<-T
         ids.temp
@@ -237,8 +240,11 @@ update_dynament.db<-function(table.name="dynament_test",
       names(fm_kal_5000) <- str_replace(names(fm_kal_5000),"Dyn_","Dyn")
       same.names <- names(fm_kal_5000)[names(fm_kal_5000) %in% colnames(data)]
 
+      #Korrekturfaktoren anwenden
       data[same.names] <-
         sapply(same.names,function(x) predict(fm_kal_5000[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
+
+      #Spaltennamen anpassen
       colnames(data)<-str_replace_all(colnames.data.old,c("(_Dyn_?\\d{2})|(_smp\\d$)"="","dpth"="tiefe"))
       dyn.list.sub[[i]] <- data
       }

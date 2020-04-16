@@ -36,14 +36,6 @@ leave_NAtime_plot <- function(y="CO2",
     data_sub$period[data_sub$date >= period.df$starts[i] & data_sub$date <= period.df$ends[i] ] <- i
   }
 
-  # data_list <- apply(period.df,1 ,function(x) data_sub[data_sub$date >= x[1] & data_sub$date <= x[2],])
-  # plot_list <- lapply(data_list,function(x){
-  #   p <- ggplot(x)+
-  #     geom_line(aes(date,x[,y],col=as.factor(x[,col])))+
-  #     labs(col=col,y=y)
-  #     return(p)
-  #   })
-  # gridExtra::grid.arrange(plot_list[[1]]+guides(col=F),plot_list[[2]],ncol=2)
   if(plot ==F){
     return(data_sub)
   }else{
