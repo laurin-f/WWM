@@ -13,7 +13,8 @@ leave_NAtime_plot(
   ylab = "CO2 [ppm]",
   plot = T,
   adj_grob_size = T,
-  ...
+  ...,
+  geom = "line"
 )
 }
 \arguments{
