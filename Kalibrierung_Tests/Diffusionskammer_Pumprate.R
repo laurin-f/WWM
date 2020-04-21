@@ -19,6 +19,7 @@ datelim <- c("2020.03.11 09:00:00","2020.03.17 18:00:00")
   # datelim <- c("2020.03.12 08:00:00","2020.03.12 18:00:00")
 # datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
 datelim2 <- c("2020.04.14 09:00:00","2020.04.17 18:00:00")
+datelim3 <- c("2020.04.21 08:00:00","2020.04.21 10:00:00")
 split <- injectionrate(datelim = datelim,Pumpstufen = c(1:5,5,rep(NA,4),1:4,1:5),group="Pumpstufe",
                       closing_before = 20,
                       closing_after = 20,
@@ -28,7 +29,7 @@ split <- injectionrate(datelim = datelim,Pumpstufen = c(1:5,5,rep(NA,4),1:4,1:5)
                       t_init = 1,
                       t_min=3)
 
-ggplot(split[[2]])+geom_point(aes(zeit,CO2.tara,col=as.factor(Pumpstufe)))
+ggplot(split[[2]])+geom_point(aes(zeit,CO2_tara,col=as.factor(Pumpstufe)))
 split2 <- injectionrate(datelim = datelim2,Pumpstufen = c(3,3),group="Pumpstufe",
                       closing_before = 20,
                       closing_after = 20,
@@ -37,7 +38,16 @@ split2 <- injectionrate(datelim = datelim2,Pumpstufen = c(3,3),group="Pumpstufe"
                       t_max=6,
                       t_init = 2,
                       t_min=3)
+split3 <- injectionrate(datelim = datelim3,Pumpstufen = c(3,3,3),group="Pumpstufe",
+                      closing_before = 20,
+                      closing_after = 20,
+                      opening_before = 0,
+                      opening_after = 10,
+                      t_max=6,
+                      t_init = 2,
+                      t_min=3)
 split2[[1]]
+split3[[1]]
 
 data <- read_db("dynament.db","dynament_test",datelim = datelim)
 
