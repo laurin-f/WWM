@@ -46,18 +46,11 @@ injectionrate <- function(datelim,Pumpstufen,group = "Pumpstufe", ...){
   #Pumpstufen den messid's zuordnen
   split$Pumpstufe <- as.numeric(as.character(factor(split$messid,levels = unique(split$messid),labels=Pumpstufen)))
 
-  #CO2.tara als CO2-anstieg von Nullpunkt
-  CO2.tara_list <- lapply(na.omit(unique(split$messid)), function(x){
-    messid.x <- split$messid == x
-    min.zeit <- min(split$zeit[messid.x],na.rm = T)
-    split$CO2[which(messid.x)] - split$CO2[which(messid.x & split$zeit == min.zeit)]
-  })
-  split$CO2.tara <- NA
-  split$CO2.tara[!is.na(split$messid)] <- do.call(c,CO2.tara_list)
+
 
   #Fluss mit calc_flux bestimmen
   flux <- calc_flux(split,Vol=Vol_ml+100,tracer_conc = 100,group=group)
 
   #
-  return(list(flux,split))
+  return(flux)
 }

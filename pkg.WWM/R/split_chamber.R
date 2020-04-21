@@ -212,8 +212,16 @@ calc_flux <- function(data,
                       T_deg = 15,
                       tracer_conc=NULL){#percent
 
+  #CO2.tara als CO2-anstieg von Nullpunkt
+  gas.tara_list <- lapply(na.omit(unique(data$messid)), function(x){
+    messid.x <- data$messid == x
+    min.zeit <- min(data$zeit[messid.x],na.rm = T)
+    data[,gas][which(messid.x)] - data[,gas][which(messid.x & data$zeit == min.zeit)]
+  })
+  data[,paste0(gas, "_tara")] <- NA
+  data[,paste0(gas, "_tara")][!is.na(data$messid)] <- do.call(c,gas.tara_list)
   #Formel für glm
-  formula <- paste(gas,"~ zeit")
+  formula <- paste0(gas,"_tara ~ zeit")
   #vektor mit allen werten die in der spalte "group" vorkommen
   group_unique <- na.omit(unique(data[,group]))
 
@@ -252,7 +260,7 @@ calc_flux <- function(data,
   }
   #group spalte an flux anfügen
   flux[group] <- group_unique
-  return(flux)
+  return(list(flux,data))
 }
 
 
