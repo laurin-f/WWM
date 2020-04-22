@@ -98,6 +98,7 @@ D0_CO2 <- 0.159#cm2/s
 #Fläche
 A <-20^2*pi#cm2
 
+#hier für die Pumpstufe onch das jeweilige Datum rein !!!!!!!
 #flux für jeweilige Pumpstufe aus metadaten übertragen
 data_agg$Fz <- sapply(data_agg$Pumpstufe, function(x) flux$tracer_ml_per_min[flux$Pumpstufe == x])#ml/min
 

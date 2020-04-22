@@ -212,14 +212,22 @@ calc_flux <- function(data,
                       T_deg = 15,
                       tracer_conc=NULL){#percent
 
-  #CO2.tara als CO2-anstieg von Nullpunkt
+  #CO2_tara als CO2-anstieg von Nullpunkt
+  #eine liste mit den gas.tara werten
   gas.tara_list <- lapply(na.omit(unique(data$messid)), function(x){
+    #indizes der reihen mit messid == x
     messid.x <- data$messid == x
+    #anfangszeitpunkt der messid
     min.zeit <- min(data$zeit[messid.x],na.rm = T)
+    #jeden gas wert der messid minus den gas wert zu zeit == min.zeit
     data[,gas][which(messid.x)] - data[,gas][which(messid.x & data$zeit == min.zeit)]
   })
+
+  #Spalte gas_tara anhängen
   data[,paste0(gas, "_tara")] <- NA
+  #und befülen mit den tara werten
   data[,paste0(gas, "_tara")][!is.na(data$messid)] <- do.call(c,gas.tara_list)
+
   #Formel für glm
   formula <- paste0(gas,"_tara ~ zeit")
   #vektor mit allen werten die in der spalte "group" vorkommen
@@ -227,6 +235,8 @@ calc_flux <- function(data,
 
   #für jeden werte von group wird eine regression zwische gas und zeit durchgeführt
   fm_list <- lapply(group_unique, function(x) glm(formula,data = data[which(data[,group] == x),]))
+  #mittelwerte des Datums der unterschiedlichen gruppen
+  date_means <- sapply(group_unique, function(x) mean(data[which(data[,group] == x),"date"]))
 
   #aus der fm_liste wird jeweils der zweite coeffizient (steigung) ausgeschnitten
   ppm_per_min <- sapply(fm_list,"[[","coefficients")[2,]#ppm/min
@@ -260,6 +270,7 @@ calc_flux <- function(data,
   }
   #group spalte an flux anfügen
   flux[group] <- group_unique
+  flux$date <- lubridate::as_datetime(date_means)
   return(list(flux,data))
 }
 

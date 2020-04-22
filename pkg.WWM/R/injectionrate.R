@@ -1,3 +1,5 @@
+hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
+metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
 #' Function to calculate Injectionrate for specific Diffusionchamber measurement
 #'
 #' @param datelim time intervall
@@ -16,12 +18,22 @@
 #' t_max=6,
 #' t_init = 1,
 #' t_min=3)
-injectionrate <- function(datelim,Pumpstufen,group = "Pumpstufe", ...){
+injectionrate <- function(datelim,
+                          Pumpstufen,
+                          group = "Pumpstufe",
+                          closing_before = 20,
+                          closing_after = 20,
+                          opening_before = 0,
+                          opening_after = 10,
+                          t_max=6,
+                          t_init = 2,
+                          t_min=3){
 
   ########################
   #Daten einlesen
   ########################
   #Metadaten aus Kammer laden
+
   Vol.xlsx<-readxl::read_xlsx(paste0(metapfad,"Diffusionskammer.xlsx"))
   Vol_ml<-Vol.xlsx$Volumen_effektiv_ml
 
@@ -41,7 +53,15 @@ injectionrate <- function(datelim,Pumpstufen,group = "Pumpstufe", ...){
   data$CO2[spikes] <- NA
 
   #split_chmaber anwenden
-  split <- split_chamber(data, ... ,adj_openings = T)
+  split <- split_chamber(data,
+                         closing_before = closing_before,
+                         closing_after = closing_after,
+                         opening_before = opening_before,
+                         opening_after = opening_after,
+                         t_max=t_max,
+                         t_init = t_init,
+                         t_min=t_min,
+                         adj_openings = T)
 
   #Pumpstufen den messid's zuordnen
   split$Pumpstufe <- as.numeric(as.character(factor(split$messid,levels = unique(split$messid),labels=Pumpstufen)))
@@ -49,7 +69,7 @@ injectionrate <- function(datelim,Pumpstufen,group = "Pumpstufe", ...){
 
 
   #Fluss mit calc_flux bestimmen
-  flux <- calc_flux(split,Vol=Vol_ml+100,tracer_conc = 100,group=group)
+  flux <- calc_flux(split,Vol=Vol_ml,tracer_conc = 100,group=group)
 
   #
   return(flux)
