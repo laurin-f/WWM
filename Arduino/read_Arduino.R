@@ -16,8 +16,12 @@ serial$date<- lubridate::ymd_hms(paste(serial$Date,serial$Time))
 num.cols<- grep("CO2|temp",colnames(serial))
 serial[,num.cols] <- apply(serial[,num.cols],2,function(x) as.numeric(as.character(x)))
 
-ggplot(serial)+geom_line(aes(date,CO2_analog))+
-  geom_line(aes(date,CO2_dig))
+serial$CO2_analog[serial$CO2_analog < 0] <- NA
+serial$CO2_dig[serial$CO2_dig < -100] <- NA
+ggplot(serial)+geom_line(aes(date,CO2_analog,col="analog"))+
+  geom_line(aes(date,CO2_dig,col="digital"))
+
+ggplot(serial)+geom_point(aes(CO2_analog,CO2_dig))
 ggplot(serial)+
   geom_line(aes(date,temp))
 

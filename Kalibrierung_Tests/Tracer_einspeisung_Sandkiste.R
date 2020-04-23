@@ -41,15 +41,19 @@ data$Pumpstufe <- NA
 data$Versuch <- NA
 
 #intervalle die am anfang und am ende der Pumpversuche verweorfen werden
-stunden_bis_steadystate <- 10
-stunden_cut_off <- 2
+stunden_bis_steadystate <- rep(10,nrow(Pumpzeiten))
+stunden_cut_off <- rep(2,nrow(Pumpzeiten))
+
+#Veruch 7 war kürzer
+stunden_cut_off[17:18]<-0.5
+stunden_bis_steadystate[18] <- 9
 
 #Schleife um Zeiträume mit Pumpzeiten von Metadaten zu übernehmen
 cols2data <- c("Pumpstufe","Versuch","respiration_simul","material")
 
 for(i in seq_along(Pumpzeiten$Pumpstufe)){
-  Pumpzeiten_lim <- data$date > (Pumpzeiten$start[i] + stunden_bis_steadystate*60*60) & 
-    data$date < (Pumpzeiten$ende[i] - stunden_cut_off * 60 * 60)
+  Pumpzeiten_lim <- data$date > (Pumpzeiten$start[i] + stunden_bis_steadystate[i] * 60 * 60) & 
+    data$date < (Pumpzeiten$ende[i] - stunden_cut_off[i] * 60 * 60)
   for(j in cols2data){
     data[Pumpzeiten_lim,j] <- Pumpzeiten[i,j]
   }
@@ -114,7 +118,7 @@ data_agg$tiefenmittel[data_agg$tiefe == -24.5] <- NA
 
 ############################
 #künstliche respiration
-respi <- subset(data_agg,Versuch %in% c(5,6))
+respi <- subset(data_agg,Versuch %in% c(5,6,7))
 respi <- respi[!colnames(respi)[] %in% c("PSt_Nr")]
 respi_wide <- tidyr::pivot_wider(respi,names_from = c(Pumpstufe,respi_sim),values_from = which(!colnames(respi)[] %in% c("tiefe","tiefenstufe","Versuch","Pumpstufe","tiefenmittel","dz","respi_sim")))
 
@@ -122,6 +126,7 @@ respi_wide <- respi_wide[!colnames(respi_wide)[] %in% paste0(rep(c("Fz_0","DS_0"
 colnames(respi_wide) <- str_replace_all(colnames(respi_wide),c("0_ja"="respi","3_ja"="ges","3_nein"="tracer","material_respi" = "material"))
 
 
+respi_wide$CO2_atm <- NA
 for(i in unique(respi$Versuch)){
   id <- respi_wide$Versuch == i
   id2 <- id & respi_wide$tiefe == 0
@@ -139,9 +144,9 @@ save(data_agg,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 #plots
 
 #CO2 ~ Zeit mit Pumpstufen als rect
-ggplot(data)+
-  annotate("rect", xmin=Versuch_sub$start,xmax=Versuch_sub$ende,ymin=-Inf,ymax=Inf, alpha=Versuch_sub$Pumpstufe/max(Versuch_sub$Pumpstufe)*0.3, fill="red")+
-  geom_line(aes(date,CO2,col=as.factor(tiefenstufe)))+labs(col="tiefe")
+# ggplot(data)+
+#   annotate("rect", xmin=Versuch_sub$start,xmax=Versuch_sub$ende,ymin=-Inf,ymax=Inf, alpha=Versuch_sub$Pumpstufe/max(Versuch_sub$Pumpstufe)*0.3, fill="red")+
+#   geom_line(aes(date,CO2,col=as.factor(tiefenstufe)))+labs(col="tiefe")
 
 
 #######
@@ -149,20 +154,30 @@ ggplot(data)+
 plt <- leave_NAtime_plot(data=data,group="CO2",plot=T,adj_grob_size=F,breaks="1 day",date_labels= "%b %d")
 plt_data <- leave_NAtime_plot(data=data,group="CO2",plot=F)
 
+
 plt2 <- plt+
   geom_rect(data=Versuch_sub,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
   scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))+
   labs(fill="Pumpstufe")+
   theme(strip.text.x = element_blank())
 
-period_x <- 6
+##########################
+#plot period x
+period_x <- 7
 
 ggplot(subset(plt_data,period %in% period_x))+
   geom_rect(data=subset(Versuch_sub, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
   geom_vline(data=subset(Versuch_sub, period == period_x),aes(xintercept=start))+
   geom_point(aes(date,CO2,col=as.factor(tiefenstufe)),size=0.4)+labs(col="tiefe")+
   scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))
-  
+
+#roll
+ggplot(subset(plt_data,period %in% period_x))+
+  geom_rect(data=subset(Versuch_sub, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
+  geom_vline(data=subset(Versuch_sub, period == period_x),aes(xintercept=start))+
+  geom_point(aes(date,CO2_rollapply,col=PSt_Nr),size=0.4)+labs(col="tiefe")+
+  scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))
+##################################
 #geom_smooth(data=subset(plt_data,period %in% 4:5 & Pumpstufe == 3),aes(date,CO2,col=as.factor(tiefenstufe)),method="glm",linetype=2)+
   #ggsave(paste0(plotpfad,"Sandkiste_Versuch_4u5.pdf"),width=11,height=7)
   
@@ -173,17 +188,19 @@ adj_grob_size(plt2,plt_data,"1 day",date_labels= "%b %d")
 
 #CO2_rollapply ~ Zeit 
 leave_NAtime_plot(y="CO2_rollapply",col="PSt_Nr",data=data,group="CO2",geom="point",breaks="1 day",date_labels= "%b %d")
+
+
 ggplot(subset(data, !is.na(Pumpstufe)))+
   geom_point(aes(date, CO2_rollapply,col=as.factor(tiefenstufe)))
 
 #CO2 ~ tiefe ohne glm
 ggplot(subset(data,!is.na(Pumpstufe)))+
   geom_point(aes(CO2_rollapply,tiefe,col=PSt_Nr))+labs(col="Pumpstufe Versuch-Nr")
+
+
 #CO2 ~ tiefe mit respi
-
-
 ggplot(respi_long)+
-  geom_path(aes(CO2,tiefe,col=source,linetype=material))+labs(shape="Versuch")+
+  geom_path(aes(CO2,tiefe,col=source,linetype=as.factor(Versuch)))+labs(shape="Versuch")+
   ggsave(paste0(plotpfad,"respi_tiefenprofil_sandkiste.pdf"),width=6,height=6)+
   facet_wrap(~material)
   

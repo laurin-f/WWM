@@ -26,27 +26,35 @@ flux <- split_1[[1]]
 datelim<- data.frame(start=NA,stop=NA)
 datelim[1,] <- c("2020.04.14 09:00:00","2020.04.17 18:00:00")
 datelim[2,] <- c("2020.04.18 08:00:00","2020.04.18 15:00:00")
-datelim[3,] <- c("2020.04.21 08:00:00","2020.04.21 10:00:00")
+datelim[3,] <- c("2020.04.21 08:00:00","2020.04.21 09:07:00")
+datelim[4,] <- c("2020.04.23 08:00:00","2020.04.23 10:00:00")
 Pumpstufen <- list()
 Pumpstufen[[1]]<-c(3,3)
 Pumpstufen[[2]]<-c(3,3)
-Pumpstufen[[3]]<-c(3,3,3)
+Pumpstufen[[3]]<-c(3,3)
+Pumpstufen[[4]]<-c(3,3)
 
 split_list <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe"))
+split_list_messid <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="messid"))
 split_flux_list <- lapply(split_list,function(x) x[[1]])
+split_flux_list_messid <- lapply(split_list_messid,function(x) x[[1]])
 split_data_list <- lapply(split_list,function(x) x[[2]])
 
 #ggplot(split[[2]])+geom_point(aes(zeit,CO2_tara,col=as.factor(Pumpstufe)))
 
-data_all <- do.call(rbind,split_flux_list)
+data_all <- do.call(rbind,split_data_list)
 flux_all <- do.call(rbind,split_flux_list)
+flux_all_messid <- do.call(rbind,split_flux_list_messid)
 flux2<- rbind(flux,flux_all)
+
+flux_all_messid$messid_day <- paste(lubridate::date(flux_all_messid$date),flux_all_messid$messid,sep="_")
+
 ########################
 #plots
 ########################
 
-ggplot(flux_all)+geom_point(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
-  geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))
+ggplot(flux_all)+
+  geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+geom_point(data=flux_all_messid,aes(date,ml_per_min,col=messid_day))
 
 
 
