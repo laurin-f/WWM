@@ -4,7 +4,19 @@
 \alias{injectionrate}
 \title{Function to calculate Injectionrate for specific Diffusionchamber measurement}
 \usage{
-injectionrate(datelim, Pumpstufen, group = "Pumpstufe", ...)
+injectionrate(
+  datelim,
+  Pumpstufen,
+  group = "Pumpstufe",
+  closing_before = 20,
+  closing_after = 20,
+  opening_before = 0,
+  opening_after = 10,
+  t_max = 6,
+  t_init = 2,
+  t_min = 3,
+  ...
+)
 }
 \arguments{
 \item{datelim}{time intervall}
@@ -13,7 +25,7 @@ injectionrate(datelim, Pumpstufen, group = "Pumpstufe", ...)
 
 \item{group}{name of the column that should be used for grouping results}
 
-\item{...}{#other parameters parsed to split_chamber}
+\item{...}{#other parameters parsed to calc_flux}
 }
 \value{
 

@@ -231,12 +231,25 @@ calc_flux <- function(data,
   #Formel für glm
   formula <- paste0(gas,"_tara ~ zeit")
   #vektor mit allen werten die in der spalte "group" vorkommen
-  group_unique <- na.omit(unique(data[,group]))
+
+  #spalte mit group und messid zusammen
+  group_messid <- paste0(group,"_messid")
+  data[,group_messid] <- paste0(data[,group],"_",data$messid)
+
+  #NAs aus dem character zu echten NAs umwandeln
+  NA_NA <- grep("NA", data[,group_messid])
+  data[NA_NA,group_messid] <- NA
+
+  #unique Werte
+  group_messid_unique <- na.omit(unique(data[,group_messid]))
+  #die group und messid wieder außeinanderschneiden und als numeric
+  gr_id_ch <- str_split(group_messid_unique,"_",simplify = T)
+  gr_id <- apply(gr_id_ch,2,as.numeric)
 
   #für jeden werte von group wird eine regression zwische gas und zeit durchgeführt
-  fm_list <- lapply(group_unique, function(x) glm(formula,data = data[which(data[,group] == x),]))
+  fm_list <- lapply(1:nrow(gr_id), function(x) glm(formula,data = data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),]))
   #mittelwerte des Datums der unterschiedlichen gruppen
-  date_means <- sapply(group_unique, function(x) mean(data[which(data[,group] == x),"date"]))
+  date_means <- sapply(1:nrow(gr_id), function(x) mean(data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),"date"]))
 
   #aus der fm_liste wird jeweils der zweite coeffizient (steigung) ausgeschnitten
   ppm_per_min <- sapply(fm_list,"[[","coefficients")[2,]#ppm/min
@@ -269,8 +282,17 @@ calc_flux <- function(data,
     flux$tracer_ml_per_min <- flux$ml_per_min * tracer_conc / 100
   }
   #group spalte an flux anfügen
-  flux[group] <- group_unique
+  flux[group] <- gr_id[,1]
+  flux$messid <- gr_id[,2]
   flux$date <- lubridate::as_datetime(date_means)
+
+  flux <- aggregate(flux,list(gr_id[,1]),mean)
+
+  if(group != "messid"){
+    flux <- flux[,!grepl("messid",colnames(flux))]
+  }
+
+  flux <- flux[,-1]
   return(list(flux,data))
 }
 

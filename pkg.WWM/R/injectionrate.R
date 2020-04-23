@@ -1,11 +1,14 @@
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
+
+
+
 #' Function to calculate Injectionrate for specific Diffusionchamber measurement
 #'
 #' @param datelim time intervall
 #' @param Pumpstufen verwendete Pumpstufen bei den unterschiedlichen Versuchen
 #' @param group name of the column that should be used for grouping results
-#' @param ... #other parameters parsed to split_chamber
+#' @param ... #other parameters parsed to calc_flux
 #'
 #' @return
 #' @export
@@ -27,7 +30,8 @@ injectionrate <- function(datelim,
                           opening_after = 10,
                           t_max=6,
                           t_init = 2,
-                          t_min=3){
+                          t_min=3,
+                          ...){
 
   ########################
   #Daten einlesen
@@ -69,7 +73,11 @@ injectionrate <- function(datelim,
 
 
   #Fluss mit calc_flux bestimmen
-  flux <- calc_flux(split,Vol=Vol_ml,tracer_conc = 100,group=group)
+  flux <- calc_flux(data = split,
+                    Vol = Vol_ml,
+                    tracer_conc = 100,
+                    group=group,
+                    ...)
 
   #
   return(flux)
