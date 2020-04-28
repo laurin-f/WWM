@@ -262,7 +262,7 @@ update_dynament.db<-function(table.name="dynament_test",
 
     if(!is.null(dyn)){
     #datum formatieren
-    dyn$date_int<-dmy_hms(paste(dyn$dmy,dyn$HMS))
+    dyn$date_int<-as.numeric(dmy_hms(paste(dyn$dmy,dyn$HMS)))
     #spalten dmy und HMS weglassen
     dyn<-dyn[db.colnames]
     }
@@ -272,6 +272,16 @@ update_dynament.db<-function(table.name="dynament_test",
     #CO2 von mV in ppm umrechnen
     dyn[db.colnames[-1]] <- (dyn[db.colnames[-1]]-0.4)/1.6*5000
     }
+
+    #are there date duplicates
+    date_duplicate <- duplicated(dyn$date_int)
+
+    #if yes then the cases with duplicates are joined
+    #replacing NA values of the duplicated rows with the values in the corresponding cases
+    if(any(date_duplicate)){
+      dyn <- rquery::natural_join(dyn[date_duplicate,],dyn[!date_duplicate,],by="date_int")
+    }
+
     if(is.null(dyn)){
       print(paste("no new files for",table.name))
     }else{
@@ -283,6 +293,30 @@ update_dynament.db<-function(table.name="dynament_test",
     dbExecute(con, createquery)
 
     print(paste("appending",length(dyn.list.sub),"files to Database"))
+
+    #Primary Key dopplungen checken
+    db_duplicates <- dbGetQuery(con,paste("SELECT * FROM",table.name,"WHERE date_int >=",min(as.numeric(dyn$date_int)),"AND date_int <=",max(as.numeric(dyn$date_int))))
+
+    #falls im zeitraum der neuen messungen bereits werte in der db sind
+    if(nrow(db_duplicates) > 0){
+      print("date duplicates")
+      #die neuen werte aufteilen in den gedoppelten zeitraum und den der nicht in der db auftaucht
+      dyn_duplicate <- dyn[dyn$date_int %in% db_duplicates$date_int,]
+      dyn <- dyn[!dyn$date_int %in% db_duplicates$date_int,]
+
+      #dopplungen in db mit neuen werten joinen und NAs überschreiben
+      db_duplicates_join <- rquery::natural_join(db_duplicates,dyn_duplicate,by="date_int")
+
+      #die werte in string für die Query schreiben
+      values_NA <- paste(apply(db_duplicates_join,1,paste,collapse = ", "),collapse="), (")
+      values_NULL <- str_replace_all(values_NA, c("NA"="NULL"))
+      replace_query <- paste0("REPLACE INTO ",table.name," (",paste(colnames(dyn),collapse = ", "),") VALUES (",values_NULL,");")
+      #cases in db ersetzten
+      rs <- dbSendQuery(con,replace_query)
+      dbClearResult(rs)
+    }
+
+
     #Database aktualisieren
     dbWriteTable(con,name=table.name,value=dyn,append=T)
 
