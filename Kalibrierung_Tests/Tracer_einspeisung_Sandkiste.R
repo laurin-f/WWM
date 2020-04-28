@@ -107,6 +107,7 @@ A <-20^2*pi#cm2
 data_agg$Fz <- sapply(data_agg$Pumpstufe, function(x) flux$tracer_ml_per_min[flux$Pumpstufe == x])#ml/min
 
 #Ficks law anwenden
+#DS = -FZ * dz / dC
 data_agg$DS <- data_agg$Fz/60/A * data_agg$dz / (data_agg$dC/10^6) #cm3 s-1 cm-2 * cm = cm2 s-1
 
 mean(data_agg$DS[data_agg$Versuch==3],na.rm=T)#cm2/s
@@ -134,6 +135,7 @@ for(i in unique(respi$Versuch)){
 }
 
 respi_wide$CO2_tracer_calc <- respi_wide$CO2_ges - respi_wide$CO2_respi + respi_wide$CO2_atm
+respi_wide$CO2_atracer_calc_raw <- respi_wide$CO2_ges - respi_wide$CO2_respi
 
 respi_long <- tidyr::pivot_longer(respi_wide,grep("^CO2",colnames(respi_wide)),names_to="source",values_to = "CO2")
 respi_long$source <- str_remove(respi_long$source,"CO2_")
@@ -201,9 +203,38 @@ ggplot(subset(data,!is.na(Pumpstufe)))+
 #CO2 ~ tiefe mit respi
 ggplot(respi_long)+
   geom_path(aes(CO2,tiefe,col=source,linetype=as.factor(Versuch)))+labs(shape="Versuch")+
-  ggsave(paste0(plotpfad,"respi_tiefenprofil_sandkiste.pdf"),width=6,height=6)+
+  facet_wrap(~material)+
+  ggsave(paste0(plotpfad,"respi_tiefenprofil_sandkiste.pdf"),width=6,height=6)
+
+#################
+#plot für EGU pico
+colnames(respi_wide)
+
+ggplot()+
+  geom_area(data= subset(respi_long,Versuch %in% c(5,6) & source %in% c("tracer_calc_raw","respi")),aes(CO2,tiefe,fill=source),position="stack",orientation = "y")+
+  labs(shape="Versuch")+
   facet_wrap(~material)
-  
+
+col<-scales::hue_pal()
+col(3)[1:2]
+ref<-ggplot(subset(respi_wide,Versuch==5))+
+  geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_respi,y=tiefe,fill="reference"))+
+  geom_ribbon(aes(xmin=CO2_respi,xmax=CO2_ges,y=tiefe,fill="injection"))+
+  labs(fill="", x="", y="depth [cm]")+
+  scale_fill_manual(values=col(3)[c(1,3)])+
+  xlim(c(min(respi_wide$CO2_atm),max(respi_wide$CO2_ges)))
+
+tracer<-ggplot(subset(respi_wide,Versuch==5))+
+  geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_tracer_calc,y=tiefe,fill="tracer"))+
+  labs(fill="", x=expression("CO"[2]*" [ppm]"),y="depth [cm]")+
+  scale_fill_manual(values=col(3)[2])+
+  xlim(c(min(respi_wide$CO2_atm),max(respi_wide$CO2_ges)))
+
+
+png(paste0(plotpfad,"ref_tracer.png"),width = 1500,height = 2000,res=450)
+egg::ggarrange(ref,tracer)
+dev.off()  
+
 
 
 #CO2 ~ tiefe mit glm
