@@ -150,6 +150,7 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
 #' @import stringr
 #' @import lubridate
 #' @import RSQLite
+#' @importFrom rquery natural_join
 #' @examples update_dynament.db("dynament_test")
 update_dynament.db<-function(table.name="dynament_test",
                              path=dynpfad,
@@ -237,18 +238,18 @@ update_dynament.db<-function(table.name="dynament_test",
       colnames.data.old <- colnames(data)
       colnames(data)<-str_replace(colnames(data),"_dpth\\d_smp\\d$","")
       ################hiervor muss noch korrigiert werden
-      names(fm_kal_5000) <- str_replace(names(fm_kal_5000),"Dyn_","Dyn")
-      same.names <- names(fm_kal_5000)[names(fm_kal_5000) %in% colnames(data)]
+      names(fm) <- str_replace(names(fm),"Dyn_","Dyn")
+      same.names <- names(fm)[names(fm) %in% colnames(data)]
 
       #Korrekturfaktoren anwenden
       data[same.names] <-
-        sapply(same.names,function(x) predict(fm_kal_5000[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
+        sapply(same.names,function(x) predict(fm[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
 
       #Spaltennamen anpassen
       colnames(data)<-str_replace_all(colnames.data.old,c("(_Dyn_?\\d{2})|(_smp\\d$)"="","dpth"="tiefe"))
       dyn.list.sub[[i]] <- data
       }
-      #rm(fm_kal_5000)
+      #rm(fm)
     }
 
     #bei jedem listenelement die nicht vorkommenden spalten als NAs hinzufügen
@@ -410,16 +411,16 @@ read_db <- function(db.name="dynament.db", #name der db
     #RData mit Korrekturfaktoren laden
     load(paste0(metapath,"korrektur_fm.RData"))
     #Vektor mit namen die sowohl bei den Korekturfaktoren als auch im Data.frame vorkommen
-    same.names <- names(fm_kal_5000)[names(fm_kal_5000) %in% colnames(data)]
+    same.names <- names(fm)[names(fm) %in% colnames(data)]
     #Sensor nummern für die noch kein Korrekturfaktor vorliegt
-    missing.names <- colnames(data)[!colnames(data) %in% c("date",names(fm_kal_5000))]
+    missing.names <- colnames(data)[!colnames(data) %in% c("date",names(fm))]
     if(length(missing.names)>0){
       warning(paste("no correction factor for",missing.names,collapse =" "))
     }
 
     #Kalibrierfunktion anwenden
     data[same.names] <-
-      sapply(same.names,function(x) predict(fm_kal_5000[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
+      sapply(same.names,function(x) predict(fm[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
   }#ende if korrektur
   return(data)
 }#ende function

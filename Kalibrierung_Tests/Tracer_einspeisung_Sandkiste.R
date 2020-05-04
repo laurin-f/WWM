@@ -17,14 +17,12 @@ check.packages(packages)
 #Metadata xlsx
 Pumpzeiten <- readxl::read_xlsx(paste0(metapfad,"Tracereinspeisung_Sandkiste.xlsx"))
 Pumpzeiten$ende[is.na(Pumpzeiten$ende)] <- Pumpzeiten$start[which(is.na(Pumpzeiten$ende))+1]
-Versuch_x <- unique(Pumpzeiten$Versuch)
 
-Versuch_sub <- subset(Pumpzeiten,Versuch %in% Versuch_x)
-Versuch_sub$period <-Versuch_sub$Versuch 
-Versuch_sub$PSt_Nr <- paste("PSt",Versuch_sub$Pumpstufe,"Nr",Versuch_sub$Versuch,sep="_")
+Pumpzeiten$period <-Pumpzeiten$Versuch 
+Pumpzeiten$PSt_Nr <- paste("PSt",Pumpzeiten$Pumpstufe,"Nr",Pumpzeiten$Versuch,sep="_")
 
 #samplerdata
-datelim <- range(c(Versuch_sub$start, Versuch_sub$ende),na.rm = T)
+datelim <- range(c(Pumpzeiten$start, Pumpzeiten$ende),na.rm = T)
 datelim[2] <- datelim[2]+3600*12
 
 data <- read_sampler("sampler1",datelim = datelim, format = "long")
@@ -76,41 +74,59 @@ for(i in unique(data$tiefe)){
   data$CO2_rollapply[tiefe.i] <- zoo::rollapply(data$CO2[tiefe.i],width=10,mean,fill=NA)
 }
 
+############################
+#Fz mit zeitlichem drift bestimmen
+flux$date <- ymd_hms(flux$date)
+data$Fz <- NA
+for(i in na.omit(unique(data$Pumpstufe))){
+  flux_i <- subset(flux, Pumpstufe == i)
+  id <- which(data$Pumpstufe == i)
+  if(nrow(flux_i) > 1){
+    data[id,"Fz"] <- approx(x=(flux_i$date),y=flux_i$tracer_ml_per_min,xout=(data$date[id]),rule=2)$y
+  }else{
+    data[id,"Fz"] <- flux_i$tracer_ml_per_min
+  }
+}
 
+ggplot(data)+geom_point(aes(date,Fz,col=as.factor(Pumpstufe)))
 ###################
 #Aggregate Data
-data_agg <- aggregate(list(CO2=data$CO2),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe,Versuch= data$Versuch,PSt_Nr = data$PSt_Nr,respi_sim = data$respiration_simul,material = data$material),mean)
+data_agg <- aggregate(list(CO2=data$CO2,Fz=data$Fz),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe,Versuch= data$Versuch,PSt_Nr = data$PSt_Nr,respi_sim = data$respiration_simul,material = data$material),mean)
 
 ###################
 #gradienten berechnen
 data_agg$gradient <- NA
 data_agg$dz <- NA
 data_agg$dC <- NA
-for(i in unique(data_agg$PSt_Nr)){
+data_agg$ID <- paste0(data_agg$PSt_Nr,data_agg$respi_sim)
+for(i in unique(data_agg$ID)){
 
-  data_agg$gradient[data_agg$PSt_Nr==i] <- c(diff(data_agg$CO2[data_agg$PSt_Nr==i])/diff(-data_agg$tiefe[data_agg$PSt_Nr==i]),NA) #ppm/cm
+  data_agg$gradient[data_agg$ID==i] <- c(diff(data_agg$CO2[data_agg$ID==i])/diff(-data_agg$tiefe[data_agg$ID==i]),NA) #ppm/cm
 
-  data_agg$dC[data_agg$PSt_Nr==i] <- c(diff(data_agg$CO2[data_agg$PSt_Nr==i]),NA) #cm3/cm3
-  data_agg$dz[data_agg$PSt_Nr==i] <- c(diff(-data_agg$tiefe[data_agg$PSt_Nr==i]),NA)
+  data_agg$dC[data_agg$ID==i] <- c(diff(data_agg$CO2[data_agg$ID==i]),NA) #cm3/cm3
+  data_agg$dz[data_agg$ID==i] <- c(diff(-data_agg$tiefe[data_agg$ID==i]),NA)
 }
 
 data_agg$dz[data_agg$dz < 0] <- NA
 ##############################
 #Fick's Law
 #Fz = -DS * (dC / dz)
-D0_CO2 <- 0.159#cm2/s
+D0_CO2 <- D0_T_p(20)#cm/s
+
 #Fläche
 A <-20^2*pi#cm2
 
-#hier für die Pumpstufe onch das jeweilige Datum rein !!!!!!!
-#flux für jeweilige Pumpstufe aus metadaten übertragen
-data_agg$Fz <- sapply(data_agg$Pumpstufe, function(x) flux$tracer_ml_per_min[flux$Pumpstufe == x])#ml/min
 
 #Ficks law anwenden
 #DS = -FZ * dz / dC
-data_agg$DS <- data_agg$Fz/60/A * data_agg$dz / (data_agg$dC/10^6) #cm3 s-1 cm-2 * cm = cm2 s-1
 
-mean(data_agg$DS[data_agg$Versuch==3],na.rm=T)#cm2/s
+
+data_agg$DS <- data_agg$Fz/60/A * data_agg$dz / (data_agg$dC/10^6) #cm3 s-1 cm-2 * cm = cm2 s-1
+ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_point(aes(CO2,tiefe,col=PSt_Nr))
+ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(dC,tiefe,col=PSt_Nr))
+ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(DS,tiefe,col=PSt_Nr))
+
+mean(data_agg$DS[data_agg$ID=="PSt_3_Nr_8ja"],na.rm=T)#cm2/s
 
 data_agg$DS_D0_CO2 <- data_agg$DS/D0_CO2
 data_agg$tiefenmittel <- rowMeans(cbind(c(data_agg$tiefe[-nrow(data_agg)],NA),c(data_agg$tiefe[-1],NA)))
@@ -119,7 +135,7 @@ data_agg$tiefenmittel[data_agg$tiefe == -24.5] <- NA
 
 ############################
 #künstliche respiration
-respi <- subset(data_agg,Versuch %in% c(5,6,7))
+respi <- subset(data_agg,Versuch %in% c(5,6,7,8))
 respi <- respi[!colnames(respi)[] %in% c("PSt_Nr")]
 respi_wide <- tidyr::pivot_wider(respi,names_from = c(Pumpstufe,respi_sim),values_from = which(!colnames(respi)[] %in% c("tiefe","tiefenstufe","Versuch","Pumpstufe","tiefenmittel","dz","respi_sim")))
 
@@ -147,37 +163,40 @@ save(data_agg,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 
 #CO2 ~ Zeit mit Pumpstufen als rect
 # ggplot(data)+
-#   annotate("rect", xmin=Versuch_sub$start,xmax=Versuch_sub$ende,ymin=-Inf,ymax=Inf, alpha=Versuch_sub$Pumpstufe/max(Versuch_sub$Pumpstufe)*0.3, fill="red")+
+#   annotate("rect", xmin=Pumpzeiten$start,xmax=Pumpzeiten$ende,ymin=-Inf,ymax=Inf, alpha=Pumpzeiten$Pumpstufe/max(Pumpzeiten$Pumpstufe)*0.3, fill="red")+
 #   geom_line(aes(date,CO2,col=as.factor(tiefenstufe)))+labs(col="tiefe")
 
 
 #######
 #CO2 ~ Zeit leave NAtime
-plt <- leave_NAtime_plot(data=data,group="CO2",plot=T,adj_grob_size=F,breaks="1 day",date_labels= "%b %d")
-plt_data <- leave_NAtime_plot(data=data,group="CO2",plot=F)
+lim1 <- ymd("2020.04.24")
+lim2 <- ymd("2020.05.01")
+
+plt <- leave_NAtime_plot(data=data[data$date < lim1 | data$date > lim2,],group="CO2",plot=T,adj_grob_size=F,breaks="1 day",date_labels= "%b %d")
+plt_data <- leave_NAtime_plot(data=data[data$date < lim1 | data$date > lim2,],group="CO2",plot=F)
 
 
 plt2 <- plt+
-  geom_rect(data=Versuch_sub,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
+  geom_rect(data=Pumpzeiten,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
   scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))+
   labs(fill="Pumpstufe")+
   theme(strip.text.x = element_blank())
 
 ##########################
 #plot period x
-period_x <- 7
+period_x <- 8
 
 ggplot(subset(plt_data,period %in% period_x))+
-  geom_rect(data=subset(Versuch_sub, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
-  geom_vline(data=subset(Versuch_sub, period == period_x),aes(xintercept=start))+
+  geom_rect(data=subset(Pumpzeiten, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
+  geom_vline(data=subset(Pumpzeiten, period == period_x),aes(xintercept=start))+
   geom_point(aes(date,CO2,col=as.factor(tiefenstufe)),size=0.4)+labs(col="tiefe")+
   scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))
 
 #roll
 ggplot(subset(plt_data,period %in% period_x))+
-  geom_rect(data=subset(Versuch_sub, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
-  geom_vline(data=subset(Versuch_sub, period == period_x),aes(xintercept=start))+
-  geom_point(aes(date,CO2_rollapply,col=PSt_Nr),size=0.4)+labs(col="tiefe")+
+  geom_rect(data=subset(Pumpzeiten, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
+  geom_vline(data=subset(Pumpzeiten, period == period_x),aes(xintercept=start))+
+  geom_point(aes(date,CO2_rollapply,col=PSt_Nr),size=0.4)+labs(col="")+
   scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))
 ##################################
 #geom_smooth(data=subset(plt_data,period %in% 4:5 & Pumpstufe == 3),aes(date,CO2,col=as.factor(tiefenstufe)),method="glm",linetype=2)+
@@ -231,9 +250,9 @@ tracer<-ggplot(subset(respi_wide,Versuch==5))+
   xlim(c(min(respi_wide$CO2_atm),max(respi_wide$CO2_ges)))
 
 
-png(paste0(plotpfad,"ref_tracer.png"),width = 1500,height = 2000,res=450)
+#png(paste0(plotpfad,"ref_tracer.png"),width = 1500,height = 2000,res=450)
 egg::ggarrange(ref,tracer)
-dev.off()  
+#dev.off()  
 
 
 

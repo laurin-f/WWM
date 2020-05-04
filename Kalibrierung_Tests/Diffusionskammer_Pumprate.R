@@ -18,6 +18,7 @@ datelim1 <- c("2020.03.11 09:00:00","2020.03.17 18:00:00")
   # datelim <- c("2020.03.11 08:00:00","2020.03.11 18:00:00")
   # datelim <- c("2020.03.12 08:00:00","2020.03.12 18:00:00")
 # datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
+# datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
 Pumpstufen1 <- c(1:5,5,rep(NA,4),1:4,1:5)
 split_1 <- injectionrate(datelim = datelim1,Pumpstufen = Pumpstufen1,group="Pumpstufe",t_init = 1)
 split <- split_1[[2]]
@@ -28,11 +29,17 @@ datelim[1,] <- c("2020.04.14 09:00:00","2020.04.17 18:00:00")
 datelim[2,] <- c("2020.04.18 08:00:00","2020.04.18 15:00:00")
 datelim[3,] <- c("2020.04.21 08:00:00","2020.04.21 09:07:00")
 datelim[4,] <- c("2020.04.23 08:00:00","2020.04.23 10:00:00")
+datelim[5,] <- c("2020.05.01 08:00:00","2020.05.01 18:00:00")
+datelim[6,] <- c("2020.05.04 08:00:00","2020.05.04 09:45:00")
+datelim[7,] <- c("2020.05.04 09:46:00","2020.05.04 12:00:00")
 Pumpstufen <- list()
 Pumpstufen[[1]]<-c(3,3)
 Pumpstufen[[2]]<-c(3,3)
 Pumpstufen[[3]]<-c(3,3)
 Pumpstufen[[4]]<-c(3,3)
+Pumpstufen[[5]]<-c(3,3)
+Pumpstufen[[6]]<-c(3,3)
+Pumpstufen[[7]]<-c(3,3)
 
 split_list <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe"))
 split_list_messid <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="messid"))
@@ -45,7 +52,7 @@ split_data_list <- lapply(split_list,function(x) x[[2]])
 data_all <- do.call(rbind,split_data_list)
 flux_all <- do.call(rbind,split_flux_list)
 flux_all_messid <- do.call(rbind,split_flux_list_messid)
-flux2<- rbind(flux,flux_all)
+
 
 flux_all_messid$messid_day <- paste(lubridate::date(flux_all_messid$date),flux_all_messid$messid,sep="_")
 
@@ -77,10 +84,13 @@ ggplot(subset(split,!is.na(Pumpstufe)))+
 
 ggplot(flux)+geom_point(aes(Pumpstufe,tracer_ml_per_min))+geom_abline(intercept=0,slope=0.1)
 
-flux2[nrow(flux2)+1,]<-NA
-flux2[nrow(flux2),1:(ncol(flux2)-1)]<- 0
-flux2
-write.csv(flux2,file = paste0(metapfad,"Pumpstufen_flux.txt"),row.names = F)
+
+flux_all <- rbind(flux,flux_all)
+flux_all[nrow(flux_all)+1,]<-NA
+flux_all[nrow(flux_all),1:(ncol(flux_all)-1)]<- 0
+flux_all
+
+write.csv(flux_all,file = paste0(metapfad,"Pumpstufen_flux.txt"),row.names = F)
 #write.csv(flux,file = paste0(metapfad,"Pumpstufen_flux.txt"),row.names = F)
 
 #########

@@ -35,3 +35,28 @@ ppm_to_mol <- function(data,
   return(as(data_out,out_class))
 }
 
+#' Function to calculate temperature dependent D0
+#'
+#' @param gas CO2 or CH4
+#' @param T_C Temperature in Celsius
+#' @param p_kPa pressure in kPa
+#'
+#' @return
+#' @export
+#'
+#' @examples D0_temp(15)
+D0_T_p <- function(T_C = 20,
+                    gas = "CO2",
+                    p_kPa = 101.325){
+
+  D0 <- c(CO2 = 0.1381, CH4= 0.1952) # cm2/s
+
+  T0 <- 273.15 #K
+  p0 <- 101.325 #kPa
+
+
+  alpha <- 1.81
+  T_K <- T_C + 273.15
+
+  D0_T_p <- D0[gas] * (T_K/T0)^alpha * (p0/p_kPa)
+  return(D0_T_p)}
