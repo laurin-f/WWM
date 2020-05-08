@@ -31,7 +31,10 @@ datelim[3,] <- c("2020.04.21 08:00:00","2020.04.21 09:07:00")
 datelim[4,] <- c("2020.04.23 08:00:00","2020.04.23 10:00:00")
 datelim[5,] <- c("2020.05.01 08:00:00","2020.05.01 18:00:00")
 datelim[6,] <- c("2020.05.04 08:00:00","2020.05.04 09:45:00")
+#schlauch seite gewechselt
 datelim[7,] <- c("2020.05.04 09:46:00","2020.05.04 12:00:00")
+datelim[8,] <- c("2020.05.07 09:00:00","2020.05.07 11:00:00")
+datelim[9,] <- c("2020.05.07 11:00:00","2020.05.07 13:00:00")
 Pumpstufen <- list()
 Pumpstufen[[1]]<-c(3,3)
 Pumpstufen[[2]]<-c(3,3)
@@ -40,6 +43,8 @@ Pumpstufen[[4]]<-c(3,3)
 Pumpstufen[[5]]<-c(3,3)
 Pumpstufen[[6]]<-c(3,3)
 Pumpstufen[[7]]<-c(3,3)
+Pumpstufen[[8]]<-c(3,3)
+Pumpstufen[[9]]<-c(1.5,1.5)
 
 split_list <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe"))
 split_list_messid <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="messid"))
@@ -61,7 +66,9 @@ flux_all_messid$messid_day <- paste(lubridate::date(flux_all_messid$date),flux_a
 ########################
 
 ggplot(flux_all)+
-  geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+geom_point(data=flux_all_messid,aes(date,ml_per_min,col=messid_day))
+  geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
+  ggnewscale::new_scale_color()+
+  geom_point(data=flux_all_messid,aes(date,ml_per_min,col=messid_day))
 
 
 

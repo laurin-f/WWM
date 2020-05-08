@@ -125,6 +125,8 @@ coeffs<-data.frame(sensor_nr=sensor_nrs,intercept=rep(NA,length(sensor_nrs)),slo
 for(i in seq_along(sensor_nrs)){
   #regression fitten
   
+  #oder doch die gesamte range??
+  #fm[[i]] <- glm(CO2dry~CO2_Dyn,data = subset(kal_punkte,sensor_nr==sensor_nrs[i]))
   fm[[i]] <- glm(CO2dry~CO2_Dyn,data = subset(kal_punkte,sensor_nr==sensor_nrs[i] & CO2 <= 5000))
   #Werte vorhersagen
   korrs_long<-
@@ -246,7 +248,7 @@ if(file.exists(paste0(metapfad,"korrektur_fm.RData"))){
 }
 
 #korrektur fms speichern
-save(fm,file=paste0(metapfad,"korrektur_fm.RData"))
+#save(fm,file=paste0(metapfad,"korrektur_fm.RData"))
 
 sensor_liste<-read_excel(paste0(metapfad,"Sensor_liste2.xlsx"))
 sensor_liste <- sensor_liste[,-1]
@@ -265,5 +267,15 @@ load(paste0(metapfad,"korrektur_fm_alt.RData"),envir = .GlobalEnv)
 load(paste0(metapfad,"korrektur_fm.RData"),envir = .GlobalEnv)
 fm[["CO2_Dyn_18"]]$coefficients
 fm_kal_5000[["CO2_Dyn_18"]]$coefficients
+
+#unterschiede neue gegen alte fm
+coeff_alt <- t(sapply(fm_kal_5000,function(x) x$coefficients))
+coeff_neu <- t(sapply(fm,function(x) x$coefficients))
+
+plot(coeff_alt[rownames(coeff_alt),2],coeff_neu[rownames(coeff_alt),2])
+
+abline(0,1)
+plot(coeff_alt[rownames(coeff_alt),1],coeff_neu[rownames(coeff_alt),1])
+abline(0,1)
 
 fm[["CO2_Dyn_18"]] <- fm_kal_5000[["CO2_Dyn_18"]]

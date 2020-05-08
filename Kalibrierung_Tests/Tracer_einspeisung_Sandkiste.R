@@ -88,7 +88,7 @@ for(i in na.omit(unique(data$Pumpstufe))){
   }
 }
 
-ggplot(data)+geom_point(aes(date,Fz,col=as.factor(Pumpstufe)))
+#ggplot(data)+geom_point(aes(date,Fz,col=as.factor(Pumpstufe)))
 ###################
 #Aggregate Data
 data_agg <- aggregate(list(CO2=data$CO2,Fz=data$Fz),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe,Versuch= data$Versuch,PSt_Nr = data$PSt_Nr,respi_sim = data$respiration_simul,material = data$material),mean)
@@ -111,10 +111,10 @@ data_agg$dz[data_agg$dz < 0] <- NA
 ##############################
 #Fick's Law
 #Fz = -DS * (dC / dz)
-D0_CO2 <- D0_T_p(20)#cm/s
+D0_CO2 <- D0_T_p(15)#cm/s
 
 #Fläche
-A <-20^2*pi#cm2
+A <-15^2*pi#cm2
 
 
 #Ficks law anwenden
@@ -122,9 +122,28 @@ A <-20^2*pi#cm2
 
 
 data_agg$DS <- data_agg$Fz/60/A * data_agg$dz / (data_agg$dC/10^6) #cm3 s-1 cm-2 * cm = cm2 s-1
-ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_point(aes(CO2,tiefe,col=PSt_Nr))
-ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(dC,tiefe,col=PSt_Nr))
-ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(DS,tiefe,col=PSt_Nr))
+data_sub <- subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja")
+
+####################################
+fm_list <- lapply(unique(data_agg$ID),function(x) glm(CO2~tiefe,data=subset(data_agg, ID == x)))
+gradient <- sapply(fm_list,"[[","coefficients")[2,]
+names(gradient) <-  unique(data_agg$ID)
+gradient
+dz <- 3.5
+dC <- -gradient/dz
+
+
+DS <- Fz / 60 / A * dz / (dC / 10^6)
+#DS <- 0.3 / 60 / A * dz / (dC / 10^6)
+DS/D0_CO2
+0.035/D0_CO2
+######################################
+
+# ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+
+#   geom_point(aes(CO2,tiefe,col=PSt_Nr))+
+#   geom_smooth(aes(CO2,tiefe,col=PSt_Nr),method="glm")
+# ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(dC,tiefe,col=PSt_Nr))
+# ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(DS,tiefe,col=PSt_Nr))
 
 mean(data_agg$DS[data_agg$ID=="PSt_3_Nr_8ja"],na.rm=T)#cm2/s
 
@@ -178,26 +197,26 @@ plt_data <- leave_NAtime_plot(data=data[data$date < lim1 | data$date > lim2,],gr
 
 plt2 <- plt+
   geom_rect(data=Pumpzeiten,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
-  scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))+
+  scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(unique(Pumpzeiten$Versuch)))))+
   labs(fill="Pumpstufe")+
   theme(strip.text.x = element_blank())
 
 ##########################
 #plot period x
-period_x <- 8
+period_x <- 4
 
 ggplot(subset(plt_data,period %in% period_x))+
   geom_rect(data=subset(Pumpzeiten, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
   geom_vline(data=subset(Pumpzeiten, period == period_x),aes(xintercept=start))+
   geom_point(aes(date,CO2,col=as.factor(tiefenstufe)),size=0.4)+labs(col="tiefe")+
-  scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))
+  scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(unique(Pumpzeiten$Versuch)))))
 
 #roll
 ggplot(subset(plt_data,period %in% period_x))+
   geom_rect(data=subset(Pumpzeiten, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
   geom_vline(data=subset(Pumpzeiten, period == period_x),aes(xintercept=start))+
   geom_point(aes(date,CO2_rollapply,col=PSt_Nr),size=0.4)+labs(col="")+
-  scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(Versuch_x))))
+  scale_fill_manual(values = alpha("red",seq(0,0.3,len=length(unique(Pumpzeiten$Versuch)))))
 ##################################
 #geom_smooth(data=subset(plt_data,period %in% 4:5 & Pumpstufe == 3),aes(date,CO2,col=as.factor(tiefenstufe)),method="glm",linetype=2)+
   #ggsave(paste0(plotpfad,"Sandkiste_Versuch_4u5.pdf"),width=11,height=7)

@@ -31,6 +31,8 @@ ppm_to_mol <- function(data,
     data_out <- data_in * mol_per_m3 / set_units(10^6,ppm)
   }else if(unit_in == "mol/m^3"){
     data_out <- data_in / mol_per_m3 *set_units(10^6,ppm)
+  }else if(unit_in == "cm^3/min"){
+    data_out <- data_in * mol_per_m3
   }
   return(as(data_out,out_class))
 }

@@ -31,6 +31,7 @@ injectionrate <- function(datelim,
                           t_max=6,
                           t_init = 2,
                           t_min=3,
+                          T_C = 15,
                           ...){
 
   ########################
@@ -77,6 +78,7 @@ injectionrate <- function(datelim,
                     Vol = Vol_ml,
                     tracer_conc = 100,
                     group=group,
+                    T_deg = T_C,
                     ...)
 
   #

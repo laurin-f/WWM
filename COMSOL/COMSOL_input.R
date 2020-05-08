@@ -9,56 +9,44 @@ comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2")
+packages<-c("lubridate","stringr","ggplot2","units")
 check.packages(packages)
 
 #dataset laden
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 
 #tiefen in Modellkoordinaten umrechnen
-data_agg$Z_mod <- data_agg$tiefe +40
+data_agg$Z_mod <- data_agg$tiefe + 37
 data_agg$R_mod <- 0
 
+#injection rate in mol / (m^2*s)
+#Fläche der injection 
+A_inj <- set_units(1^2*pi,"mm^2")
+
+unique(data_agg$Fz) #ml/min
+injection_rates <- ppm_to_mol(data_agg$Fz,unit_in = "cm^3/min",out_class = "units")
+inj_mol_cm2_s <- set_units(injection_rates,"mol/s")/A_inj
+data_agg$inj_mol_m2_s <- set_units(inj_mol_cm2_s,"mol/m^2/s")
+
+#CO2_atm
+CO2_atm <- sort(data_agg$CO2_mol_per_m3[data_agg$tiefenstufe==0])
+CO2_atm
 #CO2 in mol per m3
 data_agg$CO2_mol_per_m3 <- ppm_to_mol(data_agg$CO2)
+
+
+input_pars <- data_agg[ data_agg$tiefenstufe == 0,c("ID","inj_mol_m2_s", "CO2_mol_per_m3","tiefenstufe")]
+colnames(input_pars) <- c("ID","injection_rate","CO2_atm") 
+input_pars
+subset(input_pars,ID=="PSt_3_Nr_5nein")
+
 
 
 ############
 #Punkte aus Mesh identifizieren die nah an Z und R liegen
 #messtiefen
-meas_depths <- (40-(1:7*3.5))
-#outfile von COMSOl lesen in der die Mesh Koordinaten stehen
-mesh <- read.table(paste0(comsolpfad,"conc_test.txt"),skip=9,col.names = c("r","z","CO2_mol_per_m3"))
+meas_depths <- (37-(0:7*3.5))
+meas_points <- data.frame(R=0,Z=meas_depths)
 
+write.table(meas_points,file = paste0(comsolpfad,"meas_points.txt"),row.names = F,col.names = F)
 
-id<-rep(NA,length(meas_depths))
-for(i in seq_along(meas_depths)){
-  id[i]<-which( mesh$r < 0.1 & mesh$r > 0 & abs((mesh$z) - meas_depths[i]-0.1)< 0.2)
-}
-#kontrolle
-mesh[id,]
-#werte zuweisen
-data_agg$Z_adj <- mesh[id,"z"]
-data_agg$R_adj <- mesh[id,"r"]
-
-#eventuell leicht verschieben
-# data_agg$Z_mod <- data_agg$Z_mod - 0.1
-# data_agg$R_mod <- data_agg$R_mod + 0.1
-########################
-#export data 
-########################
-
-#versuch 3
-#txt
-write.table(data_agg[data_agg$PSt_Nr == "PSt_5_Nr_3",c("Z_mod","CO2_mol_per_m3")],file = paste0(comsolpfad,"PSt_5_Nr_3.txt"),row.names = F,col.names = F)
-#csv 
-write.table(data_agg[data_agg$PSt_Nr == "PSt_5_Nr_3",c("Z_mod","R_mod","CO2_mol_per_m3")],file = paste0(comsolpfad,"PSt_5_Nr_3.csv"),row.names = F,col.names = F,sep=",")
-
-#Versuch 4
-#txt
-write.table(data_agg[data_agg$PSt_Nr == "PSt_5_Nr_4",c("Z_mod","CO2_mol_per_m3")],file = paste0(comsolpfad,"PSt_5_Nr_4.txt"),row.names = F,col.names = F)
-#csv 
-write.table(data_agg[data_agg$PSt_Nr == "PSt_5_Nr_4",c("Z_mod","R_mod","CO2_mol_per_m3")],file = paste0(comsolpfad,"PSt_5_Nr_4.csv"),row.names = F,col.names = F,sep=",")
-
-#adj
- # write.table(data_agg[data_agg$PSt_Nr == "PSt_5_Nr_3",c("Z_adj","R_adj","CO2_mol_per_m3")],file = paste0(comsolpfad,"PSt_5_Nr_3.csv"),row.names = F,col.names = F,sep=",")
