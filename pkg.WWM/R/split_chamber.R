@@ -64,11 +64,16 @@ split_chamber<-function(data,
   timediff_after <- c(as.numeric(diff(data.agg$date)),NA)
 
   #Alle Punkte an denen voriger und folgender Wert eine Minute abstand haben
-  timediff_1 <- timediff_before <= 1 & timediff_after <= 1
+  #timediff_1 <- timediff_before <= 2 & timediff_after <= 2
 
   #Punkte an denen die Schwellenwerte für closing bzw. opening vorliegen
-  closing<-which(before < closing_before & after > closing_after & timediff_1)
-  opening<-which(before > opening_before & after < opening_after & timediff_1)
+  closing<-which(before / timediff_before < closing_before &
+                   after / timediff_after > closing_after)
+  opening<-which(before / timediff_before > opening_before &
+                   after / timediff_after < opening_after)
+
+  #closing<-which(before < closing_before & after > closing_after & timediff_1)
+  #opening<-which(before > opening_before & after < opening_after & timediff_1)
 
   ###################################################################
   #adjust openings

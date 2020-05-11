@@ -24,8 +24,8 @@ metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
 injectionrate <- function(datelim,
                           Pumpstufen,
                           group = "Pumpstufe",
-                          closing_before = 20,
-                          closing_after = 20,
+                          closing_before = 100,
+                          closing_after = 100,
                           opening_before = 0,
                           opening_after = 10,
                           t_max=6,
@@ -48,7 +48,8 @@ injectionrate <- function(datelim,
   #Spaltenname anpassen
   colnames(data) <- str_replace(colnames(data),"(?<=CO2).*","_raw")
   data$CO2 <- data$CO2_raw
-
+  data$CO2[which(data$CO2 < 0)] <- NA
+  data <- na.omit(data)
   ##########################
   #postprocessing
   #############################

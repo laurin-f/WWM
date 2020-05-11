@@ -35,6 +35,7 @@ datelim[6,] <- c("2020.05.04 08:00:00","2020.05.04 09:45:00")
 datelim[7,] <- c("2020.05.04 09:46:00","2020.05.04 12:00:00")
 datelim[8,] <- c("2020.05.07 09:00:00","2020.05.07 11:00:00")
 datelim[9,] <- c("2020.05.07 11:00:00","2020.05.07 13:00:00")
+datelim[10,] <- c("2020.05.11 08:00:00","2020.05.11 13:00:00")
 Pumpstufen <- list()
 Pumpstufen[[1]]<-c(3,3)
 Pumpstufen[[2]]<-c(3,3)
@@ -45,6 +46,8 @@ Pumpstufen[[6]]<-c(3,3)
 Pumpstufen[[7]]<-c(3,3)
 Pumpstufen[[8]]<-c(3,3)
 Pumpstufen[[9]]<-c(1.5,1.5)
+#die ersten zwei mit druckausgleich Spirale die zweiten beiden ohne
+Pumpstufen[[10]]<-rep(1.5,4)
 
 split_list <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe"))
 split_list_messid <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="messid"))
@@ -64,7 +67,8 @@ flux_all_messid$messid_day <- paste(lubridate::date(flux_all_messid$date),flux_a
 ########################
 #plots
 ########################
-
+plot <- F
+if(plot == T){
 ggplot(flux_all)+
   geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
   ggnewscale::new_scale_color()+
@@ -91,7 +95,7 @@ ggplot(subset(split,!is.na(Pumpstufe)))+
 
 ggplot(flux)+geom_point(aes(Pumpstufe,tracer_ml_per_min))+geom_abline(intercept=0,slope=0.1)
 
-
+}
 flux_all <- rbind(flux,flux_all)
 flux_all[nrow(flux_all)+1,]<-NA
 flux_all[nrow(flux_all),1:(ncol(flux_all)-1)]<- 0

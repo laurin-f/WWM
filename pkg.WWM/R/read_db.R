@@ -269,7 +269,9 @@ update_dynament.db<-function(table.name="dynament_test",
     }
     if(table.name=="dynament_test"){
     #9999 werte zu NA
-    dyn[,-1][which(dyn[,-1]>10,arr.ind = T)]<-NA
+    dyn[,-1][which(dyn[,-1] > 10,arr.ind = T)]<-NA
+    #0.2 Werte zu NA
+    dyn[,-1][which(dyn[,-1] < 0.25,arr.ind = T)]<-NA
     #CO2 von mV in ppm umrechnen
     dyn[db.colnames[-1]] <- (dyn[db.colnames[-1]]-0.4)/1.6*5000
     }
