@@ -49,6 +49,9 @@ Pumpstufen[[9]]<-c(1.5,1.5)
 #die ersten zwei mit druckausgleich Spirale die zweiten beiden ohne
 Pumpstufen[[10]]<-rep(1.5,4)
 
+x <- 1
+injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe")
+
 split_list <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe"))
 split_list_messid <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="messid"))
 split_flux_list <- lapply(split_list,function(x) x[[1]])

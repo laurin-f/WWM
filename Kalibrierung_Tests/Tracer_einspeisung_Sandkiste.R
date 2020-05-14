@@ -150,7 +150,6 @@ for(i in unique(respi$Versuch)){
 }
 
 respi_wide$CO2_tracer_calc <- respi_wide$CO2_ges - respi_wide$CO2_respi + respi_wide$CO2_atm
-respi_wide$CO2_atracer_calc_raw <- respi_wide$CO2_ges - respi_wide$CO2_respi
 
 respi_long <- tidyr::pivot_longer(respi_wide,grep("^CO2",colnames(respi_wide)),names_to="source",values_to = "CO2")
 respi_long$source <- str_remove(respi_long$source,"CO2_")
@@ -165,7 +164,8 @@ save(data_agg,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 # ggplot(data)+
 #   annotate("rect", xmin=Pumpzeiten$start,xmax=Pumpzeiten$ende,ymin=-Inf,ymax=Inf, alpha=Pumpzeiten$Pumpstufe/max(Pumpzeiten$Pumpstufe)*0.3, fill="red")+
 #   geom_line(aes(date,CO2,col=as.factor(tiefenstufe)))+labs(col="tiefe")
-
+plot <- F
+if(plot == T){
 
 #######
 #CO2 ~ Zeit leave NAtime
@@ -217,10 +217,11 @@ ggplot(subset(data,!is.na(Pumpstufe)))+
 
 
 #CO2 ~ tiefe mit respi
-ggplot(respi_long)+
-  geom_path(aes(CO2,tiefe,col=source,linetype=as.factor(Versuch)))+labs(shape="Versuch")+
+ggplot(subset(respi_long,source %in% c("tracer","tracer_calc")))+
+  geom_path(aes(CO2,tiefe,col=source,linetype=as.factor(Versuch)))+guides(linetype=F)+
   facet_wrap(~material)+
-  ggsave(paste0(plotpfad,"respi_tiefenprofil_sandkiste.pdf"),width=6,height=6)
+  scale_linetype_manual(values= rep(1,4))+
+  ggsave(paste0(plotpfad,"tracer_tiefenprofil_sandkiste.pdf"),width=6,height=4)
 
 #################
 #plot für EGU pico
@@ -276,5 +277,5 @@ ggplot(data_agg,aes(Pumpstufe,gradient,col=as.character(tiefenmittel),shape=as.c
   
 
 ggplot(data_agg)+geom_path(aes(DS_D0_CO2,tiefe,col=PSt_Nr))
-
+}
 

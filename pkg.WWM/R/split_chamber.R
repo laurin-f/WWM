@@ -2,8 +2,10 @@
 #'
 #'
 #' @param data data.frame with gas concentrations of several chamber measurements
-#' @param closing_th threshold for minimal concentration-gradient-change while closing the chamber
-#' @param opening_th threshold for maximal concentration-gradient-change while opening the chamber
+#' @param closing_before maximal concentration-gradient before closing the chamber
+#' @param closing_after minimal concentration-gradient after closing the chamber
+#' @param opening_before minimal concentration-gradient before opening the chamber
+#' @param opening_after maximal concentration-gradient after opening the chamber
 #' @param t_max maximal measurement time, if time between closing and opening
 #' exceeds this time the rest of the measurement will not be included for the calculation
 #' of the flux
@@ -25,8 +27,8 @@
 #' t_init=0,
 #' t_min=5)
 split_chamber<-function(data,
-                        closing_before = 0,
-                        closing_after = 5,
+                        closing_before = 40,
+                        closing_after = 40,
                         opening_after = -30,
                         opening_before = -10,
                         # closing_th = 40,
@@ -192,9 +194,16 @@ split_chamber<-function(data,
 
   legend("topleft",c("opening","closing",unique(data$messid)),col = c(2:3,unique(messid_cols)),pch=20, bty = "n")
 
-  plot(change,xlab="",col=(ifelse(change>closing_th,3,ifelse(change < opening_th,2,1))))
-  abline(h=closing_th,col=3)
-  abline(h=opening_th,col=2)
+  plot(before,xlab="")
+  abline(h=closing_before,col=3,lty=2)
+  abline(h=closing_after,col=3)
+  abline(h=opening_before,col=2,lty=2)
+  abline(h=opening_after,col=2)
+  abline(v=closing,col=3)
+  abline(v=opening,col=2)
+  points(after,pch=3,col=4)
+
+  legend("bottomleft",c("before","after","opening","closing"),col = c(1,4,3,2),pch=c(1,3,NA,NA),lty=c(NA,NA,1,1), bty = "n")
   par(mfrow = c(1,1))
 
   return(data)

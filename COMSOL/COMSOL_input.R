@@ -36,7 +36,9 @@ data_sub <- subset(data_agg, respi_sim == "nein" & Versuch %in% c(3:10) & Pumpst
 input_pars <- data_sub[data_sub$tiefenstufe == 0, c("ID","inj_mol_m2_s", "CO2_mol_per_m3","DS","material","Pumpstufe")]
 colnames(input_pars) <- c("ID","injection_rate","CO2_atm","DS_glm","material","Pumpstufe")
 ggplot(input_pars)+geom_point(aes(Pumpstufe,DS_glm,col=material))
-ggplot(input_pars)+geom_boxplot(aes(material,DS_glm/D0_T_p(15),fill=material))
+ggplot(input_pars)+
+  #geom_boxplot(aes(material,DS_glm/D0_T_p(15),fill=material))+
+  geom_point(aes(material,DS_glm/D0_T_p(15),col=material))
 input_pars
 
 
