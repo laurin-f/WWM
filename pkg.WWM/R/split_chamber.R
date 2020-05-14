@@ -2,10 +2,8 @@
 #'
 #'
 #' @param data data.frame with gas concentrations of several chamber measurements
-#' @param closing_before maximal concentration-gradient before closing the chamber
-#' @param closing_after minimal concentration-gradient after closing the chamber
-#' @param opening_before minimal concentration-gradient before opening the chamber
-#' @param opening_after maximal concentration-gradient after opening the chamber
+#' @param closing_th threshold for minimal concentration-gradient-change while closing the chamber
+#' @param opening_th threshold for maximal concentration-gradient-change while opening the chamber
 #' @param t_max maximal measurement time, if time between closing and opening
 #' exceeds this time the rest of the measurement will not be included for the calculation
 #' of the flux
@@ -21,18 +19,18 @@
 #'
 #' @examples
 #' test <- split.chamber(data,
-#' closing_before = 5,
-#' closing_after = 10,
-#' opening_before = -5,
-#' opening_after = -15,
+#' closing_th = 40,
+#' opening_th = -40,
 #' t_max=Inf,
 #' t_init=0,
 #' t_min=5)
 split_chamber<-function(data,
                         closing_before = 0,
                         closing_after = 5,
-                        opening_before = -10,
                         opening_after = -30,
+                        opening_before = -10,
+                        # closing_th = 40,
+                        # opening_th = -40,
                         t_max = 5,
                         t_init = 1,
                         t_min = 5,
@@ -67,6 +65,11 @@ split_chamber<-function(data,
   #timediff_1 <- timediff_before <= 2 & timediff_after <= 2
 
   #Punkte an denen die Schwellenwerte für closing bzw. opening vorliegen
+  # change <- after - before
+  #
+  # closing<-which(change / timediff_before / timediff_after > closing_th)
+  # opening<-which(change / timediff_before / timediff_after < opening_th)
+
   closing<-which(before / timediff_before < closing_before &
                    after / timediff_after > closing_after)
   opening<-which(before / timediff_before > opening_before &
@@ -180,13 +183,19 @@ split_chamber<-function(data,
   messid_cols <-  scales::hue_pal()(max(data$messid,na.rm=T))[data$messid]
 
   #plot
-  plot(data.agg$date, data.agg[,gas], col = ifelse(data.agg$change == "",1,NA), pch=20)
+  par(mfrow = c(2,1),mar=c(1,3,1,1))
+  plot(data.agg$date, data.agg[,gas], col = ifelse(data.agg$change == "",1,NA), pch=20,xlab="")
   points(data$date,data[,gas], col = messid_cols)
   points(data.agg$date,data.agg[,gas], col = ifelse(data.agg$change == "",NA,
                                                   ifelse(data.agg$change == "opening",2,3)),
          pch=as.character(data.agg$messid))
 
   legend("topleft",c("opening","closing",unique(data$messid)),col = c(2:3,unique(messid_cols)),pch=20, bty = "n")
+
+  plot(change,xlab="",col=(ifelse(change>closing_th,3,ifelse(change < opening_th,2,1))))
+  abline(h=closing_th,col=3)
+  abline(h=opening_th,col=2)
+  par(mfrow = c(1,1))
 
   return(data)
 }

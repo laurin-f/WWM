@@ -8,13 +8,14 @@ injectionrate(
   datelim,
   Pumpstufen,
   group = "Pumpstufe",
-  closing_before = 20,
-  closing_after = 20,
+  closing_before = 100,
+  closing_after = 100,
   opening_before = 0,
   opening_after = 10,
   t_max = 6,
   t_init = 2,
   t_min = 3,
+  T_C = 15,
   ...
 )
 }
