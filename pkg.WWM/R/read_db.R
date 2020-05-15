@@ -170,6 +170,7 @@ update_dynament.db<-function(table.name="dynament_test",
   #neue files auswählen
   files.new<-dyn.files[!dyn.files %in% files.old$x]
 
+  ###################################################################
   #wenn neue files vorhanden sind...
   if(length(files.new)>0){
     print(paste("loading",length(files.new),"files"))
@@ -179,6 +180,8 @@ update_dynament.db<-function(table.name="dynament_test",
     #spaltennamen der neuen files
     if(table.name=="dynament_test"){
       db.colnames<-c("date_int",paste0("CO2_Dyn_",sprintf("%02d",0:21)))
+    }else if(table.name == "sampler1"){
+     db.colnames <- c("date_int",paste0("CO2_tiefe",0:7),"T_C")
     }else if(!is.na(str_extract(table.name,"sampler"))){
      db.colnames <- c("date_int",paste0("CO2_tiefe",0:7))
     }else{
@@ -194,17 +197,20 @@ update_dynament.db<-function(table.name="dynament_test",
       dyn.colnames[[i]][1:2]<-c("dmy","HMS")
     }
 
+    ##########################################################
     if(table.name=="dynament_test"){
     #ids der Datumsspalten und aller CO2_Dyn Spalten
       col.ids<-lapply(dyn.colnames,function(x) x %in% c("dmy","HMS",db.colnames))
     }
+
+    #########################################################
     #wenn die Tabelle samplerx gewählt wurde
     if(!is.na(str_extract(table.name,"sampler"))){
 
       col.ids<-lapply(dyn.colnames,function(x) {
         #die Spaltennamen aus der .csv werden so formatiert das sie der Namen in der .db enstprechen
         #beim sampler werden dabei keine Dyn Nummern abgelegt
-        colnames_x_formatiert <- str_replace_all(x,c("_Dyn\\d+"="","dpth"="tiefe","smp"="sampler"))
+        colnames_x_formatiert <- str_replace_all(x,c("_Dyn\\d+"="","dpth"="tiefe","smp"="sampler","Hygro_S3_Temperatur" = "T_C_sampler1"))
         #die spaltennamen der db mit dem tablename zusammengefügt entsprechen nun den Spaltennamen der csv
         ids.temp <- colnames_x_formatiert %in% paste(db.colnames,table.name,sep="_")
         ids.temp[1:2]<-T
@@ -233,10 +239,12 @@ update_dynament.db<-function(table.name="dynament_test",
       data<-dyn.list.sub[[i]]
 
       #CO2 von mV in ppm umrechnen
-      data[,-(1:2)][which(data[,-(1:2)] > 10,arr.ind = T)]<-NA
-      data[,-(1:2)] <- (data[,-(1:2)]-0.4)/1.6*5000
+      CO2_cols <- grep("CO2", colnames(data))
+      data[, CO2_cols][which(data[,CO2_cols] > 10,arr.ind = T)]<-NA
+      data[, CO2_cols][which(data[,CO2_cols] < 0.25,arr.ind = T)]<-NA
+      data[,CO2_cols] <- (data[,CO2_cols]-0.4)/1.6*5000
       colnames.data.old <- colnames(data)
-      colnames(data)<-str_replace(colnames(data),"_dpth\\d_smp\\d$","")
+      colnames(data)<-str_replace(colnames(data), "_dpth\\d_smp\\d$", "")
       ################hiervor muss noch korrigiert werden
       names(fm) <- str_replace(names(fm),"Dyn_","Dyn")
       same.names <- names(fm)[names(fm) %in% colnames(data)]
@@ -246,7 +254,7 @@ update_dynament.db<-function(table.name="dynament_test",
         sapply(same.names,function(x) predict(fm[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
 
       #Spaltennamen anpassen
-      colnames(data)<-str_replace_all(colnames.data.old,c("(_Dyn_?\\d{2})|(_smp\\d$)"="","dpth"="tiefe"))
+      colnames(data)<-str_replace_all(colnames.data.old,c("(_Dyn_?\\d{2})|(_smp\\d$)"="","dpth"="tiefe", "Hygro_S3_Temperatur" = "T_C"))
       dyn.list.sub[[i]] <- data
       }
       #rm(fm)
@@ -347,8 +355,8 @@ update_dynament.db<-function(table.name="dynament_test",
 #Funktion um daten aus db abzurufen
 #' @title Function to get data from a sql database
 #' @description get data from a sql database. A specific time period can be selected
-#' @param db.name name of the database 
-#' for "dynament.db" either \code("dynament_test") or \code("samplerx") 
+#' @param db.name name of the database
+#' for "dynament.db" either \code("dynament_test") or \code("samplerx")
 #' for "GGA.db" either \code("gga") or \code("micro")
 #' @param table.name name of the table in the database
 #' @param datelim  limits of the time period that is loaded as character or POSIXct if all Data chall be loaded \code{datelim = NULL}

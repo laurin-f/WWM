@@ -1,5 +1,5 @@
 #pfade definieren
-#detach("package:pkg.WWM", unload = TRUE)
+detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
@@ -26,6 +26,7 @@ datelim <- range(c(Pumpzeiten$start, Pumpzeiten$ende),na.rm = T)
 datelim[2] <- datelim[2]+3600*12
 
 data <- read_sampler("sampler1",datelim = datelim, format = "long")
+
 
 #Metadata Pumpstufen flux
 flux <- read.csv(paste0(metapfad,"Pumpstufen_flux.txt"))
