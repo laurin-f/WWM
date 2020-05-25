@@ -20,7 +20,7 @@ read_sampler <- function(table.name="sampler1",format="long", ...){
 
   if(format=="long"){
 
-    data_long <- reshape2::melt(data_wide,id="date",value.name="CO2")
+    data_long <- reshape2::melt(data_wide,id=which(!grepl("CO2",colnames(data_wide))),value.name="CO2")
     data_long$tiefenstufe <- as.numeric(str_extract(data_long$variable,"\\d$"))
     data_long$tiefe <- data_long$tiefenstufe * -3.5
 

@@ -15,9 +15,9 @@ read_db(
 )
 }
 \arguments{
-\item{db.name}{name of the database 
-for "dynament.db" either \code("dynament_test") or \code("samplerx") 
-for "GGA.db" either \code("gga") or \code("micro")}
+\item{db.name}{name of the database
+for "dynament.db" either \code{"dynament_test"} or \code{"samplerx"}
+for "GGA.db" either \code{"gga"} or \code{"micro"}}
 
 \item{table.name}{name of the table in the database}
 

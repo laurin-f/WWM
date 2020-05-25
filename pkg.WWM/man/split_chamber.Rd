@@ -6,8 +6,10 @@
 \usage{
 split_chamber(
   data,
-  closing_th = 40,
-  opening_th = -40,
+  closing_before = 40,
+  closing_after = 40,
+  opening_after = -30,
+  opening_before = -10,
   t_max = 5,
   t_init = 1,
   t_min = 5,
@@ -18,9 +20,13 @@ split_chamber(
 \arguments{
 \item{data}{data.frame with gas concentrations of several chamber measurements}
 
-\item{closing_th}{threshold for minimal concentration-gradient-change while closing the chamber}
+\item{closing_before}{maximal concentration-gradient before closing the chamber}
 
-\item{opening_th}{threshold for maximal concentration-gradient-change while opening the chamber}
+\item{closing_after}{minimal concentration-gradient after closing the chamber}
+
+\item{opening_after}{maximal concentration-gradient after opening the chamber}
+
+\item{opening_before}{minimal concentration-gradient before opening the chamber}
 
 \item{t_max}{maximal measurement time, if time between closing and opening
 exceeds this time the rest of the measurement will not be included for the calculation

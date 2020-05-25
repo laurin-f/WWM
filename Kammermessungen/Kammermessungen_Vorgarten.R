@@ -39,9 +39,22 @@ dataset<-split_chamber(data=data.raw,
                        t_min = 2)
 
 
-datelim <- range(c(Pumpzeiten$start, Pumpzeiten$ende),na.rm = T)
-datelim[2] <- datelim[2]+3600*12
 
-data <- read_sampler("sampler1",datelim = datelim, format = "long")
-data_wide <- read_sampler("sampler1",datelim = c("2020-05-14 11:45:00 UTC", "2020-05-15 08:00:00 UTC"), format = "wide")
 
+
+
+
+
+
+
+
+####################################################################
+sampler1 <- read_sampler("sampler1",datelim = c("2020-05-14 11:45:00 UTC", "2020-05-15 20:00:00 UTC"), format = "long")
+sampler2 <- read_sampler("sampler2",datelim = c("2020-05-14 11:45:00 UTC", "2020-05-15 20:00:00 UTC"), format = "long")
+
+
+ggplot(subset(sampler1,!is.na(tiefe)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))#+
+  xlim(ymd_h("2020-05-15 10","2020-05-15 18"))
+ggplot(subset(sampler2,!is.na(tiefe)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))
+
+ggplot(subset(data,variable=="T_C"))+geom_line(aes(date,CO2))

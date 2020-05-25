@@ -9,23 +9,23 @@ table.name <- "sampler1"
 con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,db_name))
 
 #dbRemoveTable(con,"sampler1")
-test <- dbReadTable(con,table_name)
+#test <- dbReadTable(con,table_name)
 #dbSendQuery(con,paste0("ALTER TABLE ",table_name," ADD COLUMN T_C REAL"))
 
 
-dyn <- test[,!colnames(test) %in% "CO2_tiefe0"]
+#dyn <- test[,!colnames(test) %in% "CO2_tiefe0"]
 
- createquery<-paste0("CREATE TABLE IF NOT EXISTS ",table_name," (date_int INTEGER PRIMARY KEY",
-                     paste(",",colnames(dyn)[-1],"REAL",collapse = ""),")")
+# createquery<-paste0("CREATE TABLE IF NOT EXISTS ",table_name," (date_int INTEGER PRIMARY KEY",
+#                     paste(",",colnames(dyn)[-1],"REAL",collapse = ""),")")
 
 #dbRemoveTable(con,table_name)
 #dbExecute(con, createquery)
 #dbWriteTable(con,table_name,dyn,append=T)
 
-dbGetQuery(con, "PRAGMA table_info(sampler1);")
+#dbGetQuery(con, "PRAGMA table_info(sampler1);")
 
 
-rm_file_from_db <- function(filename ="^b0_work_20200515_085657_vorgarten.csv",
+rm_file_from_db <- function(filename,
                             table_name = "sampler1",
                             db_name = "dynament.db",
                             path = dynpfad){

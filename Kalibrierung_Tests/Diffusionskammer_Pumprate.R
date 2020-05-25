@@ -36,6 +36,7 @@ datelim[7,] <- c("2020.05.04 09:46:00","2020.05.04 12:00:00")
 datelim[8,] <- c("2020.05.07 09:00:00","2020.05.07 11:00:00")
 datelim[9,] <- c("2020.05.07 11:00:00","2020.05.07 13:00:00")
 datelim[10,] <- c("2020.05.11 08:00:00","2020.05.11 13:00:00")
+datelim[11,] <- c("2020.05.22 08:00:00","2020.05.22 13:00:00")
 Pumpstufen <- list()
 Pumpstufen[[1]]<-c(3,3)
 Pumpstufen[[2]]<-c(3,3)
@@ -48,24 +49,24 @@ Pumpstufen[[8]]<-c(3,3)
 Pumpstufen[[9]]<-c(1.5,1.5)
 #die ersten zwei mit druckausgleich Spirale die zweiten beiden ohne
 Pumpstufen[[10]]<-rep(1.5,4)
+Pumpstufen[[11]]<-c(1.5,1.5)
 
-x <- 1
-injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe")
 
 split_list <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe"))
-split_list_messid <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="messid"))
+#split_list_messid <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="messid"))
 split_flux_list <- lapply(split_list,function(x) x[[1]])
-split_flux_list_messid <- lapply(split_list_messid,function(x) x[[1]])
+#split_flux_list_messid <- lapply(split_list_messid,function(x) x[[1]])
 split_data_list <- lapply(split_list,function(x) x[[2]])
 
 #ggplot(split[[2]])+geom_point(aes(zeit,CO2_tara,col=as.factor(Pumpstufe)))
 
 data_all <- do.call(rbind,split_data_list)
-flux_all <- do.call(rbind,split_flux_list)
-flux_all_messid <- do.call(rbind,split_flux_list_messid)
+flux_all_messid <- do.call(rbind,split_flux_list)
 
+#flux_all_messid <- do.call(rbind,split_flux_list_messid)
+flux_all_messid$day <- lubridate::date(flux_all_messid$date)
+flux_all <- aggregate(flux_all_messid[!colnames(flux_all_messid) %in% c("Pumpstufe","day")],list(Pumpstufe = flux_all_messid$Pumpstufe, day = flux_all_messid$day),mean)
 
-flux_all_messid$messid_day <- paste(lubridate::date(flux_all_messid$date),flux_all_messid$messid,sep="_")
 
 ########################
 #plots
@@ -75,7 +76,7 @@ if(plot == T){
 ggplot(flux_all)+
   geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
   ggnewscale::new_scale_color()+
-  geom_point(data=flux_all_messid,aes(date,ml_per_min,col=messid_day))
+  geom_point(data=flux_all_messid,aes(date,ml_per_min,col=as.factor(day)))
 
 
 

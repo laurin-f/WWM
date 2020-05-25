@@ -233,6 +233,7 @@ calc_flux <- function(data,
                       Grundfl=NULL,#in cm2
                       p_kPa = 101.3,
                       T_deg = 15,
+                      aggregate = F,
                       tracer_conc=NULL){#percent
 
   #CO2_tara als CO2-anstieg von Nullpunkt
@@ -267,7 +268,8 @@ calc_flux <- function(data,
   group_messid_unique <- na.omit(unique(data[,group_messid]))
   #die group und messid wieder außeinanderschneiden und als numeric
   gr_id_ch <- str_split(group_messid_unique,"_",simplify = T)
-  gr_id <- apply(gr_id_ch,2,as.numeric)
+
+  gr_id <- gr_id_ch
 
   #für jeden werte von group wird eine regression zwische gas und zeit durchgeführt
   fm_list <- lapply(1:nrow(gr_id), function(x) glm(formula,data = data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),]))
@@ -305,17 +307,19 @@ calc_flux <- function(data,
     flux$tracer_ml_per_min <- flux$ml_per_min * tracer_conc / 100
   }
   #group spalte an flux anfügen
-  flux[group] <- gr_id[,1]
-  flux$messid <- gr_id[,2]
-  flux$date <- lubridate::as_datetime(date_means)
 
-  flux <- aggregate(flux,list(gr_id[,1]),mean)
+  flux$messid <- as.numeric(gr_id[,2])
+  flux$date <- lubridate::as_datetime(date_means)
+  if(aggregate == T){
+  flux <- aggregate(flux,list("group" = gr_id[,1]),mean)
 
   if(group != "messid"){
     flux <- flux[,!grepl("messid",colnames(flux))]
   }
-
-  flux <- flux[,-1]
+  colnames(flux) <- str_replace(colnames(flux),"group",group)
+  }else{
+    flux[,group] <- gr_id[,1]
+  }
   return(list(flux,data))
 }
 
