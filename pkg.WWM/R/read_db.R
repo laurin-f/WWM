@@ -240,7 +240,7 @@ update_dynament.db<-function(table.name="dynament_test",
 
       #CO2 von mV in ppm umrechnen
       CO2_cols <- grep("CO2", colnames(data))
-      data[, CO2_cols][which(data[,CO2_cols] > 10,arr.ind = T)]<-NA
+      data[, CO2_cols][which(data[,CO2_cols] > 2.7,arr.ind = T)]<-NA
       data[, CO2_cols][which(data[,CO2_cols] < 0.25,arr.ind = T)]<-NA
       data[,CO2_cols] <- (data[,CO2_cols]-0.4)/1.6*5000
       colnames.data.old <- colnames(data)
@@ -395,14 +395,16 @@ read_db <- function(db.name="dynament.db", #name der db
 
   #falls datelim angegeben wurde wird es hier als integer in die query aufgenommen
   if(!is.null(datelim)){
-    from <- as.numeric(ymd_hms(datelim[1]))
-    to <- as.numeric(ymd_hms(datelim[2]))
+    from_to <- as.numeric(ymd_hms(datelim))
     #falls from oder to nicht ins ymd_hms format passt wird gestoppt
-    if(any(is.na(c(from,to)))){
+    if(any(is.na(from_to))){
       stop("datelim has to be in the ymd_hms format")
     }
     #datelim in die SQL abfrage einbinden
-    query<-paste0(query," WHERE date_int >= ",from," AND date_int <= ",to)
+    query<-paste0(query," WHERE date_int >= ",from_to[1])
+    if(length(from_to)==2){
+    query<-paste0(query," AND date_int <= ",from_to[2])
+    }
   }
 
   #daten abrufen

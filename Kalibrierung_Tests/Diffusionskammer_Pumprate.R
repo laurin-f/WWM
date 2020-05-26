@@ -20,7 +20,7 @@ datelim1 <- c("2020.03.11 09:00:00","2020.03.17 18:00:00")
 # datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
 # datelim <- c("2020.03.16 08:00:00","2020.03.16 18:00:00")
 Pumpstufen1 <- c(1:5,5,rep(NA,4),1:4,1:5)
-split_1 <- injectionrate(datelim = datelim1,Pumpstufen = Pumpstufen1,group="Pumpstufe",t_init = 1)
+split_1 <- injectionrate(datelim = datelim1,Pumpstufen = Pumpstufen1,group="Pumpstufe",t_init = 1,aggregate = T)
 split <- split_1[[2]]
 flux <- split_1[[1]]
 
@@ -37,6 +37,7 @@ datelim[8,] <- c("2020.05.07 09:00:00","2020.05.07 11:00:00")
 datelim[9,] <- c("2020.05.07 11:00:00","2020.05.07 13:00:00")
 datelim[10,] <- c("2020.05.11 08:00:00","2020.05.11 13:00:00")
 datelim[11,] <- c("2020.05.22 08:00:00","2020.05.22 13:00:00")
+datelim[12,] <- c("2020.05.26 08:00:00","2020.05.26 13:00:00")
 Pumpstufen <- list()
 Pumpstufen[[1]]<-c(3,3)
 Pumpstufen[[2]]<-c(3,3)
@@ -50,6 +51,7 @@ Pumpstufen[[9]]<-c(1.5,1.5)
 #die ersten zwei mit druckausgleich Spirale die zweiten beiden ohne
 Pumpstufen[[10]]<-rep(1.5,4)
 Pumpstufen[[11]]<-c(1.5,1.5)
+Pumpstufen[[12]]<-c(1.5,1.5)
 
 
 split_list <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="Pumpstufe"))
@@ -66,7 +68,7 @@ flux_all_messid <- do.call(rbind,split_flux_list)
 #flux_all_messid <- do.call(rbind,split_flux_list_messid)
 flux_all_messid$day <- lubridate::date(flux_all_messid$date)
 flux_all <- aggregate(flux_all_messid[!colnames(flux_all_messid) %in% c("Pumpstufe","day")],list(Pumpstufe = flux_all_messid$Pumpstufe, day = flux_all_messid$day),mean)
-
+flux_all <- flux_all[!colnames(flux_all) %in% c("day","messid")]
 
 ########################
 #plots

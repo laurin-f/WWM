@@ -12,6 +12,7 @@ calc_flux(
   Grundfl = NULL,
   p_kPa = 101.3,
   T_deg = 15,
+  aggregate = F,
   tracer_conc = NULL
 )
 }

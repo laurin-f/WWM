@@ -36,8 +36,6 @@ flux <- read.csv(paste0(metapfad,"Pumpstufen_flux.txt"))
 #############################
 
 #Pumpstufe und Versuch aus metadaten auf dataframe übetragen
-data$Pumpstufe <- NA
-data$Versuch <- NA
 
 #intervalle die am anfang und am ende der Pumpversuche verweorfen werden
 stunden_bis_steadystate <- rep(10,nrow(Pumpzeiten))
@@ -49,6 +47,7 @@ stunden_bis_steadystate[18] <- 9
 
 #Schleife um Zeiträume mit Pumpzeiten von Metadaten zu übernehmen
 cols2data <- c("Pumpstufe","Versuch","respiration_simul","material")
+data[,cols2data] <- NA
 
 for(i in seq_along(Pumpzeiten$Pumpstufe)){
   Pumpzeiten_lim <- data$date > (Pumpzeiten$start[i] + stunden_bis_steadystate[i] * 60 * 60) & 
