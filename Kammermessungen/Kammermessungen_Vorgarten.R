@@ -13,6 +13,25 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","readxl","egg")
 check.packages(packages)
 
+flux <- chamber_flux("Vorgarten",aggregate = F)
+flux <- chamber_flux("Schauinsland",aggregate = F,
+                     closing_before=0,
+                     closing_after=10,
+                     opening_before=-10,
+                     opening_after=-10,t_min=4
+                     )
+flux1 <- chamber_flux("Vorgarten",aggregate = F,messnr=1)
+flux2 <- chamber_flux("Vorgarten",aggregate = F,messnr=2)
+CO2_flux <- flux[["CO2"]][[1]]
+CH4_flux <- flux[["CH4"]][[1]]
+CH4_split <- flux2[["CH4"]][[2]]
+CH4_split <- flux[["CH4"]][[2]]
+
+ggplot(CO2_flux)+geom_line(aes(date,ml_per_min_m2,col=kammer))
+ggplot(CH4_flux)+geom_line(aes(date,ml_per_min_m2,col=kammer))
+ggplot(CH4_split)+geom_point(aes(date,CH4,col=kammer))
+
+
 #Metadaten laden
 
   Kammer<-read_xlsx(paste0(metapfad,"/Kammermessungen/Kammer_Meta.xlsx"),sheet="manuelle Kammer")

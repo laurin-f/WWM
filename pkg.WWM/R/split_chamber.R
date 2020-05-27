@@ -29,13 +29,13 @@
 split_chamber<-function(data,
                         closing_before = 40,
                         closing_after = 40,
-                        opening_after = -30,
+                        opening_after = -10,
                         opening_before = -10,
                         # closing_th = 40,
                         # opening_th = -40,
-                        t_max = 5,
-                        t_init = 1,
-                        t_min = 5,
+                        t_max = 3,
+                        t_init = 0.1,
+                        t_min = 2,
                         gas="CO2",
                         adj_openings = T){
 
@@ -298,8 +298,8 @@ calc_flux <- function(data,
   flux$ml_per_min<-ppm_per_min /10^6 * Vol #cm3 / min
   flux$g_per_min <- flux$ml_per_min * ro[,gas] #g / min
   if(!is.null(Grundfl)){
-    flux$ml_per_min_m2<-flux$cm2_per_min/(Grundfl/10^4) #cm3 /(min m2)
-    flux$g_per_min_m2 <- flux$ml_per_min_m2*m[gas] #g/(min m2)
+    flux$ml_per_min_m2<-flux$ml_per_min/(Grundfl/10^4) #cm3 /(min m2)
+    flux$g_per_min_m2 <- flux$g_per_min/(Grundfl/10^4) #g/(min m2)
   }
   #falls eine Tracerkonzentration angegeben wurde wird
   #eine effektive Einspeiserate berechnet

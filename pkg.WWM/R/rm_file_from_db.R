@@ -1,6 +1,4 @@
-hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
-sqlpath<-paste0(hauptpfad,"Daten/aufbereiteteDaten/SQLite/")
-dynpfad<-paste0(hauptpfad,"Daten/Urdaten/Dynament/")
+
 #' Function to remove a specific file from the Database
 #'
 #' @param filename name of file

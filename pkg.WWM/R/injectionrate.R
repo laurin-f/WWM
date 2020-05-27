@@ -1,7 +1,3 @@
-hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
-metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
-
-
 
 #' Function to calculate Injectionrate for specific Diffusionchamber measurement
 #'
@@ -39,7 +35,7 @@ injectionrate <- function(datelim,
   ########################
   #Metadaten aus Kammer laden
 
-  Vol.xlsx<-readxl::read_xlsx(paste0(metapfad,"Diffusionskammer.xlsx"))
+  Vol.xlsx<-readxl::read_xlsx(paste0(,"Diffusionskammer.xlsx"))
   Vol_ml<-Vol.xlsx$Volumen_effektiv_ml
 
   #CO2 daten einlesen

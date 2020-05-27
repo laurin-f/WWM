@@ -1,9 +1,4 @@
-#pfade definieren
 
-hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
-datapfad_schaui<-paste0(hauptpfad,"Daten/Urdaten/Schauinsland/")
-metapfad_schaui<-paste0(hauptpfad,"Daten/Metadaten/Schauinsland/")
-sqlpfad<-paste0(hauptpfad,"Daten/aufbereiteteDaten/SQLite/")
 
 
 #' @title update Em50 database

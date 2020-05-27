@@ -1,15 +1,6 @@
 
 
 
-#pfade definieren
-
-hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
-ggapfad<-paste0(hauptpfad,"Daten/Urdaten/GGA/")
-dynpfad<-paste0(hauptpfad,"Daten/Urdaten/Dynament/")
-sqlpfad<-paste0(hauptpfad,"Daten/aufbereiteteDaten/SQLite/")
-metapfad_dyn<- paste0(hauptpfad,"Daten/Metadaten/Dynament/")
-
-
 #' @title Funktion um alle .zip dateien in einem Ordner incl. Unterordnern zu entpacken
 #'
 #' @description  Alle .zip dateien in einem Ordner incl. Unterordnern werden entpackt und im Unterordner unzipped gespeichert
