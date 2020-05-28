@@ -274,6 +274,8 @@ calc_flux <- function(data,
   #für jeden werte von group wird eine regression zwische gas und zeit durchgeführt
   fm_list <- lapply(1:nrow(gr_id), function(x) glm(formula,data = data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),]))
   #mittelwerte des Datums der unterschiedlichen gruppen
+  
+  ###################anschauen !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   date_means <- sapply(1:nrow(gr_id), function(x) mean(data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),"date"]))
 
   #aus der fm_liste wird jeweils der zweite coeffizient (steigung) ausgeschnitten
@@ -309,6 +311,7 @@ calc_flux <- function(data,
   #group spalte an flux anfügen
 
   flux$messid <- as.numeric(gr_id[,2])
+  #####################anschauen!!!!!!!!!!!!!!!!!!!!!
   flux$date <- lubridate::as_datetime(date_means)
   if(aggregate == T){
   flux <- aggregate(flux,list("group" = gr_id[,1]),mean)

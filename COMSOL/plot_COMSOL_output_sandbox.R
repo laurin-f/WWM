@@ -4,6 +4,7 @@ hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
 comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
+samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","ggforce","units","egg")
@@ -79,12 +80,15 @@ sweep_long$tiefe <- set_units(sweep_long$z - z_box,cm)
 ######################
 #fm
 
-D0_CO2 <- D0_T_p(15) #18°C cm/s
+D0_CO2 <- D0_T_p(15) #18°C cm2/s
 D0_CO2_m2 <- D0_CO2/10^4 #m2/s
 
 
 plt_list <- list()
 tiefen <- 1:8
+
+paste0(injection_rate_i,", CO2_atm=",CO2_atm_i,"$")
+colnames(CO2_sweep)[1:10]
 
 for(i in unique(data_sub$ID)) {
 
@@ -124,9 +128,10 @@ ggplot(data_sub)+
   labs(x=expression(CO[2]*" [ppm]"),y="tiefe [cm]",col="")+
   ggsave(paste0(plotpfad,"comsol_mod_obs_sandsplitt.pdf"),width=9,height=4)
 
-mod_results <- data_sub[data_sub$tiefe==0,c("ID","DS_D0_mod","material","DS_D0_CO2")]
+mod_results <- data_sub[data_sub$tiefe==0,c("ID","DS_D0_mod","material","DS_D0_glm","DS_mod","DS_glm")]
 
-DS_D0_mat <- aggregate(list(DS_D0_COMSOL=mod_results$DS_D0_mod,DS_D0_glm= mod_results$DS_D0_CO2),list(material=mod_results$material),mean)
+DS_D0_mat <- aggregate(list(DS_D0_COMSOL=mod_results$DS_D0_mod,DS_D0_glm= mod_results$DS_D0_glm),list(material=mod_results$material),mean)
+DS_mat <- aggregate(list(DS_COMSOL=mod_results$DS_mod,DS_glm= mod_results$DS_CO2),list(material=mod_results$material),mean)
 
 thomas_ref <- data.frame(material=c("Sand","Kies","Sand & Kies"), DS_D0=c(0.239, 0.235, 0.185),method="Flühler \n(Laemmel et al. 2017)")
 
@@ -134,6 +139,7 @@ DS_D0_long <- reshape2::melt(DS_D0_mat,id="material",value.name="DS_D0",variable
 DS_D0_long$method <- str_remove(DS_D0_long$method,"DS_D0_")
 DS_D0_long <- rbind(DS_D0_long,thomas_ref)
 
+DS_D0_mat$DS_D0_COMSOL*D0_CO2_m2
 ggplot(DS_D0_long)+geom_col(aes(material,DS_D0,fill=method),position=position_dodge2(preserve = "single"))+ggsave(paste0(plotpfad,"DS_D0_SandSplitt_vergleich.pdf"),width=9,height=4)
 
 # Fine gravel 0.235 (0.008) 0.218 0.214

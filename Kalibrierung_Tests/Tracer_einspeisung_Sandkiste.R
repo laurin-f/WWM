@@ -127,7 +127,7 @@ unique(cbind(data_agg$DS/D0_CO2,data_agg$ID))
 # ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(dC,tiefe,col=PSt_Nr))
 # ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(DS,tiefe,col=PSt_Nr))
 
-data_agg$DS_D0_CO2 <- data_agg$DS/D0_CO2
+data_agg$DS_D0_glm <- data_agg$DS/D0_CO2
 data_agg$tiefenmittel <- rowMeans(cbind(c(data_agg$tiefe[-nrow(data_agg)],NA),c(data_agg$tiefe[-1],NA)))
 data_agg$tiefenmittel[data_agg$tiefe == -24.5] <- NA
 
@@ -138,7 +138,7 @@ respi <- subset(data_agg,Versuch %in% c(5,6,7,8))
 respi <- respi[!colnames(respi)[] %in% c("PSt_Nr")]
 respi_wide <- tidyr::pivot_wider(respi,names_from = c(Pumpstufe,respi_sim),values_from = which(!colnames(respi)[] %in% c("tiefe","tiefenstufe","Versuch","Pumpstufe","tiefenmittel","dz","respi_sim")))
 
-respi_wide <- respi_wide[!colnames(respi_wide)[] %in% paste0(rep(c("Fz_0","DS_0","DS_D0_CO2_0","material_3"),2),rep(c("_ja","_nein"),each=4))]
+respi_wide <- respi_wide[!colnames(respi_wide)[] %in% paste0(rep(c("Fz_0","DS_0","DS_D0_glm_0","material_3"),2),rep(c("_ja","_nein"),each=4))]
 colnames(respi_wide) <- str_replace_all(colnames(respi_wide),c("0_ja"="respi","3_ja"="ges","3_nein"="tracer","material_respi" = "material"))
 
 
@@ -184,14 +184,16 @@ plt2 <- plt+
 
 ##########################
 #plot period x
-period_x <- 3
+period_x <- 10
 Pumpzeiten_x <- subset(Pumpzeiten, period == period_x)
 
 ggplot(subset(plt_data,period %in% period_x))+
   geom_rect(data=Pumpzeiten_x,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.factor(Pumpstufe)))+
   geom_vline(data=Pumpzeiten_x,aes(xintercept=start))+
   geom_point(aes(date,CO2,col=as.factor(tiefenstufe)),size=0.4)+labs(col="tiefe")+
-  scale_fill_manual(values = alpha("red",sort(Pumpzeiten_x$Pumpstufe)/5*0.3))
+  scale_fill_manual(values = alpha("red",sort(Pumpzeiten_x$Pumpstufe)/5*0.3))+
+  geom_vline(data= flux, aes(xintercept =  date),col=2)
+flux
 
 #roll
 ggplot(subset(plt_data,period %in% period_x))+
@@ -276,6 +278,6 @@ ggplot(data_agg,aes(Pumpstufe,gradient,col=as.character(tiefenmittel),shape=as.c
   geom_point()#+
   
 
-ggplot(data_agg)+geom_path(aes(DS_D0_CO2,tiefe,col=PSt_Nr))
+ggplot(data_agg)+geom_path(aes(DS_D0_glm,tiefe,col=PSt_Nr))
 }
 

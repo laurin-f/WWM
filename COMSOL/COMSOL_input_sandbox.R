@@ -6,6 +6,7 @@
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
+metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 
 #Packages laden
 library(pkg.WWM)
@@ -15,8 +16,9 @@ check.packages(packages)
 #dataset laden
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 
-sandbox <- readxl::read_xlsx(paste0(metapfad,"sandeimer.xlsx"))
+sandbox <- readxl::read_xlsx(paste0(metapfad,"/Tracereinspeisung/sandeimer.xlsx"))
 z_box <- sandbox$height_cm
+
 
 #tiefen in Modellkoordinaten umrechnen
 data_agg$Z_mod <- data_agg$tiefe + z_box
@@ -42,7 +44,7 @@ ggplot(input_pars)+
 input_pars
 
 
-save(input_pars,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_sub.RData"))
+save(input_pars,data_sub,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_sub.RData"))
 #CO2_atm
 CO2_atm <- sort(unique(input_pars$CO2_atm))
 write.table(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),file = paste0(comsolpfad,"CO2_atm.txt"),row.names = F,col.names = F,quote=F)
@@ -56,8 +58,9 @@ write.table(paste0("injection_rate ",paste(injection_rates,collapse=", ")),file 
 ############
 #Punkte aus Mesh identifizieren die nah an Z und R liegen
 #messtiefen
-meas_depths <- (z_box-(0:7*3.5))
-meas_points <- data.frame(R=0,Z=meas_depths)
+meas_depths_sb <- (z_box-(0:7*3.5))
+meas_points_sb <- data.frame(R=0,Z=meas_depths_sb)
 
-write.table(meas_points,file = paste0(comsolpfad,"meas_points.txt"),row.names = F,col.names = F)
+
+write.table(meas_points_sb,file = paste0(metapfad,"COMSOL/meas_points_sandkiste.txt"),row.names = F,col.names = F)
 

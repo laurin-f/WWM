@@ -35,7 +35,7 @@ injectionrate <- function(datelim,
   ########################
   #Metadaten aus Kammer laden
 
-  Vol.xlsx<-readxl::read_xlsx(paste0(,"Diffusionskammer.xlsx"))
+  Vol.xlsx<-readxl::read_xlsx(paste0(metapfad_tracer,"Diffusionskammer.xlsx"))
   Vol_ml<-Vol.xlsx$Volumen_effektiv_ml
 
   #CO2 daten einlesen
