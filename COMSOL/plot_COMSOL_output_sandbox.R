@@ -53,6 +53,7 @@ sweep_long$CO2_mod <- ppm_to_mol(sweep_long$CO2_mol_per_m3,"mol/m^3","units")
 #tiefe umrechnen
 sweep_long$tiefe <- set_units(sweep_long$z - z_box,cm)
 
+unique(sweep_long$injection_rate)
 #sweep_long$CO2_obs <- as.numeric(as.character(factor(sweep_long$tiefe,levels = CO2_obs$tiefe,labels = CO2_obs$CO2_ppm)))
 
 #####################################
@@ -86,9 +87,6 @@ D0_CO2_m2 <- D0_CO2/10^4 #m2/s
 
 plt_list <- list()
 tiefen <- 1:8
-
-paste0(injection_rate_i,", CO2_atm=",CO2_atm_i,"$")
-colnames(CO2_sweep)[1:10]
 
 for(i in unique(data_sub$ID)) {
 

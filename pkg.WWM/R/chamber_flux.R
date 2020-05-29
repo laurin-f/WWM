@@ -19,11 +19,11 @@ chamber_flux <- function(mess_dir="Vorgarten",
 
   Messungen<-readxl::read_xlsx(paste0(metapfad,mess_dir,"/Kammermessungen.xlsx"))
   kragen <- readxl::read_xlsx(paste0(metapfad,mess_dir,"/Kammermessungen.xlsx"),sheet = 2)
-  
+
   if(is.null(messnr)){
     messnr <- seq_along(Messungen$Datum)
   }
-  
+
   GGA <- unique(Messungen$GGA[messnr])
   chamber <- unique(Messungen$kammer[messnr])
 
@@ -57,7 +57,7 @@ dataset<-split_chamber(data=data.raw,
 
 dataset$kammer<-NA
 
-reihenfolge <- t(str_split(Messungen$reihenfolge,",",simplify = T))
+reihenfolge <- t(str_split(Messungen$reihenfolge[messnr],",",simplify = T))
 
 
 for(i in seq_along(reihenfolge)){

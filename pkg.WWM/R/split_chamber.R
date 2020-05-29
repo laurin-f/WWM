@@ -315,7 +315,8 @@ calc_flux <- function(data,
   flux$date <- lubridate::as_datetime(date_means)
   if(aggregate == T){
   flux <- aggregate(flux,list("group" = gr_id[,1]),mean)
-
+  flux$date <- with_tz(flux$date, "UTC")
+  
   if(group != "messid"){
     flux <- flux[,!grepl("messid",colnames(flux))]
   }

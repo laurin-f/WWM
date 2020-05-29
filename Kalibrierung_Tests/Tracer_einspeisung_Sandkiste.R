@@ -193,7 +193,7 @@ ggplot(subset(plt_data,period %in% period_x))+
   geom_point(aes(date,CO2,col=as.factor(tiefenstufe)),size=0.4)+labs(col="tiefe")+
   scale_fill_manual(values = alpha("red",sort(Pumpzeiten_x$Pumpstufe)/5*0.3))+
   geom_vline(data= flux, aes(xintercept =  date),col=2)
-flux
+
 
 #roll
 ggplot(subset(plt_data,period %in% period_x))+
