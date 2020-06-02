@@ -15,7 +15,7 @@ flux_old$date <- ymd_hms(flux_old$date)
 new_meas <- NULL
 count <- 1
 for( i in 1:nrow(Pumpzeiten)){
-  if(!any((flux_old$date < Pumpzeiten$beginn[i] |flux_old$date > Pumpzeiten$ende[i])==F)){
+  if(!any((flux_old$date < Pumpzeiten$beginn[i] |flux_old$date > Pumpzeiten$ende[i])==F,na.rm=T)){
     new_meas[count] <- i
     count <- count+1
   }
@@ -42,9 +42,11 @@ flux <- aggregate(flux_messid[!colnames(flux_messid) %in% c("Pumpstufe","day")],
 flux <- flux[!colnames(flux) %in% c("ID","messid")]
 flux$date <- lubridate::with_tz(flux$date, "UTC")
 
+flux_all <- rquery::natural_join(flux,flux_old,by="date",jointype="FULL")
+
 plot <- F
 if(plot == T){
-  ggplot(flux)+
+  ggplot(subset(flux_all,date > min(Pumpzeiten$beginn)))+
     geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
     ggnewscale::new_scale_color()+
     geom_point(data=flux_messid,aes(date,ml_per_min,col=as.factor(ID)))
@@ -52,7 +54,6 @@ if(plot == T){
 
 
 
-flux_all <- rquery::natural_join(flux,flux_old,by="date",jointype="FULL")
 
 write.csv(flux_all,file = paste0(metapfad_tracer,"Pumpstufen_flux.txt"),row.names = F)
 }

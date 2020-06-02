@@ -47,12 +47,12 @@ input_pars
 save(input_pars,data_sub,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_sub.RData"))
 #CO2_atm
 CO2_atm <- sort(unique(input_pars$CO2_atm))
-write.table(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),file = paste0(comsolpfad,"CO2_atm.txt"),row.names = F,col.names = F,quote=F)
+write.table(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),file = paste0(metapfad_comsol,"CO2_atm.txt"),row.names = F,col.names = F,quote=F)
 
 
 #injection_rates
 injection_rates <- sort(unique(input_pars$injection_rate))
-write.table(paste0("injection_rate ",paste(injection_rates,collapse=", ")),file = paste0(comsolpfad,"injection_rates.txt"),row.names = F,col.names = F,quote=F)
+write.table(paste0("injection_rate ",paste(injection_rates,collapse=", ")),file = paste0(metapfad_comsol,"injection_rates.txt"),row.names = F,col.names = F,quote=F)
 
 
 ############

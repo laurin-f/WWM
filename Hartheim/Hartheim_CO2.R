@@ -1,7 +1,8 @@
 #pfade definieren
 detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
-metapfad<- paste0(hauptpfad,"Daten/Metadaten/Hartheim/")
+metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
+metapfad_harth<- paste0(metapfad,"Hartheim/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
@@ -14,9 +15,19 @@ check.packages(packages)
 
 ###################
 #metadaten
-Pumpzeiten <- readxl::read_xlsx(paste0(metapfad,"Tracereinspeisung_Hartheim.xlsx"))
+
+#Pumpzeiten
+Pumpzeiten <- readxl::read_xlsx(paste0(metapfad_harth,"Tracereinspeisung_Hartheim.xlsx"))
 Pumpzeiten$ende <- as_datetime(Pumpzeiten$ende)
 Pumpzeiten$ende[is.na(Pumpzeiten$ende)] <- Pumpzeiten$start[which(is.na(Pumpzeiten$ende))+1]
+
+#tiefenoffset
+tiefen_offset <- read.table(paste0(metapfad_harth,"sampler_tiefen_offset.txt"),header = T)
+
+#Metadata Pumpstufen flux
+flux <- read.csv(paste0(metapfad,"Tracereinspeisung/Pumpstufen_flux.txt"))
+
+
 
 datelim <- c("2020.05.18 10:00:00")
 smp1 <- read_sampler("sampler1",datelim = datelim, format = "long")
@@ -62,6 +73,48 @@ for(i in unique(data$tiefe)){
 }
 }
 
+############################
+#Fz mit zeitlichem drift bestimmen
+flux$date <- ymd_hms(flux$date)
+data$Fz <- NA
+for(i in na.omit(unique(data$Pumpstufe))){
+  flux_i <- subset(flux, Pumpstufe == i)
+  id <- which(data$Pumpstufe == i)
+  if(nrow(flux_i) > 1){
+    data[id,"Fz"] <- approx(x=(flux_i$date),y=flux_i$tracer_ml_per_min,xout=(data$date[id]),rule=2)$y
+  }else{
+    data[id,"Fz"] <- flux_i$tracer_ml_per_min
+  }
+}
+
+###############
+#tiefen Offset
+data$tiefe_inj <- data$tiefe + tiefen_offset[1,2]
+data$tiefe_ref <- data$tiefe + tiefen_offset[2,2] - 3.5
+
+data_PSt0 <- subset(data, Pumpstufe == 0)
+
+
+colnames(data_PSt0)
+data_kal <- aggregate(data_PSt0[,grep("CO2",colnames(data_PSt0))] ,list(tiefe = data_PSt0$tiefe), mean, na.rm=T)
+data_kal$offset <-  data_kal$CO2_inj - data_kal$CO2_ref
+ggplot(data_kal)+
+  geom_path(aes(CO2_ref,tiefe,col="ref"))+
+  geom_path(aes(CO2_inj,tiefe,col="inj"))+
+  geom_ribbon(aes(xmin=CO2_ref, xmax= CO2_ref + offset,y=tiefe,fill="offset"),alpha = 0.3)
+
+data$offset <- as.numeric(as.character(factor(data$tiefe, levels=data_kal$tiefe,labels=data_kal$offset)))
+data$CO2_tracer <- data$CO2_roll_inj - (data$CO2_roll_ref + data$offset)
+#data$CO2_tracer[data$CO2_tracer < 0] <- NA
+data$date
+ggplot(subset(data,Pumpstufe==0))+
+  geom_line(aes(date,CO2_roll_ref+offset,col=as.factor(tiefe),linetype="ref + offset"),lwd=1)+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1)+
+  geom_ribbon(aes(x=date,ymin=CO2_ref + offset,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.3)+
+  labs(title="keine Injektion",col="tiefe",fill="tiefe",linetype="sampler")
+
+#################################
+#plots
 
 inj <- ggplot(data)+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
@@ -78,13 +131,28 @@ p <- egg::ggarrange(inj,ref,ncol=1)
 pdf(paste0(plotpfad,"hartheim_einspeisung1.pdf"),width=9,height=7)
 p
 dev.off()
+
   ggplot(data)+
-  geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe)))+
-  geom_line(aes(date,CO2_roll_ref,col=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
+  geom_line(aes(date,CO2_roll_ref,col=as.factor(tiefe),linetype="ref"))+
   geom_ribbon(aes(date,ymin=CO2_inj,ymax=CO2_ref,fill=as.factor(tiefe)),alpha=0.3)+
-  geom_vline(xintercept = Pumpzeiten$start)+
-  ggsave(paste0(plotpfad,"hartheim_einspeisung1.pdf"),width=5,height=14)
-
-ggplot(data)
-
+  geom_vline(xintercept = Pumpzeiten$start)
+  
+  month
+  data$monthday <- format(data$date,"%m.%d")
+  data_month_day <- aggregate(data[,grep("CO2",colnames(data))],list(monthday = format(data$date,"%m.%d"),tiefe = data$tiefe),mean)
+  ggplot(data_month_day)+geom_path(aes(CO2_ref,tiefe,col=monthday))
+  ggplot(data_month_day)+geom_path(aes(CO2_inj,tiefe,col=monthday))
 ggplot(data)+geom_point(aes(CO2_inj,CO2_ref,col=as.factor(Pumpstufe)))+geom_abline(slope=1,intercept = 0)
+#offset
+
+
+datelim_1.5 <- ymd_h("2020.05.23 10")
+ggplot(subset(data,date < datelim_1.5))+
+  geom_line(aes(date,CO2_tracer,col=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))
+
+
+ggplot(subset(data, Pumpstufe == 1.5 & date %in% round_date(date,"hours") & date < datelim_1.5))+ geom_path(aes(CO2_tracer,tiefe,col=as.factor(date)))
+
+

@@ -6,10 +6,13 @@ metapfad<-paste0(hauptpfad,"Daten/Metadaten/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
+comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
+metapfad_comsol <- paste0(hauptpfad,"Daten/Metadaten/COMSOL/")
+
 
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2")
+packages<-c("lubridate","stringr","ggplot2","units")
 check.packages(packages)
 
 ####################################
@@ -49,13 +52,6 @@ stunden_cut_off <- 0.5
 #Schleife um Zeiträume mit Pumpzeiten von Metadaten zu übernehmen
 cols2data <- c("Pumpstufe")
 
-for(i in seq_along(Pumpzeiten$Pumpstufe)){
-  Pumpzeiten_lim <- data_tracer$date > (Pumpzeiten$start[i] + stunden_bis_steadystate * 60 * 60) & 
-    data_tracer$date < (Pumpzeiten$ende[i] - stunden_cut_off * 60 * 60)
-  for(j in cols2data){
-    data_tracer[Pumpzeiten_lim,j] <- Pumpzeiten[i,j]
-  }
-}
 
 
 #kurven glätten mit rollapply
@@ -71,6 +67,14 @@ for(i in unique(data_ref$tiefe)){
 }
 
 data <- merge(data_tracer,data_ref,by=c("date","tiefe","tiefenstufe","variable"),suffixes = c("","_ref"),all=T)
+
+for(i in seq_along(Pumpzeiten$Pumpstufe)){
+  Pumpzeiten_lim <- data$date > (Pumpzeiten$start[i] + stunden_bis_steadystate * 60 * 60) & 
+    data$date < (Pumpzeiten$ende[i] - stunden_cut_off * 60 * 60)
+  for(j in cols2data){
+    data[Pumpzeiten_lim,j] <- Pumpzeiten[i,j]
+  }
+}
 ############################
 #Fz mit zeitlichem drift bestimmen
 flux$date <- ymd_hms(flux$date)
@@ -88,13 +92,10 @@ for(i in na.omit(unique(data$Pumpstufe))){
 #ggplot(data)+geom_point(aes(date,Fz,col=as.factor(Pumpstufe)))
 ###################
 #Aggregate Data
-data_agg <- aggregate(list(CO2_inj=data$CO2,CO2_ref = data$CO2_ref,Fz=data$Fz),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe),mean)
-unique(data$tiefe)
+data_agg <- aggregate(list(CO2_inj=data$CO2,CO2_ref = data$CO2_ref,Fz=data$Fz),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe),mean,na.rm=T)
 
 data_agg$tiefe_inj <- data_agg$tiefe + tiefen_offset[1,2]
 data_agg$tiefe_ref <- data_agg$tiefe + tiefen_offset[2,2] - 3.5
-
-profile_list <- vector("list",4)
 
 data_inter <- data.frame(tiefe = unique(sort(c(data_agg$tiefe_ref,data_agg$tiefe_inj))))
 for(i in unique(data_agg$Pumpstufe)){
@@ -103,60 +104,23 @@ for(i in unique(data_agg$Pumpstufe)){
     data_inter[paste("CO2",j,i,sep="_")] <- approx(sub_i[,paste0("tiefe_",j)],sub_i[,paste0("CO2_",j)],xout=data_inter$tiefe)$y
   }
 }
-  profile_ref_0 <- approx(data_agg$tiefe_ref[data_agg$Pumpstufe == 0],data_agg$CO2_ref[data_agg$Pumpstufe == 0],xout=c(data_agg$tiefe_ref[data_agg$Pumpstufe == 0],data_agg$tiefe_inj[data_agg$Pumpstufe == 0]))
-profile_inj_0 <- approx(data_agg$tiefe_inj[data_agg$Pumpstufe == 0],data_agg$CO2[data_agg$Pumpstufe == 0],xout=c(data_agg$tiefe_ref[data_agg$Pumpstufe == 0],data_agg$tiefe_inj[data_agg$Pumpstufe == 0]))
 
-data_inter <- data.frame(CO2_ref= approx(data_agg$tiefe_ref[data_agg$Pumpstufe == 0],data_agg$CO2_ref[data_agg$Pumpstufe == 0]))
-###################
-#gradienten berechnen
+#################
+#COMSOL input
 
-
-fm <- glm(CO2~tiefe,data=data_agg)
-dC_dz <- fm$coefficients[2]
-names(dC_dz) <-  unique(data_agg$ID)
-
-##############################
-#Fick's Law
-#Fz = -DS * (dC / dz)
-D0_CO2 <- D0_T_p(15)#cm/s
-
-#Fläche
-#A <-15^2*pi#cm2
+A_inj <- set_units(1^2*pi,"mm^2")
+injection_ml_min <- unique(data_agg$Fz[data_agg$Pumpstufe  == 1.5])
 
 
-#Ficks law anwenden
-#DS = -FZ * dz / dC
-###################################
 
-#data_agg$DS <- data_agg$Fz / 60 / A / (data_agg$dC_dz / 10^6)
-#DS <- 0.3 / 60 / A * dz / (dC / 10^6)
-#unique(cbind(data_agg$DS/D0_CO2,data_agg$ID))
+injection_rates <- ppm_to_mol(unique(data_agg$Fz),unit_in = "cm^3/min",out_class = "units")
+inj_mol_m2_s <- set_units(injection_rates,"mol/s")/set_units(A_inj,"m^2")
+write.table(paste0("injection_rate ",inj_mol_m2_s),file = paste0(metapfad_comsol,"injection_rate_vorgarten.txt"),row.names = F,col.names = F,quote=F)
 
-######################################
-
-# ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+
-#   geom_point(aes(CO2,tiefe,col=PSt_Nr))+
-#   geom_smooth(aes(CO2,tiefe,col=PSt_Nr),method="glm")
-# ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(dC,tiefe,col=PSt_Nr))
-# ggplot(subset(data_agg,PSt_Nr == "PSt_3_Nr_8" & respi_sim == "ja"))+geom_path(aes(DS,tiefe,col=PSt_Nr))
-
-#data_agg$DS_D0_CO2 <- data_agg$DS/D0_CO2
+CO2_atm <- ppm_to_mol(data_agg$CO2_ref[data_agg$tiefe == 0 & data_agg$Pumpstufe == 1.5],unit_in = "ppm",out_class = "units")
+write.table(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),file = paste0(metapfad_comsol,"CO2_atm_Vorgarten.txt"),row.names = F,col.names = F,quote=F)
 
 
-############################
-#künstliche respiration
-
-#############################
-#Datensatz speichern
-#data_agg$CO2_mol_per_m3 <- ppm_to_mol(data_agg$CO2)
-#save(data_agg,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
-##################
-#plots
-
-#CO2 ~ Zeit mit Pumpstufen als rect
-# ggplot(data)+
-#   annotate("rect", xmin=Pumpzeiten$start,xmax=Pumpzeiten$ende,ymin=-Inf,ymax=Inf, alpha=Pumpzeiten$Pumpstufe/max(Pumpzeiten$Pumpstufe)*0.3, fill="red")+
-#   geom_line(aes(date,CO2,col=as.factor(tiefenstufe)))+labs(col="tiefe")
 
 #if(plot == T){
   
@@ -165,7 +129,7 @@ D0_CO2 <- D0_T_p(15)#cm/s
   
 
   ##########################
-  #plot 
+  #plot zeitreihe sampler 1 und 2
   
   smp1 <- ggplot(data)+
     geom_rect(data=Pumpzeiten,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.factor(Pumpstufe)))+
@@ -185,19 +149,13 @@ D0_CO2 <- D0_T_p(15)#cm/s
   geom_ribbon(aes(x=date,ymin=CO2_ref,ymax=CO2,fill=as.factor(tiefenstufe)),alpha=0.5)+
     annotate("text",x=mean(c(Pumpzeiten$start[2],Pumpzeiten$ende[2])),y=8200,label="injection")+labs(col="tiefe [cm]",fill="tiefe [cm]",linetype="",y=expression(CO[2]*" [ppm]"))+ggsave(paste0(plotpfad,"vorgarten_injection.pdf"),width=10,height=7)
   
-  ggplot(data)+
-    geom_rect(data=Pumpzeiten,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.factor(Pumpstufe)))+
-    geom_vline(data=Pumpzeiten,aes(xintercept=start))+
-    geom_point(aes(date, CO2_roll,col=as.factor(Pumpstufe)))+
-    geom_point(aes(date, CO2_roll_ref,col="ref"))+
-    scale_fill_manual(values = alpha("red",(Pumpzeiten$Pumpstufe)/1.5*0.3))
-  
+  #########################################
+  #CO2 inj gegen ref
   ggplot(subset(data,!is.na(Pumpstufe)))+geom_point(aes(CO2_roll,CO2_roll_ref,col=as.factor(Pumpstufe)))+geom_abline(slope=1,intercept=0)
   #CO2 ~ tiefe ohne glm
-  ggplot(subset(data,!is.na(Pumpstufe)))+
-    geom_point(aes(CO2_roll,tiefe,col=as.factor(Pumpstufe)))+labs(col="Pumpstufe Versuch-Nr")
   
-  
+  #############################################
+  #vorbereitung tacer und offset plot
   data_agg$offset <- NA
   data_agg$tracer <- NA
   data_agg$offset[data_agg$Pumpstufe == 0] <- data_agg$CO2_inj[data_agg$Pumpstufe == 0] - data_agg$CO2_ref[data_agg$Pumpstufe == 0]
@@ -248,7 +206,9 @@ D0_CO2 <- D0_T_p(15)#cm/s
   
   p <- egg::ggarrange(offset_plt,injection_plt,ncol=2)
   p2 <- egg::ggarrange(offset_plt_not_adj,injection_plt_not_adj,ncol=2)
-  p
+  
+  ####################################
+  #plot CO2 Profil inj ref und tracer
   pdf(paste0(plotpfad,"offset_injection_depth_adj.pdf"),width=10,height=4)
   p
   dev.off()
@@ -257,9 +217,10 @@ D0_CO2 <- D0_T_p(15)#cm/s
   p2
   dev.off()
   
-  
+  #####################################
+  #plot tracerprofil unterschied tiefe adjust und nicht adjust
   ggplot()+
     geom_path(data=data_inter,aes(tracer,tiefe,col="depth adj"))+
     geom_path(data=data_agg,aes(tracer,tiefe,col="no depth adj"))
-  plot(tracer)
-  plot(offset)
+
+  
