@@ -92,7 +92,8 @@ for(i in na.omit(unique(data$Pumpstufe))){
 #ggplot(data)+geom_point(aes(date,Fz,col=as.factor(Pumpstufe)))
 ###################
 #Aggregate Data
-data_agg <- aggregate(list(CO2_inj=data$CO2,CO2_ref = data$CO2_ref,Fz=data$Fz),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe),mean,na.rm=T)
+colnames(data)
+data_agg <- aggregate(list(CO2_inj=data$CO2,CO2_ref = data$CO2_ref,Fz=data$Fz,T_C= data$T_C),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe),mean,na.rm=T)
 
 data_agg$tiefe_inj <- data_agg$tiefe + tiefen_offset[1,2]
 data_agg$tiefe_ref <- data_agg$tiefe + tiefen_offset[2,2] - 3.5
@@ -105,20 +106,68 @@ for(i in unique(data_agg$Pumpstufe)){
   }
 }
 
+data_agg$offset <- NA
+data_agg$tracer_raw <- NA
+data_agg$offset[data_agg$Pumpstufe == 0] <- data_agg$CO2_inj[data_agg$Pumpstufe == 0] - data_agg$CO2_ref[data_agg$Pumpstufe == 0]
+
+data_agg$tracer_raw[data_agg$Pumpstufe == 0] <- data_agg$CO2_inj[data_agg$Pumpstufe == 1.5] - (data_agg$CO2_ref[data_agg$Pumpstufe == 1.5] + data_agg$offset[data_agg$Pumpstufe == 0])
+
+
+data_agg$tracer_raw[data_agg$Pumpstufe == 1.5] <- data_agg$tracer_raw[data_agg$Pumpstufe == 0]
+data_agg$offset[data_agg$Pumpstufe == 1.5] <- data_agg$offset[data_agg$Pumpstufe == 0]
+
+data_inter$offset <- data_inter$CO2_inj_0 - data_inter$CO2_ref_0
+data_inter$tracer <- data_inter$CO2_inj_1.5 - (data_inter$CO2_ref_1.5 +data_inter$offset)
+
+data_agg$tracer <- approx(data_inter$tiefe,data_inter$tracer,data_agg$tiefe,rule=1)$y
+
+data_agg$tracer[data_agg$tracer < 0] <- 0
+ggplot(data_agg)+
+  geom_path(aes(tracer_raw, tiefe,col="simple"))+
+  geom_point(aes(tracer, tiefe,col="inter_approx"))+
+  geom_path(data=data_inter,aes(tracer,tiefe,col="inter"))
+save(data_inter,file=paste0(samplerpfad,"tracereinspeisung_Vorgarten_inter.RData"))
 #################
 #COMSOL input
+
+#dataset laden
+pars_fs <- read.table((paste0(metapfad,"COMSOL/parameter_freeSoil.csv")),sep=";",stringsAsFactors = F)
+
+z_soil_ch <- str_split(pars_fs[pars_fs[,1] == "z_soil",2],"\\s",simplify = T)
+unit <- str_remove_all(z_soil_ch[,2],"\\[|\\]")
+
+z_soil <- set_units(as.numeric(z_soil_ch[,1]),unit,mode="standard")
+z_soil_cm <- as.numeric(set_units(z_soil,"cm"))
+
+
+meas_points_vorgarten <- data.frame(r = 3,z=(data_inter$tiefe+z_soil_cm))
+write.table(meas_points_vorgarten,file = paste0(metapfad,"COMSOL/meas_points_Vorgarten.txt"),row.names = F,col.names = F)
 
 A_inj <- set_units(1^2*pi,"mm^2")
 injection_ml_min <- unique(data_agg$Fz[data_agg$Pumpstufe  == 1.5])
 
 
 
-injection_rates <- ppm_to_mol(unique(data_agg$Fz),unit_in = "cm^3/min",out_class = "units")
+injection_rates <- ppm_to_mol(injection_ml_min,unit_in = "cm^3/min",out_class = "units")
 inj_mol_m2_s <- set_units(injection_rates,"mol/s")/set_units(A_inj,"m^2")
-write.table(paste0("injection_rate ",inj_mol_m2_s),file = paste0(metapfad_comsol,"injection_rate_vorgarten.txt"),row.names = F,col.names = F,quote=F)
 
-CO2_atm <- ppm_to_mol(data_agg$CO2_ref[data_agg$tiefe == 0 & data_agg$Pumpstufe == 1.5],unit_in = "ppm",out_class = "units")
-write.table(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),file = paste0(metapfad_comsol,"CO2_atm_Vorgarten.txt"),row.names = F,col.names = F,quote=F)
+#CO2_atm <- ppm_to_mol(data_agg$CO2_ref[data_agg$tiefe == 0 & data_agg$Pumpstufe == 1.5],unit_in = "ppm",out_class = "units",T_C = na.omit(unique(data_agg$T_C[data_agg$Pumpstufe == 1.5])))
+
+CO2_atm <- 0
+
+min_DS <- c(1.5e-6,0.5e-6,1e-7,1e-7)
+max_DS <- c(3e-6,2e-6,8e-7,8e-7)
+step <- 1e-7
+schichten <- 4
+DS_1bis8 <- matrix(paste0("DS_",1:schichten," range(",min_DS,",",step,",",max_DS,")"),schichten,1)
+
+pars_vorgarten <- rbind(paste0("injection_rate ",inj_mol_m2_s),paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),DS_1bis8)
+
+
+
+write.table(pars_vorgarten,
+            file = paste0(metapfad_comsol,"parameter_Vorgarten.txt"),
+            row.names = F,col.names = F,quote=F)
 
 
 
@@ -156,18 +205,6 @@ write.table(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),file = paste0(metapf
   
   #############################################
   #vorbereitung tacer und offset plot
-  data_agg$offset <- NA
-  data_agg$tracer <- NA
-  data_agg$offset[data_agg$Pumpstufe == 0] <- data_agg$CO2_inj[data_agg$Pumpstufe == 0] - data_agg$CO2_ref[data_agg$Pumpstufe == 0]
-
-  data_agg$tracer[data_agg$Pumpstufe == 0] <- data_agg$CO2_inj[data_agg$Pumpstufe == 1.5] - (data_agg$CO2_ref[data_agg$Pumpstufe == 1.5] + data_agg$offset[data_agg$Pumpstufe == 0])
-
-
-  data_agg$tracer[data_agg$Pumpstufe == 1.5] <- data_agg$tracer[data_agg$Pumpstufe == 0]
-  data_agg$offset[data_agg$Pumpstufe == 1.5] <- data_agg$offset[data_agg$Pumpstufe == 0]
-  
-  data_inter$offset <- data_inter$CO2_inj_0 - data_inter$CO2_ref_0
-  data_inter$tracer <- data_inter$CO2_inj_1.5 - (data_inter$CO2_ref_1.5 +data_inter$offset)
   
   col<-scales::hue_pal()
   
@@ -206,7 +243,7 @@ write.table(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),file = paste0(metapf
   
   p <- egg::ggarrange(offset_plt,injection_plt,ncol=2)
   p2 <- egg::ggarrange(offset_plt_not_adj,injection_plt_not_adj,ncol=2)
-  
+  egg::ggarrange(offset_plt,injection_plt,offset_plt_not_adj,injection_plt_not_adj,ncol=2)
   ####################################
   #plot CO2 Profil inj ref und tracer
   pdf(paste0(plotpfad,"offset_injection_depth_adj.pdf"),width=10,height=4)

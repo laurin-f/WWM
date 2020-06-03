@@ -1,7 +1,8 @@
 #pfade definieren
 detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
-metapfad<- paste0(hauptpfad,"Daten/Metadaten/Tracereinspeisung/")
+metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
+metapfad_tracer<- paste0(metapfad,"Tracereinspeisung/")
 comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
@@ -13,9 +14,9 @@ check.packages(packages)
 
 #data_agg
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_sub.RData"))
+data_sub$DS_glm
 
-
-sandbox <- readxl::read_xlsx(paste0(metapfad,"sandeimer.xlsx"))
+sandbox <- readxl::read_xlsx(paste0(metapfad_tracer,"sandeimer.xlsx"))
 z_box <- sandbox$height_cm
 
 
@@ -85,7 +86,7 @@ D0_CO2 <- D0_T_p(15) #18°C cm2/s
 D0_CO2_m2 <- D0_CO2/10^4 #m2/s
 
 
-plt_list <- list()
+#plt_list <- list()
 tiefen <- 1:8
 
 for(i in unique(data_sub$ID)) {
@@ -104,6 +105,7 @@ for(i in unique(data_sub$ID)) {
   DS_D0 <- best_DS/D0_CO2_m2 #m2/s
 
   data_sub$DS_D0_mod[data_sub$ID == i] <- DS_D0 
+  data_sub$DS_mod[data_sub$ID == i] <- best_DS 
   data_sub$CO2_mod[data_sub$ID == i] <- ppm_to_mol(sweep_sub[,best.fit.id],"mol/m^3")
 
   # plt_list[[i]] <- 
@@ -112,8 +114,7 @@ for(i in unique(data_sub$ID)) {
   #   geom_point(data=CO2_obs,aes(y=tiefe,x=CO2,col="obs"))+
   #   annotate("text",y= max(CO2_obs$tiefe),x=max(CO2_obs$CO2,na.rm=T),label=paste("DS/D0 = ",round(DS_D0,3)),hjust=0.9,vjust=1)+
   # labs(x="CO[2]",y="tiefe",col="")
-
-  } 
+  }# ende for schleife
 
 
 #do.call('ggarrange',c(plt_list, ncol = 3))
@@ -129,8 +130,10 @@ ggplot(data_sub)+
 mod_results <- data_sub[data_sub$tiefe==0,c("ID","DS_D0_mod","material","DS_D0_glm","DS_mod","DS_glm")]
 
 DS_D0_mat <- aggregate(list(DS_D0_COMSOL=mod_results$DS_D0_mod,DS_D0_glm= mod_results$DS_D0_glm),list(material=mod_results$material),mean)
-DS_mat <- aggregate(list(DS_COMSOL=mod_results$DS_mod,DS_glm= mod_results$DS_CO2),list(material=mod_results$material),mean)
+DS_mat <- aggregate(list(DS_COMSOL=mod_results$DS_mod, DS_glm= mod_results$DS_glm),list(material=mod_results$material),mean)
 
+
+DS_mat$DS_glm
 thomas_ref <- data.frame(material=c("Sand","Kies","Sand & Kies"), DS_D0=c(0.239, 0.235, 0.185),method="Flühler \n(Laemmel et al. 2017)")
 
 DS_D0_long <- reshape2::melt(DS_D0_mat,id="material",value.name="DS_D0",variable="method")

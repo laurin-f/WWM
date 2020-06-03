@@ -16,7 +16,12 @@ check.packages(packages)
 #dataset laden
 pars_fs <- read.table((paste0(metapfad,"COMSOL/parameter_freeSoil.csv")),sep=";",stringsAsFactors = F)
 
-z_box_fs <- as.numeric(str_extract(pars_fs[pars_fs[,1] == "z_box",2],"\\d+\\.?\\d*"))
+z_soil_ch <- str_split(pars_fs[pars_fs[,1] == "z_soil",2],"\\s",simplify = T)
+unit <- str_remove_all(z_soil_ch[,2],"\\[|\\]")
+
+z_soil <- set_units(as.numeric(z_soil_ch[,1]),unit,mode="standard")
+z_soil_cm <- as.numeric(set_units(z_soil,"cm"))
+
 
 # 
 # #tiefen in Modellkoordinaten umrechnen
@@ -58,7 +63,7 @@ z_box_fs <- as.numeric(str_extract(pars_fs[pars_fs[,1] == "z_box",2],"\\d+\\.?\\
 #Punkte aus Mesh identifizieren die nah an Z und R liegen
 #messtiefen
 
-meas_depths_fs <- (z_box_fs-(0:7*3.5))
+meas_depths_fs <- (z_soil_cm-(0:7*3.5))
 meas_points_fs <- data.frame(R=0,Z=meas_depths_fs)
 
 write.table(meas_points_fs,file = paste0(metapfad,"COMSOL/meas_points_freeSoil.txt"),row.names = F,col.names = F)

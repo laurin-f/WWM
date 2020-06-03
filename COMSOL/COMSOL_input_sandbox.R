@@ -34,10 +34,12 @@ inj_mol_cm2_s <- set_units(injection_rates,"mol/s")/A_inj
 data_agg$inj_mol_m2_s <- set_units(inj_mol_cm2_s,"mol/m^2/s")
 
 data_sub <- subset(data_agg, respi_sim == "nein" & Versuch %in% c(3:10) & Pumpstufe %in% c(1.5,3))
+colnames(data_sub) <- str_replace(colnames(data_sub),"^DS$","DS_glm")
+data_sub$DS_glm <- set_units(data_sub$DS_glm, "cm^2/s")
+data_sub$DS_glm <- set_units(data_sub$DS_glm, "m^2/s")
 
-input_pars <- data_sub[data_sub$tiefenstufe == 0, c("ID","inj_mol_m2_s", "CO2_mol_per_m3","DS","material","Pumpstufe")]
+input_pars <- data_sub[data_sub$tiefenstufe == 0, c("ID","inj_mol_m2_s", "CO2_mol_per_m3","DS_glm","material","Pumpstufe")]
 colnames(input_pars) <- c("ID","injection_rate","CO2_atm","DS_glm","material","Pumpstufe")
-ggplot(input_pars)+geom_point(aes(Pumpstufe,DS_glm,col=material))
 ggplot(input_pars)+
   #geom_boxplot(aes(material,DS_glm/D0_T_p(15),fill=material))+
   geom_point(aes(material,DS_glm/D0_T_p(15),col=material))
