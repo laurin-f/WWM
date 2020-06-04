@@ -29,9 +29,9 @@ CO2_mod$CO2 <- ppm_to_mol(CO2_mod$CO2_mol_per_m3,"mol/m^3")
 #####################################
 #sweep mit CO2_atm
 CO2_mod_sweep <- readLines(paste0(comsolpfad,"CO2_mod_sweep_all.txt"))
-pars <- c("DS","injection_rate","CO2_atm")
+pars <- c("DS","CO2_atm","injection_rate")
 value_regexp <- "\\d(\\.\\d+)?(E-)?\\d"
-colnames_sweep <- str_extract_all(CO2_mod_sweep[9],paste0("r|z|",paste0(pars,"=",value_regexp,collapse=", ")),simplify = T)
+colnames_sweep <- str_extract_all(CO2_mod_sweep[9],paste0("(?<=% )r|z|",paste0(pars,"=",value_regexp,collapse=", ")),simplify = T)
 
 #colnames_sweep_raw <- str_extract_all(CO2_mod_sweep[9],"R|Z|DS=\\d(\\.\\d+)?E-\\d, injection_rate=\\d\\.\\d+, CO2_atm=",simplify = T)
 
@@ -89,18 +89,24 @@ D0_CO2_m2 <- D0_CO2/10^4 #m2/s
 #plt_list <- list()
 tiefen <- 1:8
 
+
 for(i in unique(data_sub$ID)) {
 
   CO2_obs <- subset(data_sub, ID == i)
   CO2_atm_i <- round(CO2_obs$CO2_mol_per_m3[CO2_obs$tiefe == 0],6)
   injection_rate_i <-round(unique(CO2_obs$inj_mol_m2_s),6)
-  sweep_sub_id <- grep(paste0(injection_rate_i,", CO2_atm=",CO2_atm_i,"$"),colnames(CO2_sweep))
+  sweep_sub_id <- grep(paste0(", CO2_atm=",CO2_atm_i,", injection_rate=",injection_rate_i,"$"),colnames(CO2_sweep))
   sweep_sub <- CO2_sweep[,sweep_sub_id]
   rmse <- apply(sweep_sub[tiefen,],2,RMSE,CO2_obs$CO2_mol_per_m3[tiefen])
+  
+  DS <- as.numeric(str_extract(names(rmse),"(?<=DS=)\\d(\\.\\d+)?E-\\d"))
+  
+  plot(DS,rmse)
+  title(main=unique(CO2_obs$material))
   best.fit.id <- which.min(rmse)
-  best.fit.char <- names(best.fit.id)
+  #best.fit.char <- names(best.fit.id)
 
-  best_DS <- as.numeric(str_extract(best.fit.char,"(?<=DS=)\\d(\\.\\d+)?E-\\d"))
+  best_DS <- DS[best.fit.id]
 
   DS_D0 <- best_DS/D0_CO2_m2 #m2/s
 
@@ -131,9 +137,10 @@ mod_results <- data_sub[data_sub$tiefe==0,c("ID","DS_D0_mod","material","DS_D0_g
 
 DS_D0_mat <- aggregate(list(DS_D0_COMSOL=mod_results$DS_D0_mod,DS_D0_glm= mod_results$DS_D0_glm),list(material=mod_results$material),mean)
 DS_mat <- aggregate(list(DS_COMSOL=mod_results$DS_mod, DS_glm= mod_results$DS_glm),list(material=mod_results$material),mean)
+DS_D0_mat
+DS_mat
+write.csv(DS_D0_mat,file=paste0(comsolpfad,"DS_D0_mat.txt"),row.names = F)
 
-
-DS_mat$DS_glm
 thomas_ref <- data.frame(material=c("Sand","Kies","Sand & Kies"), DS_D0=c(0.239, 0.235, 0.185),method="Flühler \n(Laemmel et al. 2017)")
 
 DS_D0_long <- reshape2::melt(DS_D0_mat,id="material",value.name="DS_D0",variable="method")
@@ -158,15 +165,3 @@ ggplot(DS_D0_long)+geom_col(aes(material,DS_D0,fill=method),position=position_do
 # Sand 0.239 (0.013) 0.205 (0.011) 0.205
 # Fine gravel 0.235 (0.008) 0.218 0.214
 # Mixture 0.185 (0.006) 0.164 0.141
-
-
-
-#residuals<-apply(CO2_sweep[,-(1:2)],2,"-",CO2_obs$CO2_mol_per_m3)
-
-
-
-
-
-ggplot()+
-  geom_point(data=CO2_mod,aes(CO2,tiefe,col="mod"))+
-  geom_point(data=CO2_obs,aes(CO2,tiefe,col="obs"))

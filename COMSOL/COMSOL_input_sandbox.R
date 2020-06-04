@@ -7,10 +7,11 @@ hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
+metapfad_comsol<- paste0(metapfad,"COMSOL/")
 
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units")
+packages<-c("lubridate","stringr","ggplot2","units","ggforce")
 check.packages(packages)
 
 #dataset laden
@@ -43,18 +44,20 @@ colnames(input_pars) <- c("ID","injection_rate","CO2_atm","DS_glm","material","P
 ggplot(input_pars)+
   #geom_boxplot(aes(material,DS_glm/D0_T_p(15),fill=material))+
   geom_point(aes(material,DS_glm/D0_T_p(15),col=material))
+
 input_pars
 
 
 save(input_pars,data_sub,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_sub.RData"))
-#CO2_atm
+
+#CO2_atm und injection rates
 CO2_atm <- sort(unique(input_pars$CO2_atm))
-write.table(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),file = paste0(metapfad_comsol,"CO2_atm.txt"),row.names = F,col.names = F,quote=F)
-
-
-#injection_rates
 injection_rates <- sort(unique(input_pars$injection_rate))
-write.table(paste0("injection_rate ",paste(injection_rates,collapse=", ")),file = paste0(metapfad_comsol,"injection_rates.txt"),row.names = F,col.names = F,quote=F)
+
+pars_sandbox <- rbind(paste0("CO2_atm ",paste(CO2_atm,collapse=", ")), paste0("injection_rate ",paste(injection_rates,collapse=", ")))
+write.table(pars_sandbox,file = paste0(metapfad_comsol,"parameter_sandbox.txt"),row.names = F,col.names = F,quote=F)
+
+
 
 
 ############

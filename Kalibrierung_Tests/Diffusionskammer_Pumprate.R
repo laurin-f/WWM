@@ -106,10 +106,9 @@ ggplot(flux)+geom_point(aes(Pumpstufe,tracer_ml_per_min))+geom_abline(intercept=
 flux_all <- rbind(flux,flux_all)
 flux_all[nrow(flux_all)+1,]<-NA
 flux_all[nrow(flux_all),1:(ncol(flux_all)-1)]<- 0
-flux_all$date <- with_tz(flux_all$date, "CET")
 
 write.csv(flux_all,file = paste0(metapfad_tracer,"Pumpstufen_flux.txt"),row.names = F)
-#write.csv(flux,file = paste0(metapfad_tracer,"Pumpstufen_flux.txt"),row.names = F)
+
 
 #########
 #

@@ -69,7 +69,7 @@ for(j in c("_inj","_ref")){
  data[,paste0("CO2_roll",j)] <- NA
 for(i in unique(data$tiefe)){
   tiefe.i <- data$tiefe == i
-  data[tiefe.i,paste0("CO2_roll",j)] <- zoo::rollapply(data[tiefe.i,paste0("CO2",j)],width=10,mean,fill=NA)
+  data[tiefe.i,paste0("CO2_roll",j)] <- zoo::rollapply(data[tiefe.i,paste0("CO2",j)],width=50,mean,fill=NA)
 }
 }
 
@@ -95,18 +95,20 @@ data$tiefe_ref <- data$tiefe + tiefen_offset[2,2] - 3.5
 data_PSt0 <- subset(data, Pumpstufe == 0)
 
 
-colnames(data_PSt0)
+
 data_kal <- aggregate(data_PSt0[,grep("CO2",colnames(data_PSt0))] ,list(tiefe = data_PSt0$tiefe), mean, na.rm=T)
 data_kal$offset <-  data_kal$CO2_inj - data_kal$CO2_ref
-ggplot(data_kal)+
-  geom_path(aes(CO2_ref,tiefe,col="ref"))+
-  geom_path(aes(CO2_inj,tiefe,col="inj"))+
-  geom_ribbon(aes(xmin=CO2_ref, xmax= CO2_ref + offset,y=tiefe,fill="offset"),alpha = 0.3)
+# ggplot(data_kal)+
+#   geom_path(aes(CO2_ref,tiefe,col="ref"))+
+#   geom_path(aes(CO2_inj,tiefe,col="inj"))+
+#   geom_ribbon(aes(xmin=CO2_ref, xmax= CO2_ref + offset,y=tiefe,fill="offset"),alpha = 0.3)
 
 data$offset <- as.numeric(as.character(factor(data$tiefe, levels=data_kal$tiefe,labels=data_kal$offset)))
 data$CO2_tracer <- data$CO2_roll_inj - (data$CO2_roll_ref + data$offset)
+data$tracer_pos <- data$CO2_tracer > 0
+data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$CO2_roll_inj)
 #data$CO2_tracer[data$CO2_tracer < 0] <- NA
-data$date
+
 ggplot(subset(data,Pumpstufe==0))+
   geom_line(aes(date,CO2_roll_ref+offset,col=as.factor(tiefe),linetype="ref + offset"),lwd=1)+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1)+
@@ -138,21 +140,32 @@ dev.off()
   geom_ribbon(aes(date,ymin=CO2_inj,ymax=CO2_ref,fill=as.factor(tiefe)),alpha=0.3)+
   geom_vline(xintercept = Pumpzeiten$start)
   
+  ggplot(subset(data))+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1.2)+
+  geom_line(aes(date,CO2_roll_ref + offset,col=as.factor(tiefe),linetype="ref + offset"),lwd=0.8)+
+  geom_ribbon(aes(date,ymax=CO2_inj,ymin=CO2_ref_offst,fill=as.factor(tiefe)),alpha=0.3)+
+  geom_vline(xintercept = Pumpzeiten$start)
+  
   month
   data$monthday <- format(data$date,"%m.%d")
   data_month_day <- aggregate(data[,grep("CO2",colnames(data))],list(monthday = format(data$date,"%m.%d"),tiefe = data$tiefe),mean)
-  ggplot(data_month_day)+geom_path(aes(CO2_ref,tiefe,col=monthday))
-  ggplot(data_month_day)+geom_path(aes(CO2_inj,tiefe,col=monthday))
-ggplot(data)+geom_point(aes(CO2_inj,CO2_ref,col=as.factor(Pumpstufe)))+geom_abline(slope=1,intercept = 0)
+  inj_ref_plot <- ggplot(data)+geom_point(aes(CO2_inj,CO2_ref,col=as.factor(Pumpstufe)))+geom_abline(slope=1,intercept = 0)
 #offset
 
 
 datelim_1.5 <- ymd_h("2020.05.23 10")
+  ref_profil <- ggplot(data_month_day)+geom_path(aes(CO2_ref,tiefe,col=monthday))
+  inj_profil <- ggplot(data_month_day)+geom_path(aes(CO2_inj,tiefe,col=monthday))
+egg::ggarrange(ref_profil,inj_profil,ncol=2)
+
 ggplot(subset(data,date < datelim_1.5))+
   geom_line(aes(date,CO2_tracer,col=as.factor(tiefe)))+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))
 
 
-ggplot(subset(data, Pumpstufe == 1.5 & date %in% round_date(date,"hours") & date < datelim_1.5))+ geom_path(aes(CO2_tracer,tiefe,col=as.factor(date)))
+ggplot(subset(data, Pumpstufe == 1.5 & date %in% round_date(date,"hours") & date < datelim_1.5))+ 
+  geom_path(aes(CO2_tracer,tiefe,col=as.factor(date)))+
+  geom_path(aes(CO2_ref + offset,tiefe,col=as.factor(date)))+
+  geom_path(aes(CO2_inj,tiefe,col=as.factor(date)))
 
 
