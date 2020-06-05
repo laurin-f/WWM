@@ -76,6 +76,7 @@ if(chamber=="manuelle Kammer"){
   Vol_kragen <- (kragen$height-Kammer$Hoehe_cm[1])*Grundfl
   Vol_kragen_rand <- kragen$height*Grundfl_aussen - kragen$height*Grundfl
   Vol <- Vol_kammer + Vol_GGA + ifelse(Vol_kragen > 0, Vol_kragen, 0) - Vol_kragen_rand
+  names(Vol) <- kragen$KragenID
 }else{
   #Vol in cm3
   Grundfl<-Kammer$Kragen_Grundfl_innen_cm2 #cm2

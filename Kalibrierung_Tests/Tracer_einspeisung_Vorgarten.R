@@ -155,10 +155,10 @@ inj_mol_m2_s <- set_units(injection_rates,"mol/s")/set_units(A_inj,"m^2")
 
 CO2_atm <- 0
 
-min_DS <- c(1.5e-6,0.5e-6,1e-7,1e-7)
-max_DS <- c(3e-6,2e-6,8e-7,8e-7)
-step <- 1e-7
-schichten <- 4
+min_DS <- c(2e-6,1e-7,0.5e-7)
+max_DS <- c(5e-6,1.5e-6,5e-7)
+step <- c(1e-7,1e-7,2e-8)
+schichten <- 3
 DS_1bis8 <- matrix(paste0("DS_",1:schichten," range(",min_DS,",",step,",",max_DS,")"),schichten,1)
 
 pars_vorgarten <- rbind(paste0("injection_rate ",inj_mol_m2_s),paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),DS_1bis8)

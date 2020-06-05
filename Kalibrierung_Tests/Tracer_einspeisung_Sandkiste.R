@@ -115,7 +115,7 @@ A <-15^2*pi#cm2
 #DS = -FZ * dz / dC
 ###################################
 
-data_agg$DS <- data_agg$Fz / 60 / A / (data_agg$dC_dz / 10^6)
+data_agg$DS <- data_agg$Fz / 60 / A / (data_agg$dC_dz / 10^6)#cm3/s/cm2 *cm = cm2/s
 #DS <- 0.3 / 60 / A * dz / (dC / 10^6)
 unique(cbind(data_agg$DS/D0_CO2,data_agg$ID))
 

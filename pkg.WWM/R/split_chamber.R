@@ -284,24 +284,36 @@ calc_flux <- function(data,
   #Konstanten um Einheiten umzurechnen
   #Luftdruck
   p_Pa <- p_kPa*1000#PA = N/m2 = kg/(m s2)
+  #p_Pa <- set_units(p_kPa*1000,"kg/m/s^2")#PA = N/m2 = kg/(m s2)
   #Temperatur
   T_K <- T_deg+273.15 #K
+  #T_K <- set_units(T_deg+273.15,"K") #K
   #allgemeine Gaskonstante
   R <- 8.314 #kg m2/(s2 mol K)
+  #R <- set_units(8.314, "kg*m^2/s^2/mol/K") #kg m2/(s2 mol K)
   #Molare Masse CO2 und CH4
   M<-data.frame(CO2 = 44.01, CH4 = 16.04)#g/mol
+  #M<-data.frame(CO2 = set_units(44.01, "g/mol"), CH4 = set_units(16.04, "g/mol")) #g/mol
 
   #dichte
   ro_g_per_m3 <- p_Pa*M/(R*T_K) #kg/(m s2) * g/mol / kg m2 * (s2 mol K)/ K = g/m3
+  m_mol_per_m3 <- p_Pa/(R*T_K) #kg/(m s2) / kg /m2 * (s2 mol K)/ K = mol/m3
   ro<- ro_g_per_m3 / 10^6 #g/cm3 = g/ml
-
+  m<- m_mol_per_m3 / 10^6 #mol/cm3 = mol/ml
   #berechnung Flux in unterschiedlichen Einheiten
   flux <- data.frame(ppm_per_min)
+  
+  if(length(Vol) > 1){
+    Vol <- as.numeric(as.character(factor(gr_id[,1],levels=names(Vol),labels=Vol)))
+  }
+  
   flux$ml_per_min<-ppm_per_min /10^6 * Vol #cm3 / min
   flux$g_per_min <- flux$ml_per_min * ro[,gas] #g / min
+  flux$mol_per_min <- flux$ml_per_min * m #mol / min
   if(!is.null(Grundfl)){
     flux$ml_per_min_m2<-flux$ml_per_min/(Grundfl/10^4) #cm3 /(min m2)
     flux$g_per_min_m2 <- flux$g_per_min/(Grundfl/10^4) #g/(min m2)
+    flux$mol_per_min_m2 <- flux$mol_per_min/(Grundfl/10^4) #mol/(min m2)
   }
   #falls eine Tracerkonzentration angegeben wurde wird
   #eine effektive Einspeiserate berechnet

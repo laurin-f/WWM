@@ -6,7 +6,7 @@ metapfad_harth<- paste0(metapfad,"Hartheim/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
-
+datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/") 
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2")
@@ -32,6 +32,7 @@ flux <- read.csv(paste0(metapfad,"Tracereinspeisung/Pumpstufen_flux.txt"))
 datelim <- c("2020.05.18 10:00:00")
 smp1 <- read_sampler("sampler1",datelim = datelim, format = "long")
 smp2 <- read_sampler("sampler2",datelim = datelim, format = "long")
+
 
 #smp1_plt <- ggplot(smp1)+geom_line(aes(date,CO2,col=as.factor(tiefe)))
 
@@ -107,9 +108,15 @@ data$offset <- as.numeric(as.character(factor(data$tiefe, levels=data_kal$tiefe,
 data$CO2_tracer <- data$CO2_roll_inj - (data$CO2_roll_ref + data$offset)
 data$tracer_pos <- data$CO2_tracer > 0
 data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$CO2_roll_inj)
-#data$CO2_tracer[data$CO2_tracer < 0] <- NA
+data$CO2_tracer[data$CO2_tracer < 0 | data$Pumpstufe == 0| is.na(data$Pumpstufe)] <- NA
 
-ggplot(subset(data,Pumpstufe==0))+
+
+data_wide <- tidyr::pivot_wider(data, id_cols = date, names_from = tiefenstufe,values_from = c(CO2_inj,CO2_ref,CO2_tracer,Fz),names_prefix = "tiefe")
+colnames(data_wide)
+data_wide <- data_wide[,-grep("CO2_(inj|tracer)_tiefe0|Fz_tiefe[1-7]",colnames(data_wide))]
+colnames(data_wide) <- str_replace(colnames(data_wide),"Fz_tiefe0","injection_ml_per_min")
+
+offset_plot <- ggplot(subset(data,Pumpstufe==0))+
   geom_line(aes(date,CO2_roll_ref+offset,col=as.factor(tiefe),linetype="ref + offset"),lwd=1)+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1)+
   geom_ribbon(aes(x=date,ymin=CO2_ref + offset,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.3)+
@@ -140,7 +147,7 @@ dev.off()
   geom_ribbon(aes(date,ymin=CO2_inj,ymax=CO2_ref,fill=as.factor(tiefe)),alpha=0.3)+
   geom_vline(xintercept = Pumpzeiten$start)
   
-  ggplot(subset(data))+
+  ggplot(data)+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1.2)+
   geom_line(aes(date,CO2_roll_ref + offset,col=as.factor(tiefe),linetype="ref + offset"),lwd=0.8)+
   geom_ribbon(aes(date,ymax=CO2_inj,ymin=CO2_ref_offst,fill=as.factor(tiefe)),alpha=0.3)+
@@ -158,9 +165,9 @@ datelim_1.5 <- ymd_h("2020.05.23 10")
   inj_profil <- ggplot(data_month_day)+geom_path(aes(CO2_inj,tiefe,col=monthday))
 egg::ggarrange(ref_profil,inj_profil,ncol=2)
 
-ggplot(subset(data,date < datelim_1.5))+
-  geom_line(aes(date,CO2_tracer,col=as.factor(tiefe)))+
-  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))
+ggplot(data)+
+  geom_line(aes(date,CO2_tracer,col=as.factor(tiefe)))
+
 
 
 ggplot(subset(data, Pumpstufe == 1.5 & date %in% round_date(date,"hours") & date < datelim_1.5))+ 
@@ -168,4 +175,9 @@ ggplot(subset(data, Pumpstufe == 1.5 & date %in% round_date(date,"hours") & date
   geom_path(aes(CO2_ref + offset,tiefe,col=as.factor(date)))+
   geom_path(aes(CO2_inj,tiefe,col=as.factor(date)))
 
-
+###########
+#export data
+paste("tiefe",rev(unique(data$tiefenstufe)),"=",rev(unique(data$tiefe)),"cm",collapse = ", ")
+ggplot(data_wide)+geom_line(aes(date,injection_ml_per_min))
+write.csv(data_wide,file=paste0(datapfad_harth,"co2_profil_",paste(format(range(data_wide$date),"%j"),collapse = "-"),".txt"),row.names = F)
+strptime()
