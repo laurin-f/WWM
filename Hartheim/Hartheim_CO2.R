@@ -3,6 +3,7 @@ detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_harth<- paste0(metapfad,"Hartheim/")
+metapfad_comsol<- paste0(metapfad,"COMSOL/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
@@ -96,7 +97,20 @@ data$tiefe_ref <- data$tiefe + tiefen_offset[2,2] - 3.5
 data_PSt0 <- subset(data, Pumpstufe == 0)
 
 
+data$tiefe_inj <- data$tiefe +tiefen_offset$offset[1]
+data$tiefe_ref <- data$tiefe +tiefen_offset$offset[2] - 3.5
 
+# for(i in unique(data$date[!is.na(data$CO2_ref)])){
+# data$CO2_ref_adj[data$date == i] <- approx(unique(data$tiefe_ref),data$CO2_ref[data$date == i],unique(data$tiefe_inj),rule=2)$y
+# }
+
+
+# ggplot(data)+
+#   geom_line(aes(date,CO2_ref_adj,col=as.factor(tiefe_inj)))+
+#   geom_line(aes(date,CO2_ref,col=as.factor(tiefe_ref)))
+# ggplot(data)+
+#   geom_line(aes(date,CO2_ref_adj-CO2_ref,col=as.factor(tiefe_inj)))
+  
 data_kal <- aggregate(data_PSt0[,grep("CO2",colnames(data_PSt0))] ,list(tiefe = data_PSt0$tiefe), mean, na.rm=T)
 data_kal$offset <-  data_kal$CO2_inj - data_kal$CO2_ref
 # ggplot(data_kal)+
@@ -112,7 +126,7 @@ data$CO2_tracer[data$CO2_tracer < 0 | data$Pumpstufe == 0| is.na(data$Pumpstufe)
 
 
 data_wide <- tidyr::pivot_wider(data, id_cols = date, names_from = tiefenstufe,values_from = c(CO2_inj,CO2_ref,CO2_tracer,Fz),names_prefix = "tiefe")
-colnames(data_wide)
+
 data_wide <- data_wide[,-grep("CO2_(inj|tracer)_tiefe0|Fz_tiefe[1-7]",colnames(data_wide))]
 colnames(data_wide) <- str_replace(colnames(data_wide),"Fz_tiefe0","injection_ml_per_min")
 
@@ -121,6 +135,44 @@ offset_plot <- ggplot(subset(data,Pumpstufe==0))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1)+
   geom_ribbon(aes(x=date,ymin=CO2_ref + offset,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.3)+
   labs(title="keine Injektion",col="tiefe",fill="tiefe",linetype="sampler")
+
+
+data_agg <- aggregate(data[grep("date|CO2|Fz|Pumpstufe",colnames(data))],list(hour=round_date(data$date,"hours"),tiefe=data$tiefe),mean)
+data_agg$date <- with_tz(data_agg$date,"UTC")
+data_agg <- subset(data_agg, Pumpstufe == 1.5)
+save(data,data_agg,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
+###############################
+#COMSOL input
+A_inj <- set_units(1^2*pi,"mm^2")
+injection_ml_min <- na.omit(unique(round(data_agg$Fz[data_agg$Pumpstufe  == 1.5],2)))
+
+
+
+injection_rates <- ppm_to_mol(injection_ml_min,unit_in = "cm^3/min",out_class = "units")
+inj_mol_m2_s <- sort(set_units(injection_rates,"mol/s")/set_units(A_inj,"m^2"))
+
+#CO2_atm <- ppm_to_mol(data_agg$CO2_ref[data_agg$tiefe == 0 & data_agg$Pumpstufe == 1.5],unit_in = "ppm",out_class = "units",T_C = na.omit(unique(data_agg$T_C[data_agg$Pumpstufe == 1.5])))
+
+CO2_atm <- 0
+
+min_DS <- c(5e-7,5e-7,5e-7,5e-7)
+max_DS <- c(3e-6,3e-6,3e-6,3e-6)
+#step <- c(1e-7,1e-7,1e-7)
+step <- 1e-7
+schichten <- length(min_DS)
+DS_1bis8 <- matrix(paste0("DS_",1:schichten," range(",min_DS,",",step,",",max_DS,")"),schichten,1)
+
+pars_Hartheim <- rbind(paste0("injection_rate ",paste(inj_mol_m2_s,collapse = ", ")),paste0("CO2_atm ",paste(CO2_atm,collapse=", ")),DS_1bis8)
+
+
+
+write.table(pars_Hartheim,
+            file = paste0(metapfad_comsol,"parameter_Hartheim.txt"),
+            row.names = F,col.names = F,quote=F)
+
+
+
+
 
 #################################
 #plots
@@ -153,7 +205,7 @@ dev.off()
   geom_ribbon(aes(date,ymax=CO2_inj,ymin=CO2_ref_offst,fill=as.factor(tiefe)),alpha=0.3)+
   geom_vline(xintercept = Pumpzeiten$start)
   
-  month
+
   data$monthday <- format(data$date,"%m.%d")
   data_month_day <- aggregate(data[,grep("CO2",colnames(data))],list(monthday = format(data$date,"%m.%d"),tiefe = data$tiefe),mean)
   inj_ref_plot <- ggplot(data)+geom_point(aes(CO2_inj,CO2_ref,col=as.factor(Pumpstufe)))+geom_abline(slope=1,intercept = 0)
@@ -174,10 +226,13 @@ ggplot(subset(data, Pumpstufe == 1.5 & date %in% round_date(date,"hours") & date
   geom_path(aes(CO2_tracer,tiefe,col=as.factor(date)))+
   geom_path(aes(CO2_ref + offset,tiefe,col=as.factor(date)))+
   geom_path(aes(CO2_inj,tiefe,col=as.factor(date)))
-
 ###########
 #export data
+
+
 paste("tiefe",rev(unique(data$tiefenstufe)),"=",rev(unique(data$tiefe)),"cm",collapse = ", ")
+
 ggplot(data_wide)+geom_line(aes(date,injection_ml_per_min))
+
 write.csv(data_wide,file=paste0(datapfad_harth,"co2_profil_",paste(format(range(data_wide$date),"%j"),collapse = "-"),".txt"),row.names = F)
 strptime()
