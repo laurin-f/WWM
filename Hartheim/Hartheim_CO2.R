@@ -10,7 +10,7 @@ samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/")
 datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/") 
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2")
+packages<-c("lubridate","stringr","ggplot2","units")
 check.packages(packages)
 
 
@@ -144,7 +144,7 @@ save(data,data_agg,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
 ###############################
 #COMSOL input
 A_inj <- set_units(1^2*pi,"mm^2")
-injection_ml_min <- na.omit(unique(round(data_agg$Fz[data_agg$Pumpstufe  == 1.5],2)))
+injection_ml_min <- na.omit(unique(round(data_agg$Fz,2)))
 
 
 
@@ -155,10 +155,10 @@ inj_mol_m2_s <- sort(set_units(injection_rates,"mol/s")/set_units(A_inj,"m^2"))
 
 CO2_atm <- 0
 
-min_DS <- c(5e-7,5e-7,5e-7,5e-7)
-max_DS <- c(3e-6,3e-6,3e-6,3e-6)
+min_DS <- c(2e-6,1.75e-6,1e-6,6.5e-7)
+max_DS <- c(3e-6,2.75e-6,2e-6,1.1e-6)
 #step <- c(1e-7,1e-7,1e-7)
-step <- 1e-7
+step <- (max_DS - min_DS) / 10
 schichten <- length(min_DS)
 DS_1bis8 <- matrix(paste0("DS_",1:schichten," range(",min_DS,",",step,",",max_DS,")"),schichten,1)
 
@@ -179,14 +179,15 @@ write.table(pars_Hartheim,
 
 inj <- ggplot(data)+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
-  geom_vline(xintercept = Pumpzeiten$start[2])+
+  geom_vline(xintercept = Pumpzeiten$start[-1])+
   annotate("text",x=Pumpzeiten$start[2],y=Inf,label="injection",vjust=1.9,hjust=-0.3)+labs(col="tiefe [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler")
 
 ref <- ggplot(data)+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
-  geom_vline(xintercept = Pumpzeiten$start[2])+
+  geom_vline(xintercept = Pumpzeiten$start[-1])+
   guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
 ref  
+inj
 p <- egg::ggarrange(inj,ref,ncol=1)
 
 pdf(paste0(plotpfad,"hartheim_einspeisung1.pdf"),width=9,height=7)

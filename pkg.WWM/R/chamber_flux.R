@@ -42,8 +42,8 @@ data.raw<-read_db("GGA.db",GGA,datelim=c(beginn,ende))
 
 
 
-#dataset<-split.chamber(data=data.agg,closing=5,opening = -30,t_max=9)
-dataset<-split_chamber(data=data.raw,
+#data<-split.chamber(data=data.agg,closing=5,opening = -30,t_max=9)
+data<-split_chamber(data=data.raw,
                        # closing_before = 40,
                        # closing_after = 40,
                        # opening_before = -30,
@@ -55,13 +55,13 @@ dataset<-split_chamber(data=data.raw,
 
 
 
-dataset$kammer<-NA
+data$kammer<-NA
 
 reihenfolge <- t(str_split(Messungen$reihenfolge[messnr],",",simplify = T))
 
 
 for(i in seq_along(reihenfolge)){
-  dataset$kammer[dataset$messid == i] <- reihenfolge[i]
+  data$kammer[data$messid == i] <- reihenfolge[i]
 }
 
 Vol_GGA <- GGA_Vol$Volume_effektive_cm3[GGA_Vol$Analyzer==GGA]
@@ -92,7 +92,7 @@ if(chamber=="manuelle Kammer"){
 
 flux <- list()
 for(i in c("CO2","CH4")){
-  flux[[i]] <- calc_flux(data = dataset,
+  flux[[i]] <- calc_flux(data = data,
           group="kammer",
           gas = i,
           Vol = Vol,

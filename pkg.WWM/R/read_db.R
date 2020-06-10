@@ -170,7 +170,7 @@ update_dynament.db<-function(table.name="dynament_test",
 
     #spaltennamen der neuen files
     if(table.name=="dynament_test"){
-      db.colnames<-c("date_int",paste0("CO2_Dyn_",sprintf("%02d",0:21)))
+      db.colnames<-c("date_int",paste0("CO2_Dyn_",sprintf("%02d",0:21)),"T_C")
     }else if(table.name == "sampler1"){
      db.colnames <- c("date_int",paste0("CO2_tiefe",0:7),"T_C")
     }else if(!is.na(str_extract(table.name,"sampler"))){
@@ -191,7 +191,9 @@ update_dynament.db<-function(table.name="dynament_test",
     ##########################################################
     if(table.name=="dynament_test"){
     #ids der Datumsspalten und aller CO2_Dyn Spalten
-      col.ids<-lapply(dyn.colnames,function(x) x %in% c("dmy","HMS",db.colnames))
+      dyn.colnames <- lapply(dyn.colnames, function(x) as.data.frame(t(str_replace(x,"Hygro_S3_Temperatur", "T_C")),stringsAsFactors = F))
+      col.ids<-lapply(dyn.colnames,function(x)
+        x %in% c("dmy","HMS",db.colnames))
     }
 
     #########################################################
@@ -267,12 +269,14 @@ update_dynament.db<-function(table.name="dynament_test",
     dyn<-dyn[db.colnames]
     }
     if(table.name=="dynament_test"){
-    #9999 werte zu NA
-    dyn[,-1][which(dyn[,-1] > 10,arr.ind = T)]<-NA
-    #0.2 Werte zu NA
-    dyn[,-1][which(dyn[,-1] < 0.25,arr.ind = T)]<-NA
     #CO2 von mV in ppm umrechnen
-    dyn[db.colnames[-1]] <- (dyn[db.colnames[-1]]-0.4)/1.6*5000
+    CO2_cols <- grep("CO2", colnames(dyn))
+    #9999 werte zu NA
+    dyn[, CO2_cols][which(dyn[,CO2_cols] > 10,arr.ind = T)]<-NA
+    #0.2 Werte zu NA
+    dyn[, CO2_cols][which(dyn[,CO2_cols] < 0.25,arr.ind = T)]<-NA
+    #CO2 von mV in ppm umrechnen
+    dyn[,CO2_cols] <- (dyn[,CO2_cols]-0.4)/1.6*5000
     }
 
     #are there date duplicates
@@ -418,7 +422,7 @@ read_db <- function(db.name="dynament.db", #name der db
     #Vektor mit namen die sowohl bei den Korekturfaktoren als auch im Data.frame vorkommen
     same.names <- names(fm)[names(fm) %in% colnames(data)]
     #Sensor nummern für die noch kein Korrekturfaktor vorliegt
-    missing.names <- colnames(data)[!colnames(data) %in% c("date",names(fm))]
+    missing.names <- colnames(data)[!colnames(data) %in% c("date",names(fm),"T_C")]
     if(length(missing.names)>0){
       warning(paste("no correction factor for",missing.names,collapse =" "))
     }

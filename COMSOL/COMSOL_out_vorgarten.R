@@ -65,7 +65,8 @@ tiefen <- 1:8
 
   
   CO2_obs <- data_inter
-
+  CO2_obs$z <- z_soil_cm + CO2_obs$tiefe
+  CO2_obs$z - CO2_sweep$z 
   rmse <- apply(CO2_sweep[,-(1:2)],2,RMSE,CO2_obs$CO2_mol_per_m3)
   DS_mat_ch <- str_extract_all(names(rmse),"(?<=DS_\\d=)\\d(\\.\\d+)?E-\\d",simplify = T)
   DS_mat <- as.data.frame(apply(DS_mat_ch,2,as.numeric))
@@ -74,7 +75,7 @@ tiefen <- 1:8
   DS_wide <- cbind(rmse,DS_mat)
   DS_long <- reshape2::melt(DS_wide, id = "rmse",variable="Schicht",value.name="DS")
   ggplot(subset(DS_long,rmse < sort(unique(rmse))[1000]))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
-  ggplot(subset(DS_wide,rmse < sort(rmse)[1000]))+geom_point(aes(DS_1,rmse,col=DS_2))+scale_color_viridis_c()
+  
   best.fit.id <- which.min(rmse)
   
   best_DS <- as.numeric(DS_mat[best.fit.id,])
@@ -103,7 +104,7 @@ data_inter$DS[data_inter$tiefe > 0] <- NA
 #   guides(col=F)
 sweep_plot <- ggplot(data_inter)+
   geom_point(aes(tracer,tiefe,col="obs"))+
-  geom_point(aes(CO2_mod,tiefe,col="mod"))+
+  geom_line(aes(CO2_mod,tiefe,col="mod"))+
   geom_hline(yintercept = schicht_grenzen)
 
 DS_D0_plot <- ggplot(data_inter)+geom_path(aes(DS_D0,tiefe))

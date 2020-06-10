@@ -24,10 +24,9 @@ if(!is.null(new_meas)){
 
 Pumpstufen <- str_split(Pumpzeiten$Pumpstufe,",")
 
-split_list <- lapply(new_meas,function(x) injectionrate(datelim = c(Pumpzeiten$beginn[x],Pumpzeiten$ende[x]),Pumpstufen = Pumpstufen[[x]],group="Pumpstufe"))
-#split_list_messid <- lapply(seq_along(Pumpstufen),function(x) injectionrate(datelim = datelim[x,],Pumpstufen = Pumpstufen[[x]],group="messid"))
+split_list <- lapply(new_meas,function(x) injectionrate(datelim = c(Pumpzeiten$beginn[x],Pumpzeiten$ende[x]),Pumpstufen = Pumpstufen[[x]],group="Pumpstufe",t_init = 0.1,spikes_th=390,difftime_th = 10,all_spikes_NA = F))
+
 split_flux_list <- lapply(split_list,function(x) x[[1]])
-#split_flux_list_messid <- lapply(split_list_messid,function(x) x[[1]])
 split_data_list <- lapply(split_list,function(x) x[[2]])
 
 for (i in seq_along(split_flux_list)){
@@ -43,17 +42,14 @@ flux <- flux[!colnames(flux) %in% c("ID","messid")]
 flux$date <- lubridate::with_tz(flux$date, "UTC")
 
 flux_all <- rquery::natural_join(flux,flux_old,by="date",jointype="FULL")
-
-plot <- F
+}
+plot <- T
 if(plot == T){
   ggplot(subset(flux_all,date > min(Pumpzeiten$beginn)))+
     geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
     ggnewscale::new_scale_color()+
-    geom_point(data=flux_messid,aes(date,ml_per_min,col=as.factor(ID)))
+    geom_point(data=flux_messid,aes(date,ml_per_min,col=as.factor(messid)))
 }
-
-
-
 
 write.csv(flux_all,file = paste0(metapfad_tracer,"Pumpstufen_flux.txt"),row.names = F)
-}
+

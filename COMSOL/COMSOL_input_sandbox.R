@@ -31,8 +31,8 @@ A_inj <- set_units(1^2*pi,"mm^2")
 
 unique(data_agg$Fz) #ml/min
 injection_rates <- ppm_to_mol(data_agg$Fz,unit_in = "cm^3/min",out_class = "units")
-inj_mol_cm2_s <- set_units(injection_rates,"mol/s")/A_inj
-data_agg$inj_mol_m2_s <- set_units(inj_mol_cm2_s,"mol/m^2/s")
+inj_mol_mm2_s <- set_units(injection_rates,"mol/s")/A_inj
+data_agg$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
 
 data_sub <- subset(data_agg, respi_sim == "nein" & Versuch %in% c(3:10) & Pumpstufe %in% c(1.5,3))
 colnames(data_sub) <- str_replace(colnames(data_sub),"^DS$","DS_glm")

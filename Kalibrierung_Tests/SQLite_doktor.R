@@ -4,12 +4,12 @@ hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 sqlpath<-paste0(hauptpfad,"Daten/aufbereiteteDaten/SQLite/")
 dynpfad<-paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 db_name <- "dynament.db"
-table_name <- "sampler1"
-table.name <- "sampler1"
+table_name <- "dynament_test"
+
 con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,db_name))
 
 #dbRemoveTable(con,"sampler1")
-#test <- dbReadTable(con,table_name)
+test <- dbReadTable(con,table_name)
 #dbSendQuery(con,paste0("ALTER TABLE ",table_name," ADD COLUMN T_C REAL"))
 
 
@@ -24,8 +24,10 @@ con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,db_name))
 
 #dbGetQuery(con, "PRAGMA table_info(sampler1);")
 
+all_files <- list.files(dynpfad)
+files <- str_subset(all_files,"20200609_.*_diff")
 
-rm_file_from_db()
+#rm_file_from_db(files[1] ,table_name = "dynament_test")
 
 con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,db_name))
 query2 <- paste0("SELECT datetime(date_int,'unixepoch') AS date, * FROM ",table_name)

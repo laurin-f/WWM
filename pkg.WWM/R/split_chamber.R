@@ -278,6 +278,11 @@ calc_flux <- function(data,
   ###################anschauen !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   date_means <- sapply(1:nrow(gr_id), function(x) mean(data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),"date"]))
 
+  if("T_C" %in% colnames(data)){
+  T_C_means <- sapply(1:nrow(gr_id), function(x) mean(data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),"T_C"]))
+  }
+
+
   #aus der fm_liste wird jeweils der zweite coeffizient (steigung) ausgeschnitten
   ppm_per_min <- sapply(fm_list,"[[","coefficients")[2,]#ppm/min
 
@@ -325,6 +330,9 @@ calc_flux <- function(data,
   flux$messid <- as.numeric(gr_id[,2])
   #####################anschauen!!!!!!!!!!!!!!!!!!!!!
   flux$date <- lubridate::as_datetime(date_means)
+  if("T_C" %in% colnames(data)){
+  flux$T_C <- T_C_means
+  }
   if(aggregate == T){
   flux <- aggregate(flux,list("group" = gr_id[,1]),mean)
   flux$date <- with_tz(flux$date, "UTC")

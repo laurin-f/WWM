@@ -28,6 +28,10 @@ injectionrate <- function(datelim,
                           t_init = 2,
                           t_min=3,
                           T_C = 15,
+                          spikes_th = 500,
+                          difftime_th = 10,
+                          all_spikes_NA = F,
+                          data = NULL,
                           ...){
 
   ########################
@@ -39,8 +43,9 @@ injectionrate <- function(datelim,
   Vol_ml<-Vol.xlsx$Volumen_effektiv_ml
 
   #CO2 daten einlesen
-  data <- read_db("dynament.db","dynament_test",datelim = datelim)
-
+  if(is.null(data)){
+    data <- read_db("dynament.db","dynament_test",datelim = datelim)
+  }
   #Spaltenname anpassen
   colnames(data) <- str_replace(colnames(data),"(?<=CO2).*","_raw")
   data$CO2 <- data$CO2_raw
@@ -50,10 +55,11 @@ injectionrate <- function(datelim,
   #postprocessing
   #############################
   #spikes entfernen
-  spikes <- which(abs(diff(data$CO2_raw)) > 500 & diff(as.numeric(data$date)) <= 10)
-  data$CO2[spikes[spikes %in% (spikes + 1)]] <- NA
-  data$CO2[spikes] <- NA
-
+  spikes <- which(abs(diff(data$CO2_raw)) > spikes_th & diff(as.numeric(data$date)) <= difftime_th)+1
+  data$CO2[spikes[spikes %in% (spikes - 1)]] <- NA
+  if(all_spikes_NA){
+    data$CO2[spikes] <- NA
+  }
   #split_chmaber anwenden
   split <- split_chamber(data,
                          closing_before = closing_before,
