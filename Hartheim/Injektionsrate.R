@@ -24,7 +24,7 @@ if(!is.null(new_meas)){
 
 Pumpstufen <- str_split(Pumpzeiten$Pumpstufe,",")
 
-split_list <- lapply(new_meas,function(x) injectionrate(datelim = c(Pumpzeiten$beginn[x],Pumpzeiten$ende[x]),Pumpstufen = Pumpstufen[[x]],group="Pumpstufe",t_init = 0.1,spikes_th=390,difftime_th = 10,all_spikes_NA = F))
+split_list <- lapply(new_meas,function(x) injectionrate(datelim = c(Pumpzeiten$beginn[x],Pumpzeiten$ende[x]),Pumpstufen = Pumpstufen[[x]],group="Pumpstufe",t_init = 0.5,spikes_th=390,difftime_th = 10,all_spikes_NA = F))
 
 split_flux_list <- lapply(split_list,function(x) x[[1]])
 split_data_list <- lapply(split_list,function(x) x[[2]])

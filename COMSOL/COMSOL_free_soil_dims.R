@@ -12,9 +12,53 @@ packages<-c("lubridate","stringr","ggplot2","ggforce","units","egg")
 
 check.packages(packages)
 
+geometry_sweep_files <- list.files(paste0(comsolpfad,"geometry_sweep"),full.names = T)
+geometry_sweeps <- lapply(geometry_sweep_files,read.csv,skip=6,sep="")
+geometry_sweeps[[8]]
+for(i in 1:8){
+  colnames(geometry_sweeps[[i]]) <- c("r","z",paste0("c",i))
+}
+
+geometry_wide <- Reduce(merge,geometry_sweeps)
+geometry <- reshape2::melt(geometry_wide, id = c("r","z"),value.name="c")
+geometry$tiefe <- as.numeric(as.character(factor(geometry$variable,levels= unique(geometry$variable),labels = (0:7)*-3.5)))
+
+z_soil <- 150
+r_soil <- 180
 
 
+z_mat <- subset(geometry, r==r_soil)
+r_mat <- subset(geometry, z==z_soil)
+z_mat <- z_mat[order(z_mat$z),]
+r_mat <- r_mat[order(r_mat$r),]
+for(i in unique(r_mat$tiefe)){
+  rID <- r_mat$tiefe == i
+  zID <- z_mat$tiefe == i
+  r_mat$slope[rID] <- c(NA,diff(r_mat$c[rID]))
+  z_mat$slope[zID] <- c(NA,diff(z_mat$c[zID]))
+}
+ggplot(r_mat)+geom_point(aes(r,c))+facet_wrap(~tiefe,scales="free")
+ggplot(r_mat)+
+  geom_hline(yintercept = 0)+
+  geom_point(aes(r,slope))+
+  facet_wrap(~tiefe,scales="free")
+ggplot(z_mat)+
+  geom_hline(yintercept = 0)+
+  geom_point(aes(z,slope))+
+  facet_wrap(~tiefe,scales="free")
 
+ggplot(geometry)+geom_vline(xintercept = r_soil)+
+  geom_line(aes(r,c,col=as.factor(z)))+
+  geom_point(data = subset(geometry,r== r_soil & z == z_soil),aes(r,c))+
+  facet_wrap(~tiefe,scales="free")
+ggplot(geometry)+geom_vline(xintercept = z_soil)+
+  geom_line(aes(z,c,col=as.factor(r)))+
+  geom_point(data = subset(geometry,r== r_soil & z == z_soil),aes(z,c))+
+  facet_wrap(~tiefe,scales="free")
+ggplot(geometry)+geom_point(aes(z,c,col=as.factor(tiefe)))
+
+ggplot(geometry)+geom_point(aes(c,tiefe,col=as.factor(z)))
+ggplot(geometry)+geom_point(aes(c,tiefe,col=as.factor(r)))
 #####################################
 #sweep vorgarten
 CO2_mod_sweep <- readLines(paste0(comsolpfad,"CO2_mod_free_soil_dims.txt"))

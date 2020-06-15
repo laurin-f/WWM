@@ -22,6 +22,10 @@ unzip.files<-function(path=ggapfad){
   for(i in seq_along(zips)){
     #dateien der i-ten zip auflisten
     zip.list<-unzip(zips[i],list=T)
+
+    if(!dir.exists(paste0(path,"unzipped/"))){
+      dir.create(paste0(path,"unzipped/"))
+    }
     #wenn die Datei nicht im unzipped Ordner steht
     if(!file.exists(paste0(path,"unzipped/",zip.list$Name))){
       #unzippen
@@ -120,6 +124,10 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
 
       #disconnect Database
       dbDisconnect(con)
+
+      if(!dir.exists(paste0(path,"db_log/"))){
+        dir.create(paste0(path,"db_log/"))
+      }
 
       #files Datei speichern
       write.csv(c(files),
@@ -354,7 +362,7 @@ update_dynament.db<-function(table.name="dynament_test",
 #' for "dynament.db" either \code{"dynament_test"} or \code{"samplerx"}
 #' for "GGA.db" either \code{"gga"} or \code{"micro"}
 #' @param table.name name of the table in the database
-#' @param datelim  limits of the time period that is loaded as character or POSIXct if all Data chall be loaded \code{datelim = NULL}
+#' @param datelim  limits of the time period that is loaded as character or POSIXct if all Data should be loaded \code{datelim = NULL}
 #' @param cols names of the colums that will be loaded. default is all colums: \code{cols = "*"}
 #' @param sqlpath path to the database
 #' @param korrektur_dyn logical specifies whether dynament values are corrected for the specific sansor id or not if db.name is "dynament.db"

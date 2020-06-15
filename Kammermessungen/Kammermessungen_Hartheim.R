@@ -21,6 +21,7 @@ CH4_flux <- flux[["CH4"]][[1]]
 CH4_split <- flux[["CH4"]][[2]]
 
 range(CO2_flux$mol_per_min_m2)
+mean(CO2_flux$date)
 range(CO2_flux$ml_per_min_m2)
 
 ggplot(CO2_flux)+geom_line(aes(date,ml_per_min_m2,col=kammer))

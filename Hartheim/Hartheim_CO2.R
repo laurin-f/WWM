@@ -17,6 +17,8 @@ check.packages(packages)
 ###################
 #metadaten
 
+load(file=paste0(klimapfad,"relevant_data.RData"))
+
 #Pumpzeiten
 Pumpzeiten <- readxl::read_xlsx(paste0(metapfad_harth,"Tracereinspeisung_Hartheim.xlsx"))
 Pumpzeiten$ende <- as_datetime(Pumpzeiten$ende)
@@ -44,12 +46,14 @@ smp2 <- read_sampler("sampler2",datelim = datelim, format = "long")
 
 data <- merge(smp1,smp2,by=c("date","tiefe","tiefenstufe","variable"),all=T,suffixes = c("_inj","_ref"))
 
+data <- merge(data,relevant_data,by="date",all.x = T)
+
 #Pumpstufe und Versuch aus metadaten auf dataframe übetragen
 
 
 #intervalle die am anfang und am ende der Pumpversuche verweorfen werden
 stunden_bis_steadystate <- rep(10,nrow(Pumpzeiten))
-stunden_cut_off <- rep(2,nrow(Pumpzeiten))
+stunden_cut_off <- rep(0,nrow(Pumpzeiten))
 
 
 #Schleife um Zeiträume mit Pumpzeiten von Metadaten zu übernehmen
@@ -137,7 +141,7 @@ offset_plot <- ggplot(subset(data,Pumpstufe==0))+
   labs(title="keine Injektion",col="tiefe",fill="tiefe",linetype="sampler")
 
 
-data_agg <- aggregate(data[grep("date|CO2|Fz|Pumpstufe",colnames(data))],list(hour=round_date(data$date,"hours"),tiefe=data$tiefe),mean)
+data_agg <- aggregate(data[grep("date|CO2|Fz|Pumpstufe|offset",colnames(data))],list(hour=round_date(data$date,"hours"),tiefe=data$tiefe),mean,na.rm=T)
 data_agg$date <- with_tz(data_agg$date,"UTC")
 data_agg <- subset(data_agg, Pumpstufe == 1.5)
 save(data,data_agg,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
@@ -186,25 +190,44 @@ ref <- ggplot(data)+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
   geom_vline(xintercept = Pumpzeiten$start[-1])+
   guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
+p_plot <- ggplot(data)+geom_ribbon(aes(x=date,ymin=0,ymax=Precip_Intensity_mmhr),col="blue")+labs(y="Precip Intensity mm/h")
+colnames(data)
+wind_plot <- ggplot(data)+geom_line(aes(x=date,y=WindVel_30m_ms))
+Ta_plot <- ggplot(data)+geom_line(aes(x=date,y=Ta_2m))
+ggplot(subset(data,tiefe!=0))+
+  geom_line(aes(date,Ta_2m,col="ambient"))+
+  geom_line(aes(date,T_C,col="injection_box"))+xlim(ymd_h(c("2020.05.29 00","2020.06.05 00")))+
+  ggsave(paste0(plotpfad,"Termperatur_injection_box.pdf"))
+VWC_plot <-  ggplot(data)+
+  geom_line(aes(date,SoilVWC_A_5cm,col="-5"))+
+  geom_line(aes(date,SoilVWC_A_10cm,col="-10"))+
+  geom_line(aes(date,SoilVWC_A_20cm,col="-20"))+
+  labs(x="",y="Soil VWC [%]",col="tiefe [cm]")
 ref  
 inj
 p <- egg::ggarrange(inj,ref,ncol=1)
+p2 <- egg::ggarrange(inj,VWC_plot,p_plot,heights = c(2,1,1))
 
 pdf(paste0(plotpfad,"hartheim_einspeisung1.pdf"),width=9,height=7)
 p
+dev.off()
+pdf(paste0(plotpfad,"einspeisung1_mit_klima.pdf"),width=9,height=9)
+p2
 dev.off()
 
   ggplot(data)+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
   geom_line(aes(date,CO2_roll_ref,col=as.factor(tiefe),linetype="ref"))+
   geom_ribbon(aes(date,ymin=CO2_inj,ymax=CO2_ref,fill=as.factor(tiefe)),alpha=0.3)+
-  geom_vline(xintercept = Pumpzeiten$start)
+  geom_vline(xintercept = Pumpzeiten$start)+xlim(ymd_hms(c("2020-06-08 09:00:00 UTC","2020-06-09 13:00:00 UTC")))
   
   ggplot(data)+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1.2)+
   geom_line(aes(date,CO2_roll_ref + offset,col=as.factor(tiefe),linetype="ref + offset"),lwd=0.8)+
   geom_ribbon(aes(date,ymax=CO2_inj,ymin=CO2_ref_offst,fill=as.factor(tiefe)),alpha=0.3)+
-  geom_vline(xintercept = Pumpzeiten$start)
+    labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tracer signal")+
+  geom_vline(xintercept = Pumpzeiten$start)+
+    ggsave(paste0(plotpfad,"Einspeisung1_diff.pdf"),width=10,height = 7)
   
 
   data$monthday <- format(data$date,"%m.%d")
