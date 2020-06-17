@@ -18,7 +18,7 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 data_agg$CO2_mol_per_m3 <- ppm_to_mol(data_agg$CO2_tracer,"ppm")
 A_inj <- set_units(1^2*pi,"mm^2")
 
-inj_mol_min <- ppm_to_mol(round(data_agg$Fz,2),"cm^3/min",out_class = "units")
+inj_mol_min <- ppm_to_mol(round(data_agg$Fz,6),"cm^3/min",out_class = "units")
 inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/A_inj
 data_agg$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
 
@@ -30,7 +30,7 @@ unit <- str_remove_all(z_soil_ch[,2],"\\[|\\]")
 
 z_soil <- set_units(as.numeric(z_soil_ch[,1]),unit,mode="standard")
 z_soil_cm <- as.numeric(set_units(z_soil,"cm"))
-z_soil_cm <- 200
+#z_soil_cm <- 200
 #####################################
 #sweep vorgarten
 CO2_mod_sweep <- readLines(paste0(comsolpfad,"CO2_mod_Hartheim.txt"))
@@ -87,6 +87,8 @@ DS_wide <- cbind(rmse,DS_mat)
 DS_sorted <- DS_wide[which(DS_wide[,2] >= DS_wide[,3] & DS_wide[,3] >= DS_wide[,4] &DS_wide[,4] >= DS_wide[,5] ),]
 DS_long <- reshape2::melt(DS_wide, id = "rmse",variable="Schicht",value.name="DS")
 
+#############
+#dottyplot
 ggplot(subset(DS_long,rmse < sort(unique(rmse))[300]))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
 
 best.fit.id <- which.min(rmse)
@@ -103,7 +105,7 @@ best_DS_sorted <- as.numeric(DS_sorted[best.fit.id2,-1])
 names(best_DS) <- colnames(DS_mat)
 names(best_DS_sorted) <- colnames(DS_mat)
 paste(names(best_DS),best_DS)
-write.table(paste(names(best_DS),best_DS),file=paste0(comsolpfad,"best_DS_Hartheim.txt"),col.names = F,row.names = F,quote = F)
+#write.table(paste(names(best_DS),best_DS),file=paste0(comsolpfad,"best_DS_Hartheim.txt"),col.names = F,row.names = F,quote = F)
 DS_D0 <- best_DS/D0_CO2_m2 #m2/s
 schicht_grenzen <- seq(0,by=-7,length.out = schichten)
 schicht_untergrenzen <- c(schicht_grenzen[-1],-z_soil_cm)
@@ -145,6 +147,7 @@ DS_plot <- ggplot(DS_profil_long)+geom_path(aes(DS,tiefe))+
   ylim(range(CO2_obs$tiefe))
 
 ds_profil_plot <- egg::ggarrange(sweep_plot,DS_plot,ncol=2,widths = c(2,1))
+
 sweep_plot_sorted <- ggplot(CO2_obs)+
   geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+
   geom_hline(yintercept = schicht_grenzen)+
@@ -164,7 +167,7 @@ pdf(paste0(plotpfad,"DS_profil_sorted.pdf"),width=8,height=5)
 ds_profil_plot_sorted
 dev.off()
 
-sweep_long[1:10,]
+
 # ggplot(data_agg)+
 #   geom_point(aes(CO2_inj_1.5,tiefe))+
 #   geom_point(aes(CO2_ref_1.5,tiefe))
@@ -182,6 +185,7 @@ dC_dz
 dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units")#mol/m^3/cm
 
 Fz_mol_per_min_m2 <- DS_profil$DS[DS_profil$top == 0]*60  * dC_dz_mol * 100#m2/min * mol/m3/m = mol/min/m2
+
 Fz_ml_per_min_m2 <- DS_profil$DS[DS_profil$top == 0]*60 * 10^4 * dC_dz/10^6 * 10^4#cm2/min /cm  = ml/min/m2
 
 Fz_ml_per_min_m2

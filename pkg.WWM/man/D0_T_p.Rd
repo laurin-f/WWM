@@ -2,7 +2,7 @@
 % Please edit documentation in R/unit_conversion.R
 \name{D0_T_p}
 \alias{D0_T_p}
-\title{Function to calculate temperature dependent D0}
+\title{Function to calculate temperature dependent D0 in cm2/s}
 \usage{
 D0_T_p(T_C = 20, gas = "CO2", p_kPa = 101.325)
 }
@@ -17,7 +17,7 @@ D0_T_p(T_C = 20, gas = "CO2", p_kPa = 101.325)
 
 }
 \description{
-Function to calculate temperature dependent D0
+Function to calculate temperature dependent D0 in cm2/s
 }
 \examples{
 D0_temp(15)

@@ -8,11 +8,11 @@ split_chamber(
   data,
   closing_before = 40,
   closing_after = 40,
-  opening_after = -30,
+  opening_after = -10,
   opening_before = -10,
-  t_max = 5,
-  t_init = 1,
-  t_min = 5,
+  t_max = 3,
+  t_init = 0.1,
+  t_min = 2,
   gas = "CO2",
   adj_openings = T
 )

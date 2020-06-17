@@ -37,7 +37,7 @@ ppm_to_mol <- function(data,
   return(as(data_out,out_class))
 }
 
-#' Function to calculate temperature dependent D0
+#' Function to calculate temperature dependent D0 in cm2/s
 #'
 #' @param gas CO2 or CH4
 #' @param T_C Temperature in Celsius

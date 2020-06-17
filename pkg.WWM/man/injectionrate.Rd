@@ -16,6 +16,10 @@ injectionrate(
   t_init = 2,
   t_min = 3,
   T_C = 15,
+  spikes_th = 500,
+  difftime_th = 10,
+  all_spikes_NA = F,
+  data = NULL,
   ...
 )
 }

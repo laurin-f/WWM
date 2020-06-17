@@ -36,22 +36,22 @@ colnames(klima_data) <- str_remove_all(colnames(klima_data),"MET_|_CS\\d+|_degC|
 #   })
 # rm(T1_Sx)
 # T1 <- do.call("cbind",T1_Si)
-relevant_data <- klima_data[,grep("^Soil(VWC|T)|date|Precip_Intensity|^Ta|WindVel",colnames(klima_data))]
+klima <- klima_data[,grep("date|Precip_Intensity|^Ta|WindVel",colnames(klima_data))]
 
-ggplot(klima_data)+geom_line(aes(date,Precip_Intensity_mmhr))
-ggplot(klima_data)+geom_line(aes(date,Precip_Last1hr_mm))
-ggplot(klima_data)+geom_line(aes(date,Precip_Last1hr_mm))
-ggplot(klima_data)+geom_line(aes(date,WindVel_30m_ms))
-ggplot(klima_data)+geom_line(aes(date,WindDir_30m_degN_WVT))
+# ggplot(klima_data)+geom_line(aes(date,Precip_Intensity_mmhr))
+# ggplot(klima_data)+geom_line(aes(date,Precip_Last1hr_mm))
+# ggplot(klima_data)+geom_line(aes(date,Precip_Last1hr_mm))
+# ggplot(klima_data)+geom_line(aes(date,WindVel_30m_ms))
+# ggplot(klima_data)+geom_line(aes(date,WindDir_30m_degN_WVT))
 
 soil_data <- klima_data[,grep("^Soil(VWC|T)|date",colnames(klima_data))]
 
 soil_long <- reshape2::melt(soil_data,id="date")
-soil_long$depth <- str_extract(soil_long$variable,"\\d+(?=cm)")
+soil_long$tiefe <- as.numeric(str_extract(soil_long$variable,"\\d+(?=cm)"))
 soil_long$unit <- str_extract(soil_long$variable,"(?<=Soil)[A-Z|a-z]+")
 soil_long$plot <- str_extract(soil_long$variable,"(?<=_)[ABC]+(?=_)")
 
-ggplot(subset(soil_long,unit=="T"))+geom_line(aes(date,value,col=depth,linetype=plot))
-ggplot(subset(soil_long,unit=="VWC"))+geom_line(aes(date,value,col=depth,linetype=plot))
+# ggplot(subset(soil_long,unit=="T"))+geom_line(aes(date,value,col=depth,linetype=plot))
+# ggplot(subset(soil_long,unit=="VWC"))+geom_line(aes(date,value,col=depth,linetype=plot))
 
-save(relevant_data,soil_long,file=paste0(klimapfad,"relevant_data.RData"))
+save(klima,soil_long,file=paste0(klimapfad,"klima_data.RData"))
