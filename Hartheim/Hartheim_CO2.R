@@ -153,8 +153,8 @@ data$hour <- hour(data$date)
 data_PSt0 <- subset(data, Pumpstufe == 0)
 
 
-data$tiefe_inj <- data$tiefe +tiefen_offset$offset[1]
-data$tiefe_ref <- data$tiefe +tiefen_offset$offset[2] - 3.5
+#data$tiefe_inj <- data$tiefe +tiefen_offset$offset[1]
+#data$tiefe_ref <- data$tiefe +tiefen_offset$offset[2] - 3.5
 
 
 # ggplot(data)+
@@ -210,7 +210,7 @@ ggplot(data)+
   geom_line(aes(date,preds2,col="gam"))+
   geom_line(aes(date,CO2_roll_ref+offset,col="ref+offset"))+
   facet_wrap(~tiefe,scales="free")
-ggplot(subset(data,Pumpstufe==0))+
+ggplot(subset(data,Pumpstufe==0&date > Pumpzeiten$ende[2]))+
   geom_line(aes(date,CO2_roll_inj,col="inj"))+
   geom_line(aes(date,preds,col="glm"))+
   geom_line(aes(date,preds2,col="gam"))+

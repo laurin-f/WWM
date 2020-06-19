@@ -11,7 +11,7 @@
 #' @export
 #'
 #' @examples
-chamber_flux <- function(mess_dir="Vorgarten",
+chamber_flux <- function(mess_dir="Hartheim",
                          messnr=NULL,
                          aggregate = F,
                          ...){
@@ -20,44 +20,38 @@ chamber_flux <- function(mess_dir="Vorgarten",
   Messungen<-readxl::read_xlsx(paste0(metapfad,mess_dir,"/Kammermessungen.xlsx"))
   kragen <- readxl::read_xlsx(paste0(metapfad,mess_dir,"/Kammermessungen.xlsx"),sheet = 2)
 
-  if(is.null(messnr)){
-    messnr <- seq_along(Messungen$Datum)
+  if(!is.null(messnr)){
+    Messungen <- Messungen[messnr,]
   }
 
-  GGA <- unique(Messungen$GGA[messnr])
-  chamber <- unique(Messungen$kammer[messnr])
+  GGA <- unique(Messungen$GGA)
+  chamber <- unique(Messungen$kammer)
 
 
   Kammer<-readxl::read_xlsx(paste0(metapfad,"Kammermessungen/Kammer_Meta.xlsx"),sheet=chamber)
+  Schlauch_meta <- readxl::read_xlsx(paste0(metapfad,"Kammermessungen/Kammer_Meta.xlsx"),sheet="schlauch_volumen")
+
   GGA_Vol <- readxl::read_xlsx(paste0(metapfad,"GGA/Kammervolumen.xlsx"))
 
 
   kragen$height <- apply(str_split(kragen$height_cm,",",simplify = T),1,function(x) mean(as.numeric(x),na.rm=T))
 
 
-beginn<-min(ymd_hm(paste(Messungen$Datum[messnr],format(Messungen$beginn[messnr],"%H:%M"))))
-ende<-max(ymd_hm(paste(Messungen$Datum[messnr],format(Messungen$ende[messnr],"%H:%M"))))
+beginn_seq<-ymd_hm(paste(Messungen$Datum,format(Messungen$beginn,"%H:%M")))
+beginn<-min(beginn_seq)
+ende_seq<-ymd_hm(paste(Messungen$Datum,format(Messungen$ende,"%H:%M")))
+ende<-max(ende_seq)
 
 data.raw<-read_db("GGA.db",GGA,datelim=c(beginn,ende))
 
-
-
-#data<-split.chamber(data=data.agg,closing=5,opening = -30,t_max=9)
+########################
+#split chamber
 data<-split_chamber(data=data.raw,
-                       # closing_before = 40,
-                       # closing_after = 40,
-                       # opening_before = -30,
-                       # opening_after = -10,
-                       # t_max=2,
-                       # t_init = 0.1,
-                       # t_min = 2
                        ...)
-
-
 
 data$kammer<-NA
 
-reihenfolge <- t(str_split(Messungen$reihenfolge[messnr],",",simplify = T))
+reihenfolge <- unlist(str_split(Messungen$reihenfolge,","))
 
 
 for(i in seq_along(reihenfolge)){
@@ -71,6 +65,10 @@ if(chamber=="manuelle Kammer"){
 
   Grundfl <- Kammer$Grundfl._cm2[Kammer$durchmesser_typ=="kragen_innen"]
   Grundfl_aussen <- Kammer$Grundfl._cm2[Kammer$durchmesser_typ=="kragen_aussen"]
+
+  schlauch_cols <- grep("schlauch",colnames(Messungen),value=T)
+  Vol_schlauch_df <- Messungen[,schlauch_cols]*Schlauch_meta[rep(3,nrow(Messungen)),schlauch_cols]
+  Vol_schlauch <- rowSums(Vol_schlauch_df) #cm3
 
   Vol_kammer<-Kammer$Gesamt_vol_cm3[1]
   Vol_kragen <- (kragen$height-Kammer$Hoehe_cm[1])*Grundfl
@@ -91,19 +89,32 @@ if(chamber=="manuelle Kammer"){
 }
 
 flux <- list()
+if(length(Vol_schlauch) > 1){
+  for(i in c("CO2","CH4")){
+    flux[[i]] <- list(NULL,NULL)
+    for(j in seq_along(Vol_schlauch)){
+    flux_j <- calc_flux(data = subset(data,date > beginn_seq[j] & date < ende_seq[j]),
+                           group="kammer",
+                           gas = i,
+                           Vol = Vol+Vol_schlauch[j],
+                           Grundfl = Grundfl,
+                           aggregate = aggregate)
+    flux[[i]][[1]] <- rbind(flux[[i]][[1]],flux_j[[1]])
+    flux[[i]][[2]] <- rbind(flux[[i]][[2]],flux_j[[2]])
+
+    }
+  }
+}else{
+
 for(i in c("CO2","CH4")){
   flux[[i]] <- calc_flux(data = data,
           group="kammer",
           gas = i,
-          Vol = Vol,
+          Vol = Vol+Vol_schlauch,
           Grundfl = Grundfl,
           aggregate = aggregate)
   }
-
+}
 return(flux)
 }
-
-
-
-
 

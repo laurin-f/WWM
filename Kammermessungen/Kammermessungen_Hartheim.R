@@ -13,7 +13,7 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","readxl","egg")
 check.packages(packages)
 
-flux <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=30,closing_after=30)
+flux <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=30,closing_after=30,messnr = NULL)
 
 CO2_flux <- flux[["CO2"]][[1]]
 CH4_flux <- flux[["CH4"]][[1]]
