@@ -51,7 +51,12 @@ soil_long$tiefe <- as.numeric(str_extract(soil_long$variable,"\\d+(?=cm)"))
 soil_long$unit <- str_extract(soil_long$variable,"(?<=Soil)[A-Z|a-z]+")
 soil_long$plot <- str_extract(soil_long$variable,"(?<=_)[ABC]+(?=_)")
 
+soil_agg_long <- aggregate(list(value=soil_long$value),by=list(date=soil_long$date,tiefe= -soil_long$tiefe,unit= soil_long$unit),mean)
+soil_agg <- tidyr::pivot_wider(soil_agg_long, names_from = unit,values_from = value)
+colnames(soil_agg) <- str_replace(colnames(soil_agg),"^T$","T_C")
+soil_wide <- tidyr::pivot_wider(soil_agg, names_from = tiefe, values_from = c(T_C,VWC))
+
 # ggplot(subset(soil_long,unit=="T"))+geom_line(aes(date,value,col=depth,linetype=plot))
 # ggplot(subset(soil_long,unit=="VWC"))+geom_line(aes(date,value,col=depth,linetype=plot))
 
-save(klima,soil_long,file=paste0(klimapfad,"klima_data.RData"))
+save(klima,soil_long,soil_agg,soil_wide,file=paste0(klimapfad,"klima_data.RData"))

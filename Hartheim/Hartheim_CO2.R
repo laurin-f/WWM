@@ -97,10 +97,6 @@ for(i in na.omit(unique(data$Pumpstufe))){
 
 ##########################
 #soil data to data
-soil_agg_long <- aggregate(list(value=soil_long$value),by=list(date=soil_long$date,tiefe= -soil_long$tiefe,unit= soil_long$unit),mean)
-soil_agg <- tidyr::pivot_wider(soil_agg_long, names_from = unit,values_from = value)
-colnames(soil_agg) <- str_replace(colnames(soil_agg),"^T$","T_C")
-soil_wide <- tidyr::pivot_wider(soil_agg, names_from = tiefe, values_from = c(T_C,VWC))
 
 data <- merge(data,soil_wide,by="date",all.x = T)
 data <- data[,-grep("VWC_-2$",colnames(data))]
@@ -149,8 +145,9 @@ data$DSD0_PTF <- data$c_PTF * data$eps^data$d_PTF
 #tiefen Offset
 
 
-data$hour <- hour(data$date)
+data$hour <- hour(data$date) 
 data_PSt0 <- subset(data, Pumpstufe == 0)
+data_PSt0 <- subset(data, Pumpstufe == 0 & date < Pumpzeiten$ende[2])
 
 
 #data$tiefe_inj <- data$tiefe +tiefen_offset$offset[1]
@@ -198,24 +195,25 @@ data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$C
 
 ###############
 #plots glm gam offset
-ggplot(data)+
-  geom_line(aes(date,CO2_inj-preds,col=as.factor(tiefe)))+facet_wrap(~tiefe,scales="free")
-ggplot(data)+
-  geom_line(aes(date,CO2_roll_inj-preds,col="gam"))+
-  geom_line(aes(date,CO2_tracer,col="tracer"))+
-  facet_wrap(~tiefe,scales="free")
+
 ggplot(data)+
   geom_line(aes(date,CO2_roll_ref,col="ref"))+
   geom_line(aes(date,preds,col="glm"))+
   geom_line(aes(date,preds2,col="gam"))+
   geom_line(aes(date,CO2_roll_ref+offset,col="ref+offset"))+
   facet_wrap(~tiefe,scales="free")
-ggplot(subset(data,Pumpstufe==0&date > Pumpzeiten$ende[2]))+
-  geom_line(aes(date,CO2_roll_inj,col="inj"))+
+ggplot(subset(data,Pumpstufe==0&date > Pumpzeiten$ende[2]& tiefe < 0))+
+  geom_line(aes(date,CO2_roll_inj),lwd=1)+
   geom_line(aes(date,preds,col="glm"))+
   geom_line(aes(date,preds2,col="gam"))+
   geom_line(aes(date,CO2_roll_ref+offset,col="ref+offset"))+
-  facet_wrap(~tiefe,scales="free")
+  facet_wrap(~tiefe,scales="free")+ggsave(paste0(plotpfad,"hartheim/modellvergleich_per2_fit1u2.pdf"),height = 8,width=15)
+ggplot(subset(data,Pumpstufe==0&date < Pumpzeiten$ende[2] & tiefe < 0))+
+  geom_line(aes(date,CO2_roll_inj),lwd=1)+
+  geom_line(aes(date,preds,col="glm"))+
+  geom_line(aes(date,preds2,col="gam"))+
+  geom_line(aes(date,CO2_roll_ref+offset,col="ref+offset"))+
+  facet_wrap(~tiefe,scales="free")+ggsave(paste0(plotpfad,"hartheim/modellvergleich_per1_fit1u2.pdf"),height = 8,width=15)
 ggplot(subset(data,Pumpstufe==0))+
   geom_line(aes(date,CO2_roll_inj - preds,col="glm"))+
   geom_line(aes(date,CO2_roll_inj - preds2,col="gam"))+
@@ -251,21 +249,21 @@ offset_plot <- ggplot(subset(data,Pumpstufe==0))+
   labs(title="keine Injektion",col="tiefe",fill="tiefe",linetype="sampler")
 
 inj <- ggplot(data)+
-  geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
   geom_vline(xintercept = Pumpzeiten$start[-1])+
+  geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
   annotate("text",x=Pumpzeiten$start[2],y=Inf,label="injection",vjust=1.9,hjust=-0.3)+labs(col="tiefe [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler")
 
 ref <- ggplot(data)+
-  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
   geom_vline(xintercept = Pumpzeiten$start[-1])+
+  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
   guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
 p_plot <- ggplot(data)+geom_ribbon(aes(x=date,ymin=0,ymax=Precip_Intensity_mmhr),col="blue")+labs(y="Precip Intensity mm/h")
-colnames(data)
 wind_plot <- ggplot(data)+geom_line(aes(x=date,y=WindVel_30m_ms))
 Ta_plot <- ggplot(data)+geom_line(aes(x=date,y=Ta_2m))
+
 ggplot(subset(data,tiefe!=0))+
   geom_line(aes(date,Ta_2m,col="ambient"))+
-  geom_line(aes(date,T_C,col="injection_box"))+xlim(ymd_h(c("2020.05.29 00","2020.06.05 00")))+
+  geom_line(aes(date,T_C,col="injection_box"))+xlim(ymd_h(c("2020.05.29 00","2020.06.10 00")))+
   ggsave(paste0(plotpfad,"Termperatur_injection_box.pdf"))
 
 ggplot(data)+geom_line(aes(date,eps,col=as.factor(tiefe)))

@@ -15,7 +15,7 @@ variable_to_depths <- function(variable,colname=NULL,df = data){
   }
   #tiefe aus den variable spalten ausschneidenB
   col_tiefe <- as.numeric(str_extract(colnames(df),paste0("(?<=",variable,"_)-\\d+")))
-  df[,variable] <- NA
+  df[,colname] <- NA
   #schleife um variable Daten für die Messtiefen zu Interpolieren
   for(i in unique(df$tiefe)){
     #subset für tiefe == i
