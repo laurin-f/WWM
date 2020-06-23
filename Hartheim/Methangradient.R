@@ -15,13 +15,18 @@ check.packages(packages)
 datelim <- ymd_hm(c("2020.06.09 12:15","2020.06.09 13:00"))
 datelim <- ymd_hm(c("2020.06.18 11:00","2020.06.18 13:00"))
 micro <- read_db("GGA.db","micro",datelim)
+micro$p_kPa <- as.numeric(set_units(set_units(micro$GasP_torr,"torr"),"kPa"))
 smp2 <- read_sampler("sampler2",datelim=datelim)
 gga_co2 <- ggplot(micro)+geom_line(aes(date,CO2))+labs(x="",title="GGA")
 gga_ch4 <- ggplot(micro)+geom_line(aes(date,CH4))
+gga_GasT <- ggplot(micro)+geom_line(aes(date,GasT_C))
+gga_AmbT <- ggplot(micro)+geom_line(aes(date,AmbT_C))
+gga_p <- ggplot(micro)+geom_line(aes(date,p_kPa))
 smp2_plot <- ggplot(smp2)+geom_line(aes(date,CO2,col=as.factor(tiefe)))+xlim(range(micro$date))+labs(x="",title="gradient sampler",col="tiefe")
-
+library(units)
 
 p <- egg::ggarrange(smp2_plot,gga_co2,gga_ch4,heights=c(2,1,1))
+p_T <- egg::ggarrange(gga_co2,gga_AmbT,gga_GasT,gga_p,ncol=1)
 
 pdf(paste0(plotpfad,"Methangradient_test.pdf"),width=6,height = 7)
 p

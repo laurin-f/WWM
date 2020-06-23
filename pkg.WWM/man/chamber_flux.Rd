@@ -4,7 +4,7 @@
 \alias{chamber_flux}
 \title{function to calculate chamber flux}
 \usage{
-chamber_flux(mess_dir = "Vorgarten", messnr = NULL, aggregate = F, ...)
+chamber_flux(mess_dir = "Hartheim", messnr = NULL, aggregate = F, ...)
 }
 \arguments{
 \item{mess_dir}{directory in which the metadata of the measurements is stored}
