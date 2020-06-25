@@ -181,6 +181,8 @@ update_dynament.db<-function(table.name="dynament_test",
       db.colnames<-c("date_int",paste0("CO2_Dyn_",sprintf("%02d",0:21)),"T_C")
     }else if(table.name == "sampler1"){
      db.colnames <- c("date_int",paste0("CO2_tiefe",0:7),"T_C")
+    }else if(table.name == "sampler1u2"){
+     db.colnames <- c("date_int",paste0("CO2_tiefe",rep(0:7,2),"_smp",rep(1:2,each=8)),"T_C")
     }else if(!is.na(str_extract(table.name,"sampler"))){
      db.colnames <- c("date_int",paste0("CO2_tiefe",0:7))
     }else{
@@ -206,7 +208,18 @@ update_dynament.db<-function(table.name="dynament_test",
 
     #########################################################
     #wenn die Tabelle samplerx gewählt wurde
-    if(!is.na(str_extract(table.name,"sampler"))){
+    if(table.name=="sampler1u2"){
+
+      col.ids<-lapply(dyn.colnames,function(x) {
+        #die Spaltennamen aus der .csv werden so formatiert das sie der Namen in der .db enstprechen
+        #beim sampler werden dabei keine Dyn Nummern abgelegt
+        colnames_x_formatiert <- str_replace_all(x,c("_Dyn\\d+"="","dpth"="tiefe","Hygro_S3_Temperatur" = "T_C"))
+        #die spaltennamen der db mit dem tablename zusammengefügt entsprechen nun den Spaltennamen der csv
+        ids.temp <- colnames_x_formatiert %in% paste(db.colnames,sep="_")
+        ids.temp[1:2]<-T
+        ids.temp
+        })
+    }else if(!is.na(str_extract(table.name,"sampler"))){
 
       col.ids<-lapply(dyn.colnames,function(x) {
         #die Spaltennamen aus der .csv werden so formatiert das sie der Namen in der .db enstprechen
@@ -254,8 +267,12 @@ update_dynament.db<-function(table.name="dynament_test",
       data[same.names] <-
         sapply(same.names,function(x) predict(fm[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
 
+      if(table.name == "sampler1u2"){
+        colnames(data)<-str_replace_all(colnames.data.old,c("(_Dyn_?\\d{2})"="","dpth"="tiefe", "Hygro_S3_Temperatur" = "T_C"))
+      }else{
       #Spaltennamen anpassen
-      colnames(data)<-str_replace_all(colnames.data.old,c("(_Dyn_?\\d{2})|(_smp\\d$)"="","dpth"="tiefe", "Hygro_S3_Temperatur" = "T_C"))
+        colnames(data)<-str_replace_all(colnames.data.old,c("(_Dyn_?\\d{2})|(_smp\\d$)"="","dpth"="tiefe", "Hygro_S3_Temperatur" = "T_C"))
+      }
       dyn.list.sub[[i]] <- data
       }
       #rm(fm)
@@ -293,7 +310,7 @@ update_dynament.db<-function(table.name="dynament_test",
     #if yes then the cases with duplicates are joined
     #replacing NA values of the duplicated rows with the values in the corresponding cases
     if(any(date_duplicate)){
-      dyn <- rquery::natural_join(dyn[date_duplicate,],dyn[!date_duplicate,],by="date_int")
+      dyn <- rquery::natural_join(dyn[date_duplicate,],dyn[!date_duplicate,],by="date_int", jointype = "FULL")
     }
 
     if(is.null(dyn)){
@@ -319,7 +336,7 @@ update_dynament.db<-function(table.name="dynament_test",
       dyn <- dyn[!dyn$date_int %in% db_duplicates$date_int,]
 
       #dopplungen in db mit neuen werten joinen und NAs überschreiben
-      db_duplicates_join <- rquery::natural_join(db_duplicates,dyn_duplicate,by="date_int")
+      db_duplicates_join <- rquery::natural_join(db_duplicates,dyn_duplicate,by="date_int", jointype = "FULL")
 
       #die werte in string für die Query schreiben
       values_NA <- paste(apply(db_duplicates_join,1,paste,collapse = ", "),collapse="), (")

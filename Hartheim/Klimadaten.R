@@ -46,15 +46,23 @@ klima <- klima_data[,grep("date|Precip_Intensity|^Ta|WindVel",colnames(klima_dat
 
 soil_data <- klima_data[,grep("^Soil(VWC|T)|date",colnames(klima_data))]
 
-soil_long <- reshape2::melt(soil_data,id="date")
-soil_long$tiefe <- as.numeric(str_extract(soil_long$variable,"\\d+(?=cm)"))
-soil_long$unit <- str_extract(soil_long$variable,"(?<=Soil)[A-Z|a-z]+")
-soil_long$plot <- str_extract(soil_long$variable,"(?<=_)[ABC]+(?=_)")
+soil_long <- tidyr::pivot_longer(soil_data,
+                                 cols=grep("^Soil",colnames(soil_data)),
+                                 names_to = c("unit","plot","tiefe"),
+                                 names_pattern = "Soil(VWC|T)_([ABC])_(\\d+)cm",
+                                 values_to = "value")
 
-soil_agg_long <- aggregate(list(value=soil_long$value),by=list(date=soil_long$date,tiefe= -soil_long$tiefe,unit= soil_long$unit),mean)
-soil_agg <- tidyr::pivot_wider(soil_agg_long, names_from = unit,values_from = value)
-colnames(soil_agg) <- str_replace(colnames(soil_agg),"^T$","T_C")
-soil_wide <- tidyr::pivot_wider(soil_agg, names_from = tiefe, values_from = c(T_C,VWC))
+soil_agg_range <- aggregate(list(value=soil_long$value),by=list(date=soil_long$date,tiefe= soil_long$tiefe,unit= soil_long$unit),range)
+soil_agg_mean <- aggregate(list(value=soil_long$value),by=list(date=soil_long$date,tiefe= soil_long$tiefe,unit= soil_long$unit),mean)
+
+soil_agg_range$min <- soil_agg_range$value[,1]
+soil_agg_range$max <- soil_agg_range$value[,2]
+soil_agg_range <- soil_agg_range[,-grep("value",colnames(soil_agg_range))]
+soil_agg_long <- merge(soil_agg_mean,soil_agg_range)
+soil_agg <- tidyr::pivot_wider(soil_agg_long, names_from = c(unit),values_from = c(min,max,value))
+soil_wide <- tidyr::pivot_wider(soil_agg_long, names_from = c(unit,tiefe),values_from = c(min,max,value))
+colnames(soil_wide) <- str_replace_all(colnames(soil_wide),c("(min|max)_(VWC|T)"="\\2_\\1", "value_VWC" = "VWC", "value_T" = "T_soil"))
+#soil_wide <- tidyr::pivot_wider(soil_agg, names_from = tiefe, values_from = c(T_C,VWC))
 
 # ggplot(subset(soil_long,unit=="T"))+geom_line(aes(date,value,col=depth,linetype=plot))
 # ggplot(subset(soil_long,unit=="VWC"))+geom_line(aes(date,value,col=depth,linetype=plot))

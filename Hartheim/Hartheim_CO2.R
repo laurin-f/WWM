@@ -12,7 +12,7 @@ klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr")
 check.packages(packages)
 
 
@@ -34,10 +34,11 @@ flux <- read.csv(paste0(metapfad,"Tracereinspeisung/Pumpstufen_flux.txt"))
 
 
 
-datelim <- c("2020.05.18 10:00:00")
-smp1 <- read_sampler("sampler1",datelim = datelim, format = "long")
-smp2 <- read_sampler("sampler2",datelim = datelim, format = "long")
+datelim <- range(c(Pumpzeiten$start,Pumpzeiten$ende))
 
+data <- read_sampler("sampler1u2",datelim = datelim, format = "long")
+
+colnames(data) <- str_replace_all(colnames(data),c("smp1" = "inj", "smp2" = "ref"))
 
 #smp1_plt <- ggplot(smp1)+geom_line(aes(date,CO2,col=as.factor(tiefe)))
 
@@ -46,10 +47,7 @@ smp2 <- read_sampler("sampler2",datelim = datelim, format = "long")
 #smp1_plt+geom_vline(xintercept = Pumpstufen$start)
 #ggplot(smp2)+geom_line(aes(date,CO2,col=as.factor(tiefe)))
 
-data <- merge(smp1,smp2,by=c("date","tiefe","tiefenstufe","variable"),all=T,suffixes = c("_inj","_ref"))
-
 data <- merge(data,klima,by="date",all.x = T)
-
 #Pumpstufe und Versuch aus metadaten auf dataframe übetragen
 
 
@@ -99,12 +97,16 @@ for(i in na.omit(unique(data$Pumpstufe))){
 #soil data to data
 
 data <- merge(data,soil_wide,by="date",all.x = T)
-data <- data[,-grep("VWC_-2$",colnames(data))]
 
 
 
+
+data <- variable_to_depths("VWC_min")
+data <- variable_to_depths("VWC_max")
 data <- variable_to_depths("VWC")
-data <- variable_to_depths("T_C","T_soil")
+data <- variable_to_depths("T_min")
+data <- variable_to_depths("T_max")
+data <- variable_to_depths("T_soil")
 
 ############################
 #DS PTF
@@ -125,15 +127,26 @@ soil.xls<-readxl::read_xls(paste0(soilpfad,"Soil physical data Hartheim.xls"),sh
 
 
 #aggregieren der Horizonte
-soil<-aggregate(soil.xls[,4:41],list(Horizon=soil.xls$Horizon),function(x) mean(x,na.rm = T))
+soil <- soil.xls %>% 
+  group_by(Horizon) %>%
+  summarise(PV=mean(PV),PV_min=min(PV),PV_max=max(PV))
+
 #bulk density in g/cm3
-soil$tiefe <- c(Ah1=0 , Ah2=10 , AhC=20, C=40)
+ soil$tiefe <- c(Ah1=0 , Ah2=10 , AhC=20, C=40)
 
+ 
+data <- data[,!grepl("(VWC|T_soil)_(min|max)?_?\\d+",colnames(data))]
 data$PV <- approx(soil$tiefe,soil$PV,-data$tiefe,method = "constant",rule = 2)$y
+data$PV_min <- approx(soil$tiefe,soil$PV_min,-data$tiefe,method = "constant",rule = 2)$y
+data$PV_max <- approx(soil$tiefe,soil$PV_max,-data$tiefe,method = "constant",rule = 2)$y
 data$eps <- (data$PV - data$VWC)/100
+data$eps_min <- (data$PV_min - data$VWC_max)/100
+data$eps_max <- (data$PV_max - data$VWC_min)/100
 data$DSD0_PTF <- data$c_PTF * data$eps^data$d_PTF
+data$DSD0_PTF_min <- data$c_PTF * data$eps_min^data$d_PTF
+data$DSD0_PTF_max <- data$c_PTF * data$eps_max^data$d_PTF
 
-#ggplot(data)+geom_line(aes(date,DSD0_PTF,col=as.factor(tiefe)))
+
 
 
 

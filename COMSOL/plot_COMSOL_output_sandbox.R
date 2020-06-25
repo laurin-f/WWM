@@ -14,7 +14,6 @@ check.packages(packages)
 
 #data_agg
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_sub.RData"))
-data_sub$DS_glm
 
 sandbox <- readxl::read_xlsx(paste0(metapfad_tracer,"sandeimer.xlsx"))
 z_box <- sandbox$height_cm
@@ -54,30 +53,6 @@ sweep_long$CO2_mod <- ppm_to_mol(sweep_long$CO2_mol_per_m3,"mol/m^3","units")
 #tiefe umrechnen
 sweep_long$tiefe <- set_units(sweep_long$z - z_box,cm)
 
-unique(sweep_long$injection_rate)
-#sweep_long$CO2_obs <- as.numeric(as.character(factor(sweep_long$tiefe,levels = CO2_obs$tiefe,labels = CO2_obs$CO2_ppm)))
-
-#####################################
-#sweep ohne CO2_atm
-# CO2_mod_sweep_inj <- readLines(paste0(comsolpfad,"CO2_mod_sweep_inj.txt"))
-# 
-# colnames_sweep_inj <- str_extract_all(CO2_mod_sweep_inj[9],"r|z|DS=\\d(\\.\\d+)?(E-\\d)?",simplify = T)
-# 
-# 
-# CO2_sweep_mat_inj <- str_split(CO2_mod_sweep_inj[10:length(CO2_mod_sweep_inj)],"\\s+",simplify = T)
-# CO2_sweep_inj <- as.data.frame(apply(CO2_sweep_mat_inj,2,as.numeric))
-# colnames(CO2_sweep_inj) <- colnames_sweep_inj
-# 
-# sweep_inj_long <- reshape2::melt(CO2_sweep_inj,id=1:2,value.name="CO2_mol_per_m3",variable="par")
-# 
-# sweep_inj_long$DS_sand <- as.numeric(str_extract(sweep_inj_long$par,"(?<=DS=)\\d(\\.\\d+)?(E-\\d)?"))
-# sweep_inj_long$CO2_mod <- ppm_to_mol(sweep_inj_long$CO2_mol_per_m3,"mol/m^3","units")
-# sweep_inj_long$tiefe <- set_units(sweep_inj_long$z- z_box,cm)
-
-
-#Alle sweeps
-#ggplot(sweep_long)+geom_line(aes(y=tiefe,x=CO2_mod,col=as.factor(DS),linetype=as.factor(injection_rate)))+guides(col=F)
-
 
 ######################
 #fm
@@ -114,16 +89,11 @@ for(i in unique(data_sub$ID)) {
   data_sub$DS_mod[data_sub$ID == i] <- best_DS 
   data_sub$CO2_mod[data_sub$ID == i] <- ppm_to_mol(sweep_sub[,best.fit.id],"mol/m^3")
 
-  # plt_list[[i]] <- 
-  #   ggplot(subset(sweep_long,DS==best_DS & injection_rate == injection_rate_i & CO2_atm == CO2_atm_i))+
-  #   geom_line(aes(y=tiefe,x=CO2_mod,col="mod"))+
-  #   geom_point(data=CO2_obs,aes(y=tiefe,x=CO2,col="obs"))+
-  #   annotate("text",y= max(CO2_obs$tiefe),x=max(CO2_obs$CO2,na.rm=T),label=paste("DS/D0 = ",round(DS_D0,3)),hjust=0.9,vjust=1)+
-  # labs(x="CO[2]",y="tiefe",col="")
   }# ende for schleife
+range_mod <- aggregate(sweep_long$CO2_mod,list(tiefe = sweep_long$tiefe),range)
+data_sub$max_mod <- rev(range_mod$x[,2])
+data_sub$min_mod <- rev(range_mod$x[,1])
 
-
-#do.call('ggarrange',c(plt_list, ncol = 3))
 
 ggplot(data_sub)+
   geom_line(aes(CO2_mod,tiefe,col="mod",linetype=as.factor(Pumpstufe),alpha=ID))+
@@ -148,7 +118,22 @@ DS_D0_long$method <- str_remove(DS_D0_long$method,"DS_D0_")
 DS_D0_long <- rbind(DS_D0_long,thomas_ref)
 
 DS_D0_mat$DS_D0_COMSOL*D0_CO2_m2
-ggplot(DS_D0_long)+geom_col(aes(material,DS_D0,fill=method),position=position_dodge2(preserve = "single"))+ggsave(paste0(plotpfad,"DS_D0_SandSplitt_vergleich.pdf"),width=9,height=4)
+ggplot(DS_D0_long)+geom_col(aes(material,DS_D0,fill=method),position=position_dodge2(preserve = "single"))+ggsave(paste0(plotpfad,"sandkiste/DS_D0_SandSplitt_vergleich.png"),width=9,height=4)
+
+DS_D0_label <- tidyr::pivot_wider(DS_D0_long,names_from = method,values_from = DS_D0)
+
+DS_D0_label$label <- paste0("DS/D0 = ",round(DS_D0_label$COMSOL,3))
+
+ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
+  #geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+
+  geom_line(aes(CO2_mod,tiefe,col="mod",alpha=ID))+
+  geom_point(aes(CO2,tiefe,col="obs"))+
+  guides(alpha=F)+scale_alpha_manual(values = rep(1,6))+
+  scale_linetype_manual("Pumpstufe",values=2:1)+
+  facet_wrap(~material)+
+  geom_text(data=subset(DS_D0_label,material%in% data_sub$material),aes(y= -1,x=6000,label = label),hjust="right")+
+  #annotate("text",y= c(-1,-1,-1),x=c(6000,6000,6000),label=c(label1,label2,label3),hjust="right")+
+  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="")+ggsave(paste0(plotpfad,"sandkiste/comsol_mod_obs.png"),width = 8,height=4)
 
 # Fine gravel 0.235 (0.008) 0.218 0.214
 # Mixture 0.185 (0.006) 0.164 0.141
