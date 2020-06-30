@@ -33,6 +33,26 @@ meas_points_fs <- data.frame(R=0,Z=meas_depths_fs)
 
 write.table(meas_points_fs,file = paste0(metapfad,"COMSOL/meas_points_freeSoil.txt"),row.names = F,col.names = F)
 
+data$t_mins <- as.numeric(difftime(data$date,min(data$date[data$Pumpstufe == 1.5],na.rm=T)-(10*3600),units = "secs"))
+#data$t_mins <- as.numeric(difftime(data$date,min(data$date[data$Pumpstufe == 1.5],na.rm=T),units = "secs"))
+data$CO2_mol_per_m3 <- ppm_to_mol(data$CO2_tracer,"ppm")
+data$CO2_mol_per_m3[is.na(data$CO2_mol_per_m3)]<- 0
+data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
+
+A_inj <- set_units(1^2*pi,"mm^2")
+
+inj_mol_min <- ppm_to_mol(round(data$Fz,6),"cm^3/min",out_class = "units")
+inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/A_inj
+data$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
+
+data_sub <- subset(data,t_mins >= 0 & t_mins < 3600*24)
+data_sub$inj_mol_m2_s[is.na(data_sub$inj_mol_m2_s)] <- data_sub$inj_mol_m2_s[!is.na(data_sub$inj_mol_m2_s)][1]
+plot(data_sub$t_mins,data_sub$CO2_mol_per_m3)
+any(is.na(data_sub[,c("date","t_mins","inj_mol_m2_s","CO2_mol_per_m3")]))
+write.table(data_sub[data_sub$tiefe == 0,c("t_mins","inj_mol_m2_s")],paste0(metapfad_comsol,"td_inj.csv"),col.names = F,row.names = F,sep=",")
+for(i in 1:7){
+  write.table(data_sub[data_sub$tiefe == (1:7*-3.5)[i],c("t_mins","CO2_mol_per_m3")],paste0(metapfad_comsol,"td_dom",i,".csv"),col.names = F,row.names = F,sep=",")
+} 
 ##############
 #DS Hartheim
 

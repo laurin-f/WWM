@@ -5,7 +5,7 @@ metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_harth<- paste0(metapfad,"Hartheim/")
 metapfad_comsol<- paste0(metapfad,"COMSOL/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
-plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
+plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/hartheim/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/") 
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
@@ -34,7 +34,8 @@ flux <- read.csv(paste0(metapfad,"Tracereinspeisung/Pumpstufen_flux.txt"))
 
 
 
-datelim <- range(c(Pumpzeiten$start,Pumpzeiten$ende))
+datelim <- range(c(Pumpzeiten$start,Pumpzeiten$ende),na.rm = T)
+datelim <- min(c(Pumpzeiten$start,Pumpzeiten$ende),na.rm = T)
 
 data <- read_sampler("sampler1u2",datelim = datelim, format = "long")
 
@@ -208,7 +209,8 @@ data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$C
 
 ###############
 #plots glm gam offset
-
+plotgam <- F
+if(plotgam==T){
 ggplot(data)+
   geom_line(aes(date,CO2_roll_ref,col="ref"))+
   geom_line(aes(date,preds,col="glm"))+
@@ -232,7 +234,7 @@ ggplot(subset(data,Pumpstufe==0))+
   geom_line(aes(date,CO2_roll_inj - preds2,col="gam"))+
   geom_line(aes(date,CO2_roll_inj - (CO2_roll_ref+offset),col="ref+offset"))+
   facet_wrap(~tiefe,scales="free")
-
+}
 ##############
 #data_wide
 data_wide <- tidyr::pivot_wider(data, id_cols = date, names_from = tiefenstufe,values_from = c(CO2_inj,CO2_ref,CO2_tracer,Fz),names_prefix = "tiefe")
@@ -264,12 +266,21 @@ offset_plot <- ggplot(subset(data,Pumpstufe==0))+
 inj <- ggplot(data)+
   geom_vline(xintercept = Pumpzeiten$start[-1])+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
-  annotate("text",x=Pumpzeiten$start[2],y=Inf,label="injection",vjust=1.9,hjust=-0.3)+labs(col="tiefe [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler")
+  annotate("text",x=Pumpzeiten$start[2],y=Inf,label="injection",vjust=1,hjust=-0.1)+
+  labs(col="tiefe [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler")
 
 ref <- ggplot(data)+
   geom_vline(xintercept = Pumpzeiten$start[-1])+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
+  annotate("text",x=Pumpzeiten$start,y=Inf,label=str_replace(Pumpzeiten$bemerkung,"sampler umgesetzt","sampler\numgesetzt"),vjust=1,hjust="left")+
   guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
+
+ggplot(data)+
+  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
+  geom_vline(xintercept = Pumpzeiten$start[-1])+
+  annotate("text",x=Pumpzeiten$start,y=Inf,label=Pumpzeiten$bemerkung,vjust=1.9,hjust="left")+
+  guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")+xlim(ymd_h(c("2020.06.18 9","2020.06.18 16")))
+
 p_plot <- ggplot(data)+geom_ribbon(aes(x=date,ymin=0,ymax=Precip_Intensity_mmhr),col="blue")+labs(y="Precip Intensity mm/h")
 wind_plot <- ggplot(data)+geom_line(aes(x=date,y=WindVel_30m_ms))
 Ta_plot <- ggplot(data)+geom_line(aes(x=date,y=Ta_2m))
@@ -292,7 +303,7 @@ inj
 p <- egg::ggarrange(inj,ref,ncol=1)
 p2 <- egg::ggarrange(inj,VWC_plot,p_plot,heights = c(2,1,1))
 
-pdf(paste0(plotpfad,"hartheim_einspeisung1.pdf"),width=9,height=7)
+pdf(paste0(plotpfad,"hartheim_einspeisung1.pdf"),width=11,height=9)
 p
 dev.off()
 pdf(paste0(plotpfad,"einspeisung1_mit_klima.pdf"),width=9,height=9)

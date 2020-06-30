@@ -3,6 +3,7 @@ detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_tracer<- paste0(metapfad,"Tracereinspeisung/")
+metapfad_comsol<- paste0(metapfad,"COMSOL/")
 comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
@@ -89,7 +90,7 @@ DS_long <- reshape2::melt(DS_wide, id = "rmse",variable="Schicht",value.name="DS
 
 #############
 #dottyplot
-ggplot(subset(DS_long,rmse < sort(unique(rmse))[300]))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
+ggplot(subset(DS_long,rmse < sort(unique(rmse))[1000]))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
 
 best.fit.id <- which.min(rmse)
 best.fit.id2 <- which.min(DS_sorted$rmse)
@@ -191,6 +192,9 @@ Fz_ml_per_min_m2 <- DS_profil$DS[DS_profil$top == 0]*60 * 10^4 * dC_dz/10^6 * 10
 Fz_ml_per_min_m2
 colnames(CO2_obs)
 ggplot(CO2_obs)+geom_path(aes(CO2_tracer,tiefe))
-CO2_obs$z <- CO2_obs$z -50
+
 CO2_obs$r <- 0
+for(i in 1:7){
+  write.table(CO2_obs[CO2_obs$tiefe == (1:7*-3.5)[i],"CO2_mol_per_m3"],paste0(metapfad_comsol,"dom",i,".csv"),col.names = F,row.names = F,sep=",")
+}  
 write.table(na.omit(CO2_obs[,c("r","z","CO2_mol_per_m3")]),paste0(metapfad_comsol,"CO2_obs.csv"),col.names = F,row.names = F,sep=",")

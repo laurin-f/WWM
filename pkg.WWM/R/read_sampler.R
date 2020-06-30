@@ -17,9 +17,10 @@ read_sampler <- function(table.name="sampler1u2",format="long", ...){
 
   data_wide<-read_db(db.name="dynament.db",
                      table.name=table.name, ...)
-
+  if(nrow(data_wide) == 0){
+    stop("no data in datelim")
+  }
   if(format=="long"){
-
 
     data_long <- reshape2::melt(data_wide,id=which(!grepl("CO2",colnames(data_wide))),value.name="CO2")
     data_long$tiefenstufe <- as.numeric(str_extract(data_long$variable,"(?<=tiefe)\\d"))

@@ -12,8 +12,14 @@ datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/")
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units")
 check.packages(packages)
-datelim <- ymd_hm(c("2020.06.09 12:15","2020.06.09 13:00"))
-datelim <- ymd_hm(c("2020.06.18 11:00","2020.06.18 13:00"))
+datelim_harth1 <- ymd_hm(c("2020.06.09 12:15","2020.06.09 13:00"))
+datelim_harth2 <- ymd_hm(c("2020.06.18 12:00","2020.06.18 13:00"))
+datelim_glovebox_smp <- ymd_hm(c("2020.06.25 11:37","2020.06.25 11:50"))
+datelim_glovebox_accurel <- ymd_hm(c("2020.06.25 16:51","2020.06.25 17:04"))
+glovebox_smp <- gga_co2+xlim(datelim_glovebox_smp)+ylim(c(400,6000))
+glovebox_accurel <- gga_co2+xlim(datelim_glovebox_accurel)
+egg::ggarrange(glovebox_smp,glovebox_accurel)
+datelim <- range(c(datelim_harth1,datelim_glovebox_accurel))
 micro <- read_db("GGA.db","micro",datelim)
 micro$p_kPa <- as.numeric(set_units(set_units(micro$GasP_torr,"torr"),"kPa"))
 smp2 <- read_sampler("sampler2",datelim=datelim)
@@ -25,8 +31,15 @@ gga_p <- ggplot(micro)+geom_line(aes(date,p_kPa))
 smp2_plot <- ggplot(smp2)+geom_line(aes(date,CO2,col=as.factor(tiefe)))+xlim(range(micro$date))+labs(x="",title="gradient sampler",col="tiefe")
 library(units)
 
-p <- egg::ggarrange(smp2_plot,gga_co2,gga_ch4,heights=c(2,1,1))
-p_T <- egg::ggarrange(gga_co2,gga_AmbT,gga_GasT,gga_p,ncol=1)
+p_harth1 <- egg::ggarrange(smp2_plot+xlim(datelim_harth1),gga_co2+xlim(datelim_harth1),gga_ch4+xlim(datelim_harth1),heights=c(2,1,1))
+
+p_T_harth1 <- egg::ggarrange(gga_co2+xlim(datelim_harth1),gga_AmbT+xlim(datelim_harth1),gga_GasT+xlim(datelim_harth1),gga_p,ncol=1)
+
+p_harth2 <- egg::ggarrange(smp2_plot+xlim(datelim_harth2),gga_co2+xlim(datelim_harth2),gga_ch4+xlim(datelim_harth2),heights=c(2,1,1))
+
+p_T_harth2 <- egg::ggarrange(gga_co2+xlim(datelim_harth2),gga_AmbT+xlim(datelim_harth2),gga_GasT+xlim(datelim_harth2),gga_p,ncol=1)
+
+p_T_glovebox_smp <- egg::ggarrange(gga_co2+xlim(datelim_glovebox_smp),gga_AmbT+xlim(datelim_glovebox_smp),gga_GasT+xlim(datelim_glovebox_smp),gga_p,ncol=1)
 
 pdf(paste0(plotpfad,"Methangradient_test.pdf"),width=6,height = 7)
 p
