@@ -203,7 +203,7 @@ split_chamber<-function(data,
   abline(v=opening,col=2)
   points(after,pch=3,col=4)
 
-  legend("bottomleft",c("before","after","opening","closing"),col = c(1,4,3,2),pch=c(1,3,NA,NA),lty=c(NA,NA,1,1), bty = "n")
+  legend("bottomleft",c("before","after","closing","opening"),col = c(1,4,3,2),pch=c(1,3,NA,NA),lty=c(NA,NA,1,1), bty = "n")
   par(mfrow = c(1,1))
 
   return(data)

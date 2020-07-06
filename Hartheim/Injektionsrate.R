@@ -10,6 +10,8 @@ packages<-c("lubridate","stringr","ggplot2")
 check.packages(packages)
 
 Pumpzeiten <- readxl::read_xlsx(paste0(metapfad_harth,"Pumpstufen_Zeiten.xlsx"))
+
+Pumpzeiten <- na.omit(Pumpzeiten)
 flux_old <- read.csv(paste0(metapfad_tracer,"Pumpstufen_flux.txt"))
 flux_old$date <- ymd_hms(flux_old$date)
 new_meas <- NULL
@@ -45,6 +47,8 @@ flux_all <- rquery::natural_join(flux,flux_old,by="date",jointype="FULL")
 }
 plot <- T
 if(plot == T){
+  
+  ggplot(data)+geom_line(aes(zeit,CO2_tara,col=as.factor(messid)))
   ggplot(subset(flux_all,date > min(Pumpzeiten$beginn)))+
     geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
     ggnewscale::new_scale_color()+

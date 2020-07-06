@@ -275,28 +275,28 @@ ref <- ggplot(data)+
   annotate("text",x=Pumpzeiten$start,y=Inf,label=str_replace(Pumpzeiten$bemerkung,"sampler umgesetzt","sampler\numgesetzt"),vjust=1,hjust="left")+
   guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
 
-ggplot(data)+
-  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
-  geom_vline(xintercept = Pumpzeiten$start[-1])+
-  annotate("text",x=Pumpzeiten$start,y=Inf,label=Pumpzeiten$bemerkung,vjust=1.9,hjust="left")+
-  guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")+xlim(ymd_h(c("2020.06.18 9","2020.06.18 16")))
+
 
 p_plot <- ggplot(data)+geom_ribbon(aes(x=date,ymin=0,ymax=Precip_Intensity_mmhr),col="blue")+labs(y="Precip Intensity mm/h")
 wind_plot <- ggplot(data)+geom_line(aes(x=date,y=WindVel_30m_ms))
 Ta_plot <- ggplot(data)+geom_line(aes(x=date,y=Ta_2m))
 
-ggplot(subset(data,tiefe!=0))+
-  geom_line(aes(date,Ta_2m,col="ambient"))+
-  geom_line(aes(date,T_C,col="injection_box"))+xlim(ymd_h(c("2020.05.29 00","2020.06.10 00")))+
-  ggsave(paste0(plotpfad,"Termperatur_injection_box.pdf"))
+# ggplot(subset(data,tiefe!=0))+
+#   geom_line(aes(date,Ta_2m,col="ambient"))+
+#   geom_line(aes(date,T_C,col="injection_box"))+xlim(ymd_h(c("2020.05.29 00","2020.06.10 00")))+
+#   ggsave(paste0(plotpfad,"Termperatur_injection_box.pdf"))
 
 ggplot(data)+geom_line(aes(date,eps,col=as.factor(tiefe)))
 ggplot(data)+geom_line(aes(date,DSD0_PTF*D0_T_p(12)*10^-4,col=as.factor(tiefe)))
-
+colnames(data)
 VWC_plot <-  ggplot(data)+
-  geom_line(aes(date,`VWC_-5`,col="-5"))+
-  geom_line(aes(date,`VWC_-10`,col="-10"))+
-  geom_line(aes(date,`VWC_-20`,col="-20"))+
+  geom_line(aes(date,VWC,col=as.factor(tiefe)))+
+  labs(x="",y="Soil VWC [%]",col="tiefe [cm]")
+VWC_plot_agg <-  ggplot(soil_agg)+
+  geom_line(aes(date,value_VWC,col=as.factor(tiefe)))+
+  labs(x="",y="Soil VWC [%]",col="tiefe [cm]")
+VWC_plot_alle_plots <-  ggplot(subset(soil_long,unit=="VWC"))+
+  geom_line(aes(date,value,col=as.factor(tiefe),linetype=plot))+
   labs(x="",y="Soil VWC [%]",col="tiefe [cm]")
 ref  
 inj
