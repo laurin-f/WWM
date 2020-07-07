@@ -275,7 +275,7 @@ calc_flux <- function(data,
   fm_list <- lapply(1:nrow(gr_id), function(x) glm(formula,data = data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),]))
   #mittelwerte des Datums der unterschiedlichen gruppen
   
-  ###################anschauen !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ###################
   date_means <- sapply(1:nrow(gr_id), function(x) mean(data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),"date"]))
 
   if("T_C" %in% colnames(data)){

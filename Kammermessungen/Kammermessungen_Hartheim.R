@@ -12,23 +12,22 @@ metapfad<-paste0(hauptpfad,"Daten/Metadaten/")
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","readxl","egg")
 check.packages(packages)
+flux <- list()
+for(i in 1:3){
+flux[[i]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=30,closing_after=30,messnr = i)
+}
+flux[[4]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=45,closing_after=45,messnr = 4,adj_openings=T,t_max=3)
 
-flux <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=30,closing_after=30,messnr = NULL)
-
-flux <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=30,closing_after=30,messnr = 3)
-flux2 <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=45,closing_after=45,messnr = 4,adj_openings=T)
-
+CO2_flux_list <- lapply(flux, function(x) x[["CO2"]][[1]])
+CH4_flux_list <- lapply(flux, function(x) x[["CH4"]][[1]])
+CO2_flux <- do.call(rbind,CO2_flux_list)
+CH4_flux <- do.call(rbind,CH4_flux_list)
 CO2_flux1 <- flux[["CO2"]][[1]]
 CH4_flux1 <- flux[["CH4"]][[1]]
 
-CH4_split1 <- flux[["CH4"]][[2]]
-CO2_flux2 <- flux2[["CO2"]][[1]]
-CH4_flux2 <- flux2[["CH4"]][[1]]
+CH4_split <- flux[[1]][["CH4"]][[2]]
 
-CH4_split2 <- flux2[["CH4"]][[2]]
-CO2_flux <- rbind(CO2_flux1,CO2_flux2)
-CH4_flux <- rbind(CH4_flux1,CH4_flux2)
-CH4_split <- rbind(CH4_split1,CH4_split2)
+
 
 range(CO2_flux$mol_per_min_m2)
 mean(CO2_flux$date)
