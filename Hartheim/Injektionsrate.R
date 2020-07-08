@@ -49,6 +49,7 @@ plot <- T
 if(plot == T){
   
   ggplot(data)+geom_line(aes(zeit,CO2_tara,col=as.factor(messid)))
+  
   ggplot(subset(flux_all,date > min(Pumpzeiten$beginn)))+
     geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
     ggnewscale::new_scale_color()+

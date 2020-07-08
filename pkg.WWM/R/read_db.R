@@ -112,7 +112,10 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
 
       #duplikate entfernen
       data<-data[!duplicated(data$date_int),]
-
+      #datum kleiner 2010 entfernen
+      date2010 <- as.integer(ymd_h("2010.01.01 00"))
+      data <- data[data$date_int > date2010,]
+      
       #mit db verbinden
       con<-odbc::dbConnect(RSQLite::SQLite(),paste0(sqlpath,"GGA.db"))
       #falls tabelle in db nicht vorhanden wird sie hier erstellt
