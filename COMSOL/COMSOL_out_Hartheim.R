@@ -28,10 +28,19 @@ A_inj <- set_units(1^2*pi,"mm^2")
 
 #hier eventuell noch T_C und p_kPa berücksichtigen
 #injektionrate in mol/m^2/s
-inj_mol_min <- ppm_to_mol(round(data_agg$Fz,6),"cm^3/min",out_class = "units")
-inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/A_inj
-data_agg$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
+change_unit(data_agg$PressureActual_hPa,"hPa","kPa")
+inj_mol_min <- ppm_to_mol(data_agg$Fz,"cm^3/min",out_class = "units",T_C = data_agg$Ta_2m,p_kPa = data_agg$PressureActual_hPa/10) %>%
+  round(digits=10)
+inj_mol_min2 <- ppm_to_mol(round(data_agg$Fz,6),"cm^3/min",out_class = "units")
 
+inj_mol_mm2_s2 <- set_units(inj_mol_min2,"mol/s")/A_inj
+inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/A_inj
+data_agg$inj_mol_m2_s2 <- set_units(inj_mol_mm2_s2,"mol/m^2/s")
+data_agg$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
+ggplot(data_agg)+
+  geom_line(aes(date,inj_mol_m2_s))+
+  geom_line(aes(date,inj_mol_m2_s2))
+data_agg$inj_mol_m2_s
 #Parameter file lesen
 pars_fs <- read.table((paste0(metapfad,"COMSOL/parameter_freeSoil.csv")),sep=";",stringsAsFactors = F)
 #Modell tiefe als Character

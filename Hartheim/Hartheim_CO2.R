@@ -179,6 +179,8 @@ x$CO2_ref[x$tiefe==-24.5][which(!is.na(x$CO2_ref[x$tiefe==-24.5]))]
 #   geom_line(aes(date,CO2_ref_adj-CO2_ref,col=as.factor(tiefe_inj)))
 ##################
 #mit glm oder gam
+glmgam <- F
+if(glmgam == T){
 for(i in (1:7)*-3.5){
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
   fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[1]],tiefe==i))
@@ -188,6 +190,8 @@ for(i in (1:7)*-3.5){
   data$preds[data$tiefe==i] <- predict(fm,newdata = subset(data,tiefe==i))
   data$preds2[data$tiefe==i] <- predict(fm2,newdata = subset(data,tiefe==i))
 }
+}
+
 # ggplot(subset(data_PSt0[[1]]))+
 #   geom_abline(slope = 1,intercept = 0)+
 #   geom_point(aes(preds,CO2_inj,col="glm"))+
@@ -261,7 +265,7 @@ colnames(data_wide) <- str_replace(colnames(data_wide),"Fz_tiefe0","injection_ml
 ######################
 #data_agg
 
-data_agg <- aggregate(data[grep("date|CO2|Fz|Pumpstufe|offset",colnames(data))],list(hour=round_date(data$date,"hours"),tiefe=data$tiefe),mean,na.rm=T)
+data_agg <- aggregate(data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure",colnames(data))],list(hour=round_date(data$date,"hours"),tiefe=data$tiefe),mean,na.rm=T)
 data_agg$date <- with_tz(data_agg$date,"UTC")
 data_agg <- subset(data_agg, Pumpstufe == 1.5)
 save(data,data_agg,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
@@ -293,8 +297,8 @@ inj_1 <- ggplot(subset(data,Position==1))+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
   annotate("text",x=Pumpzeiten$start[2],y=Inf,label="injection",vjust=1,hjust=-0.1)+
   labs(col="tiefe [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler")
-
-ref_1 <- ggplot(subset(data,Position==1))+
+ref_1+geom_vline(xintercept = ymd_h("2020.06.13 18"))
+ref_1 <- ggplot(subset(data,Position%in%1:2))+
   geom_vline(xintercept = Pumpzeiten$start[-1])+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
   guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
@@ -360,7 +364,7 @@ dev.off()
   geom_vline(xintercept = Pumpzeiten$start)+
     ggsave(paste0(plotpfad,"Einspeisung1_diff.pdf"),width=10,height = 7)
   
-    ggplot(subset(data,Position==1))+
+    ggplot(subset(data,Position==7))+
     geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1.2)+
     geom_line(aes(date,CO2_roll_ref + offset,col=as.factor(tiefe),linetype="ref + offset"),lwd=0.8)+
     geom_ribbon(aes(date,ymax=CO2_inj,ymin=CO2_ref_offst,fill=as.factor(tiefe)),alpha=0.3)+

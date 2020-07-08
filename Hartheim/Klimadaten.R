@@ -5,7 +5,7 @@ hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","rmatio")
+packages<-c("lubridate","stringr","ggplot2","rmatio","dplyr")
 check.packages(packages)
 dirs <- list.dirs(klimapfad,recursive = F)
 files <- list.files(klimapfad,recursive = T,full.names = T)
@@ -21,7 +21,7 @@ klima_data_list <- mapply(function(x,y){
 klima_data <- do.call("rbind",klima_data_list)
 klima_data$date <- ymd_hms(klima_data$TIMESTAMP)
 
-colnames(klima_data) <- str_remove_all(colnames(klima_data),"MET_|_CS\\d+|_degC|_Avg|MovingTot|_Young\\d+|_Percent")
+colnames(klima_data) <- str_remove_all(colnames(klima_data),"MET_|_CS\\d+|_degC|_Avg|MovingTot|_Young\\d+|_Percent|_PTB100A")
 
 
 # ###########
@@ -36,7 +36,7 @@ colnames(klima_data) <- str_remove_all(colnames(klima_data),"MET_|_CS\\d+|_degC|
 #   })
 # rm(T1_Sx)
 # T1 <- do.call("cbind",T1_Si)
-klima <- klima_data[,grep("date|Precip_Intensity|^Ta|WindVel",colnames(klima_data))]
+klima <- klima_data[,grep("date|Precip_Intensity|^Ta|WindVel|PressureActual",colnames(klima_data))]
 
 # ggplot(klima_data)+geom_line(aes(date,Precip_Intensity_mmhr))
 # ggplot(klima_data)+geom_line(aes(date,Precip_Last1hr_mm))
@@ -52,15 +52,13 @@ soil_long <- tidyr::pivot_longer(soil_data,
                                  names_pattern = "Soil(VWC|T)_([ABC])_(\\d+)cm",
                                  values_to = "value")
 
-soil_agg_range <- aggregate(list(value=soil_long$value),by=list(date=soil_long$date,tiefe= soil_long$tiefe,unit= soil_long$unit),range)
-soil_agg_mean <- aggregate(list(value=soil_long$value),by=list(date=soil_long$date,tiefe= soil_long$tiefe,unit= soil_long$unit),mean)
 
-soil_agg_range$min <- soil_agg_range$value[,1]
-soil_agg_range$max <- soil_agg_range$value[,2]
-soil_agg_range <- soil_agg_range[,-grep("value",colnames(soil_agg_range))]
-soil_agg_long <- merge(soil_agg_mean,soil_agg_range)
-soil_agg <- tidyr::pivot_wider(soil_agg_long, names_from = c(unit),values_from = c(min,max,value))
-soil_wide <- tidyr::pivot_wider(soil_agg_long, names_from = c(unit,tiefe),values_from = c(min,max,value))
+soil_agg_long <- soil_long %>%
+  group_by(date,tiefe,unit) %>%
+  summarise(mean = mean(value),min=min(value),max=max(value))
+
+soil_agg <- tidyr::pivot_wider(soil_agg_long, names_from = c(unit),values_from = c(mean,min,max))
+soil_wide <- tidyr::pivot_wider(soil_agg_long, names_from = c(unit,tiefe),values_from = c(mean,min,max))
 colnames(soil_wide) <- str_replace_all(colnames(soil_wide),c("(min|max)_(VWC|T)"="\\2_\\1", "value_VWC" = "VWC", "value_T" = "T_soil"))
 #soil_wide <- tidyr::pivot_wider(soil_agg, names_from = tiefe, values_from = c(T_C,VWC))
 

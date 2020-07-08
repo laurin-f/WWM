@@ -31,9 +31,10 @@ CH4_split <- flux[[1]][["CH4"]][[2]]
 
 range(CO2_flux$mol_per_min_m2)
 mean(CO2_flux$date)
+range(CO2_flux$ml_per_min_m2[round_date(CO2_flux$date,"days") == ymd("2020-06-09")])
 range(CO2_flux$ml_per_min_m2)
-
 ggplot(CO2_flux)+geom_line(aes(date,ml_per_min_m2,col=kammer))
+ggplot(CO2_flux)+geom_boxplot(aes(kammer,ml_per_min_m2,fill=kammer))
 ggplot(CH4_flux)+geom_line(aes(date,ml_per_min_m2,col=kammer))
 ggplot(CH4_split)+geom_point(aes(date,CH4,col=kammer))
 ggplot(CH4_split)+geom_point(aes(zeit,CH4_tara,col=kammer))
