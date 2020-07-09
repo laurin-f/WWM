@@ -45,3 +45,8 @@ ggplot(subset(data,period%in%4))+
   geom_line(aes(date,T_C,col="kiste"))
 ggplot(subset(data,period%in%5))+
   geom_line(aes(date,T_C,col="kiste"))
+
+# ggplot(subset(data,tiefe!=0))+
+#   geom_line(aes(date,Ta_2m,col="ambient"))+
+#   geom_line(aes(date,T_C,col="injection_box"))+xlim(ymd_h(c("2020.05.29 00","2020.06.10 00")))+
+#   ggsave(paste0(plotpfad,"Termperatur_injection_box.pdf"))
