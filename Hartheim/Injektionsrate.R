@@ -22,6 +22,7 @@ for( i in 1:nrow(Pumpzeiten)){
     count <- count+1
   }
 }
+#new_meas <- 6:9
 if(!is.null(new_meas)){
 
 Pumpstufen <- str_split(Pumpzeiten$Pumpstufe,",")
@@ -44,16 +45,18 @@ flux <- flux[!colnames(flux) %in% c("ID","messid")]
 flux$date <- lubridate::with_tz(flux$date, "UTC")
 
 flux_all <- rquery::natural_join(flux,flux_old,by="date",jointype="FULL")
+}else{
+  flux_all <- flux_old
 }
 plot <- T
 if(plot == T){
   
-  ggplot(data)+geom_line(aes(zeit,CO2_tara,col=as.factor(messid)))
+  ggplot(data)+geom_line(aes(zeit,CO2_tara,col=as.factor(messid),linetype=as.factor(Pumpstufe)))
   
   ggplot(subset(flux_all,date > min(Pumpzeiten$beginn)))+
     geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
     ggnewscale::new_scale_color()+
-    geom_point(data=flux_messid,aes(date,ml_per_min,col=as.factor(messid)))
+    geom_point(data=flux_messid,aes(date,ml_per_min,col=as.factor(messid),shape=as.factor(Pumpstufe)))
 }
 
 write.csv(flux_all,file = paste0(metapfad_tracer,"Pumpstufen_flux.txt"),row.names = F)

@@ -16,12 +16,38 @@ packages<-c("lubridate","stringr","ggplot2","units","dplyr")
 check.packages(packages)
 
 datelim <- ymd_hm("2020.07.06 14:00","2020.07.08 13:00")
-datelim <- ymd_hm("2020.07.06 12:00","2020.07.06 17:00")
+datelim2 <- ymd_hm("2020.07.08 16:30","2020.07.10 10:20")
+datelim3 <- ymd_hm("2020.07.10 13:00","2020.07.10 19:00")
+datelim_50m_1 <- ymd_hm("2020.07.10 11:55","2020.07.10 12:50")#micro bei (siehe Foto) 
+datelim_50m_2 <- ymd_hm("2020.07.14 16:49","2020.07.14 18:00")#micro bei Haupthütte
 
-colnames(micro)
-gga <- read_db("GGA.db","gga",datelim)
-micro <- read_db("GGA.db","micro",datelim)
 
+
+gga1 <- read_db("GGA.db","gga",datelim)
+gga2 <- read_db("GGA.db","gga",datelim2)
+gga3 <- read_db("GGA.db","gga",datelim3)
+micro1 <- read_db("GGA.db","micro",datelim)
+micro2 <- read_db("GGA.db","micro",datelim2)
+micro3 <- read_db("GGA.db","micro",datelim3)
+micro <- rbind(micro1,micro2,micro3)
+gga <- rbind(gga1,gga2,gga3)
+
+micro_50m_1 <- read_db("GGA.db","micro",datelim_50m_1)
+micro_50m_2 <- read_db("GGA.db","micro",datelim_50m_2)
+ggplot(micro_50m_1)+geom_line(aes(date,CO2))
+ggplot(micro_50m_2)+geom_line(aes(date,CO2))
+ggplot(micro)+geom_line(aes(date,CO2))
+
+gga_50m_1 <- read_db("GGA.db","gga",datelim_50m_1)
+gga_50m_2 <- read_db("GGA.db","gga",datelim_50m_2)
+ggplot(gga_50m_1)+geom_line(aes(date,CO2))
+ggplot(gga_50m_2)+geom_line(aes(date,CO2))
+ggplot()+
+  geom_line(data= gga_50m_1,aes(date,CO2))+
+  geom_line(data= micro_50m_1,aes(date,CO2))
+ggplot()+
+  geom_line(data= gga_50m_2,aes(date,CO2))+
+  geom_line(data= micro_50m_2,aes(date,CO2))
 ######################################
 #loess
 micro$date_int <- as.integer(micro$date)
@@ -68,9 +94,10 @@ egg::ggarrange(rauschplot,CH4rauschplot,T_plot)
 
 egg::ggarrange(Co2_plot_gga,rauschplot_gga,T_plot_gga)
 egg::ggarrange(rauschplot,T_plot)
-egg::ggarrange(gga_plot,T_plot)
 
 gga_plot <- ggplot(gga)+geom_line(aes(date,CO2))
+egg::ggarrange(gga_plot+geom_vline(xintercept = ymd_hm("2020.07.09 16:16")),T_plot)
+
 ggamicro_plot <- ggplot()+
   geom_line(data= gga,aes(date,CO2,col="4 cm"))+
   geom_line(data= micro,aes(date,CO2,col="0 cm"))+

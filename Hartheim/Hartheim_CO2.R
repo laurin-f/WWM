@@ -164,10 +164,6 @@ data$hour <- hour(data$date)
 
 data_PSt0 <- lapply(na.omit(unique(data$Position)),function(x) subset(data, Pumpstufe == 0 & Position == x))
 
-
-x <- data_PSt0[[6]]
-which(!is.na(x$CO2_ref[x$tiefe==-24.5]))
-x$CO2_ref[x$tiefe==-24.5][which(!is.na(x$CO2_ref[x$tiefe==-24.5]))]
 #data$tiefe_inj <- data$tiefe +tiefen_offset$offset[1]
 #data$tiefe_ref <- data$tiefe +tiefen_offset$offset[2] - 3.5
 
@@ -200,11 +196,14 @@ for(i in (1:7)*-3.5){
 
 
 ########################
-
-data_kal <- lapply(data_PSt0, function(x) aggregate(x[,grep("CO2",colnames(x))] ,list(tiefe = x$tiefe), mean, na.rm=T))
-for(i in seq_along(data_kal)){
-data_kal[[i]]$offset <-  data_kal[[i]]$CO2_inj - data_kal[[i]]$CO2_ref
+for(i in seq_along(data_PSt0)){
+  data_PSt0[[i]]$offset <-  data_PSt0[[i]]$CO2_inj - data_PSt0[[i]]$CO2_ref
 }
+
+data_kal <- lapply(data_PSt0, function(x) aggregate(x[,grep("CO2|offset",colnames(x))] ,list(tiefe = x$tiefe), mean, na.rm=T))
+#for(i in seq_along(data_kal)){
+#data_kal[[i]]$offset <-  data_kal[[i]]$CO2_inj - data_kal[[i]]$CO2_ref
+#}
 
 
 # ggplot(data_kal)+
@@ -281,6 +280,7 @@ offset_plot1 <- ggplot(subset(data,Pumpstufe==0&Position == 1))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1)+
   geom_ribbon(aes(x=date,ymin=CO2_ref + offset,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.3)+
   labs(title="keine Injektion",col="tiefe",fill="tiefe",linetype="sampler")
+
 offset_plot2 <- ggplot(subset(data,Pumpstufe==0&Position == 7))+
   geom_line(aes(date,CO2_roll_ref+offset,col=as.factor(tiefe),linetype="ref + offset"),lwd=1)+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1)+
@@ -329,6 +329,20 @@ ref_2 <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
 
 inj_ref2 <- egg::ggarrange(inj_2,ref_2,ncol=1)
+
+range3 <- range(data$date[data$Position ==8],na.rm = T)
+inj_3 <- ggplot(subset(data,date > range3[1] & date < range3[2]))+
+  geom_vline(xintercept = Pumpzeiten$start[-1])+
+  geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
+  annotate("text",x=Pumpzeiten$start[11],y=Inf,label="injection",vjust=1,hjust=-0.1)+
+  labs(col="tiefe [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler")
+
+ref_3 <- ggplot(subset(data,date > range3[1] & date < range3[2]))+
+  geom_vline(xintercept = Pumpzeiten$start[-1])+
+  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
+  guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
+
+inj_ref3 <- egg::ggarrange(inj_3,ref_3,ncol=1)
 
 
 ##########################
