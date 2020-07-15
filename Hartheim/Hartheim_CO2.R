@@ -99,15 +99,15 @@ for(i in na.omit(unique(data$Pumpstufe))){
 
 data <- merge(data,soil_wide,by="date",all.x = T)
 
-
+colnames(soil_wide)
 
 
 data <- variable_to_depths("VWC_min")
 data <- variable_to_depths("VWC_max")
 data <- variable_to_depths("VWC")
-data <- variable_to_depths("T_min")
-data <- variable_to_depths("T_max")
-data <- variable_to_depths("T_soil")
+data <- variable_to_depths("T_min","T_soil_min")
+data <- variable_to_depths("T_max","T_soil_max")
+data <- variable_to_depths("T","T_soil")
 
 ############################
 #DS PTF
@@ -147,6 +147,35 @@ data$DSD0_PTF <- data$c_PTF * data$eps^data$d_PTF
 data$DSD0_PTF_min <- data$c_PTF * data$eps_min^data$d_PTF
 data$DSD0_PTF_max <- data$c_PTF * data$eps_max^data$d_PTF
 
+
+#F = -DS * dC/Dz
+data_wide <- tidyr::pivot_wider(data,id_cols=date,names_from = tiefe,values_from = grep("CO2|DSD0_PTF|T_soil|PressureActual",colnames(data)))
+tiefen <- 0:7*-3.5
+
+
+
+for(j in c("min_","max_","")){
+for(i in 2:length(tiefen)){
+dC <- data_wide[,paste0("CO2_ref_",tiefen[i])]-data_wide[,paste0("CO2_ref_",tiefen[i-1])]
+dz <- 3.5
+DSD0 <- (data_wide[,paste0("DSD0_PTF_",j,tiefen[i])] + data_wide[,paste0("DSD0_PTF_",j,tiefen[i-1])]) /2
+T_soil <- (data_wide[,paste0("T_soil_",j,tiefen[i])] + data_wide[,paste0("T_soil_",j,tiefen[i-1])]) /2
+p_hPa <- data_wide[,paste0("PressureActual_hPa_",tiefen[i])]
+D0 <- D0_T_p(T_soil,"CO2",p_hPa/10)
+  j2 <- j
+if(j == "") j2 <- "mean_"
+data_wide[,paste0("F_z_",j2,mean(c(tiefen[i],tiefen[i-1])))] <- DSD0 * D0*60 * dC/dz *10^-6 *10^4 #cm2/min /cm  = ml/min/m2
+}
+}
+
+
+#F_z <- tidyr::pivot_longer(data_wide,grep("CO2|DSD0_PTF|T_soil|F_z",colnames(data_wide)))
+F_z_wide <- data_wide[,grep("date|F_z",colnames(data_wide))]
+F_PTF <- tidyr::pivot_longer(F_z_wide,grep("F_z",colnames(F_z_wide)),names_prefix = "F_z_",names_to = "tiefe",values_to = "F_z")
+F_PTF <- tidyr::pivot_longer(F_z_wide,grep("F_z",colnames(F_z_wide)),names_pattern = "F_z_(min|max|mean)_(-\\d+\\.\\d+)",names_to = c(".value","tiefe"))
+ggplot(subset(F_PTF,tiefe==-1.75))+
+  geom_line(aes(date,mean,col=as.factor(tiefe)))+
+  geom_ribbon(aes(x=date,ymin=min,ymax=max))
 
 
 
@@ -444,6 +473,37 @@ ggplot(subset(data, Pumpstufe == 1.5 & date %in% round_date(date,"hours") & date
 ggplot(data)+geom_line(aes(date,eps,col=as.factor(tiefe)))
 ggplot(data)+geom_line(aes(date,DSD0_PTF*D0_T_p(12)*10^-4,col=as.factor(tiefe)))
 colnames(data)
+
+F_z_PTF  <- ggplot(subset(F_PTF,date > range1[1] & date < range1[2]&tiefe %in% c(-1.75,-5.25)))+
+  geom_line(aes(date,mean,col=as.factor(tiefe)))+
+  geom_ribbon(aes(x=date,ymin=min,ymax=max,fill=as.factor(tiefe)),alpha=0.3)+
+  geom_point(data=Kammer_flux,aes(date,CO2flux,col=kammer))+
+  geom_errorbar(data=Kammer_flux,aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=kammer), width=0.2 *timesecs)
+F_z_PTF
+min(Kammer_flux$date)
+range1
+F_z_PTF  <- ggplot(subset(F_z,date > range2[1] & date < range2[2]))+
+  geom_line(aes(date,F_z,col=as.factor(tiefe)))
+
+timesecs <- as.numeric(difftime(max(Kammer_flux$date),min(Kammer_flux$date),unit="secs")/length(Kammer_flux$date))
+ggplot(data=Kammer_flux,aes(date,CO2flux,col=kammer))+
+  geom_line()+
+  geom_errorbar(aes(ymin=CO2flux_min,ymax=CO2flux_max,col=kammer),width=.2* timesecs) 
+
+# Create a simple example dataset
+df <- data.frame(
+  trt = factor(c(1, 1, 2, 2)),
+  resp = c(1, 5, 3, 4),
+  group = factor(c(1, 2, 1, 2)),
+  upper = c(1.1, 5.3, 3.3, 4.2),
+  lower = c(0.8, 4.6, 2.4, 3.6)
+)
+
+p <- ggplot(df, aes(trt, resp, colour = group))
+p + geom_linerange(aes(ymin = lower, ymax = upper))
+p + geom_pointrange(aes(ymin = lower, ymax = upper))
+p + geom_crossbar(aes(ymin = lower, ymax = upper), width = 0.2)
+p + geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2)
 ###########
 #export data
 

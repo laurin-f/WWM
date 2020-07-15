@@ -4,7 +4,7 @@
 detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<-paste0(hauptpfad,"Daten/Metadaten/")
-
+kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 #flux.kammer<-function(ort="Schauinsland",
 #                      messnr){
 
@@ -55,17 +55,6 @@ ggplot(Kammer_flux)+
   geom_line(aes(date,CH4flux,col=kammer))+
   geom_ribbon(aes(x=date,ymin=CH4flux_min,ymax=CH4flux_max,fill=kammer),alpha=0.3)
 
+save(Kammer_flux,file=paste0(kammer_datapfad,"Kammer_flux.RData"))
 #Metadaten laden
 
-
-
-####################################################################
-sampler1 <- read_sampler("sampler1",datelim = c("2020-05-14 11:45:00 UTC", "2020-05-15 20:00:00 UTC"), format = "long")
-sampler2 <- read_sampler("sampler2",datelim = c("2020-05-14 11:45:00 UTC", "2020-05-15 20:00:00 UTC"), format = "long")
-
-
-ggplot(subset(sampler1,!is.na(tiefe)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))#+
-xlim(ymd_h("2020-05-15 10","2020-05-15 18"))
-ggplot(subset(sampler2,!is.na(tiefe)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))
-
-ggplot(subset(data,variable=="T_C"))+geom_line(aes(date,CO2))

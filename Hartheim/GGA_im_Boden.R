@@ -18,7 +18,7 @@ check.packages(packages)
 datelim <- ymd_hm("2020.07.06 14:00","2020.07.08 13:00")
 datelim2 <- ymd_hm("2020.07.08 16:30","2020.07.10 10:20")
 datelim3 <- ymd_hm("2020.07.10 13:00","2020.07.10 19:00")
-datelim_50m_1 <- ymd_hm("2020.07.10 11:55","2020.07.10 12:50")#micro bei (siehe Foto) 
+datelim_50m_1 <- ymd_hm("2020.07.10 11:55","2020.07.10 12:50")#micro bei T4 (siehe Foto) 
 datelim_50m_2 <- ymd_hm("2020.07.14 16:49","2020.07.14 18:00")#micro bei Haupthütte
 
 
