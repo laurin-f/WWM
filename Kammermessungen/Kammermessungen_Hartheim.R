@@ -8,6 +8,7 @@ kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 #flux.kammer<-function(ort="Schauinsland",
 #                      messnr){
 
+
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","readxl","egg","dplyr")
@@ -32,19 +33,21 @@ CO2_flux$day <- as_date(CO2_flux$date)
 CH4_flux$day <- as_date(CH4_flux$date)
 CO2_flux_agg <- CO2_flux %>%
   group_by(day,kammer) %>%
-  summarise(CO2flux = mean(ml_per_min_m2),CO2flux_min = min(ml_per_min_m2),CO2flux_max = max(ml_per_min_m2),date = mean(date))
+  summarise(CO2flux = mean(mumol_per_s_m2),CO2flux_min = min(mumol_per_s_m2),CO2flux_max = max(mumol_per_s_m2),date = mean(date))
 CH4_flux_agg <- CH4_flux %>%
   group_by(day,kammer) %>%
-  summarise(CH4flux = mean(ml_per_min_m2),CH4flux_min = min(ml_per_min_m2),CH4flux_max = max(ml_per_min_m2),date = mean(date))
+  summarise(CH4flux = mean(mumol_per_s_m2),CH4flux_min = min(mumol_per_s_m2),CH4flux_max = max(mumol_per_s_m2),date = mean(date))
 Kammer_flux <- merge(CO2_flux_agg,CH4_flux_agg)
 
-range(CO2_flux$mol_per_min_m2)
+range(CO2_flux$mumol_per_s_m2)
+
+
 mean(CO2_flux$date)
-range(CO2_flux$ml_per_min_m2[round_date(CO2_flux$date,"days") == ymd("2020-06-09")])
-range(CO2_flux$ml_per_min_m2)
-ggplot(CO2_flux)+geom_line(aes(date,ml_per_min_m2,col=kammer))
-ggplot(CO2_flux)+geom_boxplot(aes(kammer,ml_per_min_m2,fill=kammer))
-ggplot(CH4_flux)+geom_line(aes(date,ml_per_min_m2,col=kammer))
+range(CO2_flux$mumol_per_s_m2[round_date(CO2_flux$date,"days") == ymd("2020-06-09")])
+range(CO2_flux$mumol_per_s_m2)
+ggplot(CO2_flux)+geom_line(aes(date,mumol_per_s_m2,col=kammer))
+ggplot(CO2_flux)+geom_boxplot(aes(kammer,mumol_per_s_m2,fill=kammer))
+ggplot(CH4_flux)+geom_line(aes(date,mumol_per_s_m2,col=kammer))
 ggplot(CH4_split)+geom_point(aes(date,CH4,col=kammer))
 ggplot(CH4_split)+geom_point(aes(zeit,CH4_tara,col=kammer))
 

@@ -315,10 +315,12 @@ calc_flux <- function(data,
   flux$ml_per_min<-ppm_per_min /10^6 * Vol #cm3 / min
   flux$g_per_min <- flux$ml_per_min * ro[,gas] #g / min
   flux$mol_per_min <- flux$ml_per_min * m #mol / min
+  flux$mumol_per_s <- change_unit(flux$mol_per_min,"mol/min","micromol/s") #mol / min
   if(!is.null(Grundfl)){
     flux$ml_per_min_m2<-flux$ml_per_min/(Grundfl/10^4) #cm3 /(min m2)
     flux$g_per_min_m2 <- flux$g_per_min/(Grundfl/10^4) #g/(min m2)
     flux$mol_per_min_m2 <- flux$mol_per_min/(Grundfl/10^4) #mol/(min m2)
+    flux$mumol_per_s_m2 <- flux$mumol_per_s/(Grundfl/10^4) #mumol/(s m2)
   }
   #falls eine Tracerkonzentration angegeben wurde wird
   #eine effektive Einspeiserate berechnet

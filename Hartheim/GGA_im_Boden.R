@@ -22,7 +22,6 @@ datelim_50m_1 <- ymd_hm("2020.07.10 11:55","2020.07.10 12:50")#micro bei T4 (sie
 datelim_50m_2 <- ymd_hm("2020.07.14 16:49","2020.07.14 18:00")#micro bei Haupthütte
 
 
-
 gga1 <- read_db("GGA.db","gga",datelim)
 gga2 <- read_db("GGA.db","gga",datelim2)
 gga3 <- read_db("GGA.db","gga",datelim3)
@@ -48,6 +47,7 @@ ggplot()+
 ggplot()+
   geom_line(data= gga_50m_2,aes(date,CO2))+
   geom_line(data= micro_50m_2,aes(date,CO2))
+
 ######################################
 #loess
 micro$date_int <- as.integer(micro$date)
@@ -102,7 +102,13 @@ ggamicro_plot <- ggplot()+
   geom_line(data= gga,aes(date,CO2,col="4 cm"))+
   geom_line(data= micro,aes(date,CO2,col="0 cm"))+
   labs(col="tiefe")
-write
+
 
 write.csv(micro,file=paste0(datapfad_harth,"gga_tiefe0cm.txt"))
 write.csv(gga,file=paste0(datapfad_harth,"gga_tiefe4cm.txt"))
+
+
+write.csv(micro_50m_1,paste0(datapfad_harth,"gga_T4_07.10.txt"))
+write.csv(micro_50m_2,paste0(datapfad_harth,"gga_Haus_07.14.txt"))
+write.csv(gga_50m_1,paste0(datapfad_harth,"gga_hüttchen_07.10.txt"))
+write.csv(gga_50m_2,paste0(datapfad_harth,"gga_hüttchen_07.14.txt"))

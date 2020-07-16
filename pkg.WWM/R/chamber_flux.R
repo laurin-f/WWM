@@ -88,17 +88,31 @@ if(chamber=="manuelle Kammer"){
   Vol<-Vol_basis-Messungen$Ueberstand*(Grundfl_aussen-Grundfl)+Vol_schlauch+Vol_GGA#cm3
 }
 
+###########
+#Temperatur
+load(file=paste0(klimapfad,"klima_data.RData"))
+klima_sub <- subset(klima, date > beginn & date < ende)
 flux <- list()
 if(length(Vol_schlauch) > 1){
   for(i in c("CO2","CH4")){
     flux[[i]] <- list(NULL,NULL)
     for(j in seq_along(Vol_schlauch)){
+      
+      #falls klimadaten Vorhanden diese verwenden da interne Temperatur vom microGGA zu hoch ist (siehe Temp_micro_klimaturm.R)
+      if(any(klima_sub$date > beginn_seq[j] & klima_sub$date < ende_seq[j])){
+        T_deg <- mean(klima_sub$Ta_2m[klima_sub$date > beginn_seq[j] & 
+                                    klima_sub$date < ende_seq[j]],na.rm=T)
+      }else{
+        T_deg <- mean(data$AmbT_C[data$date > beginn_seq[j] & 
+                           data$date < ende_seq[j]],na.rm=T)
+      }
     flux_j <- calc_flux(data = subset(data,date > beginn_seq[j] & date < ende_seq[j]),
                            group="kammer",
                            gas = i,
                            Vol = Vol+Vol_schlauch[j],
                            Grundfl = Grundfl,
-                           aggregate = aggregate)
+                           aggregate = aggregate,
+                           T_deg = T_deg)
     flux[[i]][[1]] <- rbind(flux[[i]][[1]],flux_j[[1]])
     flux[[i]][[2]] <- rbind(flux[[i]][[2]],flux_j[[2]])
 
@@ -107,12 +121,20 @@ if(length(Vol_schlauch) > 1){
 }else{
 
 for(i in c("CO2","CH4")){
+  if(any(klima_sub$date > beginn_seq & klima_sub$date < ende_seq)){
+    T_deg <- mean(klima_sub$Ta_2m[klima_sub$date > beginn_seq & 
+                                klima_sub$date < ende_seq],na.rm=T)
+  }else{
+    T_deg <- mean(data$AmbT_C[data$date > beginn_seq & 
+                                data$date < ende_seq],na.rm=T)
+  }
   flux[[i]] <- calc_flux(data = data,
           group="kammer",
           gas = i,
           Vol = Vol+Vol_schlauch,
           Grundfl = Grundfl,
-          aggregate = aggregate)
+          aggregate = aggregate,
+          T_deg = T_deg)
   }
 }
 return(flux)
