@@ -210,7 +210,7 @@ data_PSt0 <- lapply(na.omit(unique(data$Position)),function(x) subset(data, Pump
 ##################
 #mit glm oder gam
 data$preds <- NA
-glmgam <- F
+glmgam <- T
 if(glmgam == T){
 
 for(j in seq_along(data_PSt0)){
@@ -257,6 +257,8 @@ for(i in seq_along(data_kal)){
 }
 #data$CO2_tracer <- data$CO2_roll_inj - (data$CO2_roll_ref + data$offset)
 data$CO2_tracer <- data$CO2_inj - (data$CO2_ref + data$offset)
+data$CO2_tracer_glm <- data$CO2_inj - (data$preds)
+
 data$tracer_pos <- data$CO2_tracer > 0
 data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$CO2_inj)
 #data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$CO2_roll_inj)
@@ -267,7 +269,7 @@ data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$C
 #plots glm gam offset
 plotgam <- F
 if(plotgam==T){
-  data_sub <- subset(data,date>range2[1] & date < range2[2])
+data_sub <- subset(data,date>range2[1] & date < range2[2])
 ggplot(data_sub)+
   geom_line(aes(date,CO2_roll_ref,col="ref"))+
   geom_line(aes(date,preds,col="glm"))+
@@ -328,6 +330,16 @@ offset_plot2 <- ggplot(subset(data,Pumpstufe==0&Position == 7))+
   geom_ribbon(aes(x=date,ymin=CO2_ref + offset,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.3)+
   labs(title="keine Injektion",col="tiefe",fill="tiefe",linetype="sampler")
 
+range2 <- range(data$date[data$Position ==7],na.rm = T)
+offset_plot_glm <- ggplot(subset(data,date > range2[1] & date < range2[2] &tiefe==-24.5))+
+  geom_line(aes(date,CO2_roll_ref,col="ref"),lwd=1)+
+  geom_line(aes(date,preds,col="ref glm"),lwd=1)+
+  geom_line(aes(date,CO2_roll_inj,col="inj"),lwd=1)+
+  geom_ribbon(aes(x=date,ymin=preds,ymax=CO2_inj,fill="tracer"),alpha=0.3)+
+  facet_wrap(~tiefe,scales="free_y",ncol=2)+
+  labs(col="tiefe",fill="tiefe",linetype="sampler")
+
+offset_plot_glm+ggsave(paste0(plotpfad,"inj_ref_tracer2.png"),width=9,height=5)
 ###################
 #inj_ref
 inj <- ggplot(data)+
@@ -340,6 +352,7 @@ ref <- ggplot(data)+
   geom_vline(xintercept = Pumpzeiten$start[-1])+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
   guides(col=F)+labs(y=expression(CO[2]*" [ppm]"),title="reference sampler")
+
 inj_ref <- egg::ggarrange(inj,ref+
                             annotate("text",x=Pumpzeiten$start,y=max(data$CO2_ref,na.rm=T)+nrow(Pumpzeiten):1*400,label=Pumpzeiten$bemerkung,vjust=1,hjust="left"),ncol=1)
 
@@ -436,6 +449,25 @@ pdf(paste0(plotpfad,"CO2_p_VWC2.pdf"),width=10,height=10)
 CO2_p_VWC2
 dev.off()
 
+png(paste0(plotpfad,"inj_ref.png"),width=11,height=9,units = "in",res=500)
+inj_ref
+dev.off()
+png(paste0(plotpfad,"inj_ref1.png"),width=11,height=9,units = "in",res=500)
+inj_ref1
+dev.off()
+png(paste0(plotpfad,"inj_ref2.png"),width=11,height=9,units = "in",res=500)
+inj_ref2
+dev.off()
+png(paste0(plotpfad,"CO2_p_VWC.png"),width=10,height=10,units = "in",res=500)
+CO2_p_VWC
+dev.off()
+png(paste0(plotpfad,"CO2_p_VWC1.png"),width=10,height=10,units = "in",res=500)
+CO2_p_VWC1
+dev.off()
+png(paste0(plotpfad,"CO2_p_VWC2.png"),width=10,height=10,units = "in",res=500)
+CO2_p_VWC2
+dev.off()
+
 
 #######################################
 #tracer ribbon
@@ -458,7 +490,7 @@ Tracer_glm <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds,fill=as.factor(tiefe)),alpha=0.3)+
   labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tracer signal")+
   geom_vline(xintercept = Pumpzeiten$start)+
-  ggsave(paste0(plotpfad,"Einspeisung2_glm.pdf"),width=10,height=7)
+  ggsave(paste0(plotpfad,"Einspeisung2_glm.png"),width=10,height=7)
 
 Tracer_offset <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1.2)+
@@ -469,7 +501,7 @@ Tracer_offset <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   ggsave(paste0(plotpfad,"Einspeisung2_diff.pdf"),width=10,height = 7)
 
 
-egg::ggarrange(Tracer_offset,Tracer_glm+guides(col=F,fill=F,linetype=F))
+#egg::ggarrange(Tracer_offset,Tracer_glm+guides(col=F,fill=F,linetype=F))
 
 data_sub <- subset(data,date== ymd_h("2020-07-06 12"))
   ggplot(data_sub)+geom_line(aes(CO2_tracer,tiefe),orientation = "y")
@@ -515,7 +547,7 @@ F_z_PTF  <- ggplot(subset(F_PTF_agg,tiefe %in% c("0-3.5","3.5-7")))+
   scale_color_brewer(type="qual",palette = 6)+
   labs(col="Kammermessungen",
        y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))
-F_z_PTF+ggsave(paste0(plotpfad,"Vergleich_Flux_PTF_Kammer.pdf"),width=9,height=5)
+F_z_PTF+ggsave(paste0(plotpfad,"Vergleich_Flux_PTF_Kammer.png"),width=9,height=5)
 
 
 ###########

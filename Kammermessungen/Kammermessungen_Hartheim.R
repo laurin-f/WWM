@@ -15,7 +15,7 @@ packages<-c("lubridate","stringr","ggplot2","readxl","egg","dplyr")
 check.packages(packages)
 flux <- list()
 
-for(i in c(1:3,6:7)){
+for(i in c(1:3,6:7,9)){
 flux[[i]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=30,closing_after=30,messnr = i,t_max=3)
 }
 flux[[4]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=45,closing_after=45,messnr = 4,adj_openings=T,t_max=3)

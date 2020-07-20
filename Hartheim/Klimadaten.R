@@ -58,6 +58,8 @@ soil_agg_long <- soil_long %>%
   summarise(mean = mean(value),min=min(value),max=max(value))
 
 soil_agg <- tidyr::pivot_wider(soil_agg_long, names_from = c(unit),values_from = c(mean,min,max))
+soil_agg$tiefe <- as.numeric(soil_agg$tiefe)
+
 soil_wide <- tidyr::pivot_wider(soil_agg_long, names_from = c(unit,tiefe),values_from = c(mean,min,max))
 colnames(soil_wide) <- str_replace_all(colnames(soil_wide),c("(min|max)_(VWC|T)"="\\2_\\1", "value_VWC" = "VWC", "value_T" = "T_soil"))
 #soil_wide <- tidyr::pivot_wider(soil_agg, names_from = tiefe, values_from = c(T_C,VWC))
