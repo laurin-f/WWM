@@ -48,8 +48,6 @@ range(CO2_flux$mumol_per_s_m2)
 ggplot(CO2_flux)+geom_line(aes(date,mumol_per_s_m2,col=kammer))
 ggplot(CO2_flux)+geom_boxplot(aes(kammer,mumol_per_s_m2,fill=kammer))
 ggplot(CH4_flux)+geom_line(aes(date,mumol_per_s_m2,col=kammer))
-ggplot(CH4_split)+geom_point(aes(date,CH4,col=kammer))
-ggplot(CH4_split)+geom_point(aes(zeit,CH4_tara,col=kammer))
 
 ggplot(Kammer_flux)+
   geom_line(aes(date,CO2flux,col=kammer))+

@@ -49,6 +49,7 @@ data_sub <- subset(data,t_mins >= 0 & t_mins < 3600*24)
 data_sub$inj_mol_m2_s[is.na(data_sub$inj_mol_m2_s)] <- data_sub$inj_mol_m2_s[!is.na(data_sub$inj_mol_m2_s)][1]
 plot(data_sub$t_mins,data_sub$CO2_mol_per_m3)
 any(is.na(data_sub[,c("date","t_mins","inj_mol_m2_s","CO2_mol_per_m3")]))
+
 write.table(data_sub[data_sub$tiefe == 0,c("t_mins","inj_mol_m2_s")],paste0(metapfad_comsol,"td_inj.csv"),col.names = F,row.names = F,sep=",")
 for(i in 1:7){
   write.table(data_sub[data_sub$tiefe == (1:7*-3.5)[i],c("t_mins","CO2_mol_per_m3")],paste0(metapfad_comsol,"td_dom",i,".csv"),col.names = F,row.names = F,sep=",")

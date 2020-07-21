@@ -42,12 +42,6 @@ data <- read_sampler("sampler1u2",datelim = datelim, format = "long")
 
 colnames(data) <- str_replace_all(colnames(data),c("smp1" = "inj", "smp2" = "ref"))
 
-#smp1_plt <- ggplot(smp1)+geom_line(aes(date,CO2,col=as.factor(tiefe)))
-
-#T_plt <- ggplot(smp1)+geom_line(aes(date,T_C))
-#egg::ggarrange(smp1_plt,T_plt,heights=c(4,1))
-#smp1_plt+geom_vline(xintercept = Pumpstufen$start)
-#ggplot(smp2)+geom_line(aes(date,CO2,col=as.factor(tiefe)))
 
 data <- merge(data,klima,by="date",all.x = T)
 #Pumpstufe und Versuch aus metadaten auf dataframe übetragen
@@ -198,15 +192,6 @@ data$hour <- hour(data$date)
 
 data_PSt0 <- lapply(na.omit(unique(data$Position)),function(x) subset(data, Pumpstufe == 0 & Position == x))
 
-#data$tiefe_inj <- data$tiefe +tiefen_offset$offset[1]
-#data$tiefe_ref <- data$tiefe +tiefen_offset$offset[2] - 3.5
-
-
-# ggplot(data)+
-#   geom_line(aes(date,CO2_ref_adj,col=as.factor(tiefe_inj)))+
-#   geom_line(aes(date,CO2_ref,col=as.factor(tiefe_ref)))
-# ggplot(data)+
-#   geom_line(aes(date,CO2_ref_adj-CO2_ref,col=as.factor(tiefe_inj)))
 ##################
 #mit glm oder gam
 data$preds <- NA
@@ -227,12 +212,6 @@ for(i in (1:7)*-3.5){
 }
 }
 
-# ggplot(subset(data_PSt0[[1]]))+
-#   geom_abline(slope = 1,intercept = 0)+
-#   geom_point(aes(preds,CO2_inj,col="glm"))+
-#   geom_point(aes(preds2,CO2_inj,col="gam"))
-
-
 
 ########################
 for(i in seq_along(data_PSt0)){
@@ -240,15 +219,8 @@ for(i in seq_along(data_PSt0)){
 }
 
 data_kal <- lapply(data_PSt0, function(x) aggregate(x[,grep("CO2|offset",colnames(x))] ,list(tiefe = x$tiefe), mean, na.rm=T))
-#for(i in seq_along(data_kal)){
-#data_kal[[i]]$offset <-  data_kal[[i]]$CO2_inj - data_kal[[i]]$CO2_ref
-#}
 
 
-# ggplot(data_kal)+
-#   geom_path(aes(CO2_ref,tiefe,col="ref"))+
-#   geom_path(aes(CO2_inj,tiefe,col="inj"))+
-#   geom_ribbon(aes(xmin=CO2_ref, xmax= CO2_ref + offset,y=tiefe,fill="offset"),alpha = 0.3)
 data$offset <- NA
 for(i in seq_along(data_kal)){
   pos <- na.omit(unique(data$Position))[i]
@@ -338,6 +310,7 @@ offset_plot_glm <- ggplot(subset(data,date > range2[1] & date < range2[2] &tiefe
   geom_ribbon(aes(x=date,ymin=preds,ymax=CO2_inj,fill="tracer"),alpha=0.3)+
   facet_wrap(~tiefe,scales="free_y",ncol=2)+
   labs(col="tiefe",fill="tiefe",linetype="sampler")
+
 
 offset_plot_glm+ggsave(paste0(plotpfad,"inj_ref_tracer2.png"),width=9,height=5)
 ###################
@@ -491,6 +464,7 @@ Tracer_glm <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tracer signal")+
   geom_vline(xintercept = Pumpzeiten$start)+
   ggsave(paste0(plotpfad,"Einspeisung2_glm.png"),width=10,height=7)
+Tracer_glm+geom_vline(xintercept = kammer_dates[1])+xlim(ymd_h(c("2020.07.08 06","2020.07.08 14")))
 
 Tracer_offset <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"),lwd=1.2)+
