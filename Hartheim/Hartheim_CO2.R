@@ -162,7 +162,7 @@ p_hPa <- data_wide[,paste0("PressureActual_hPa_",tiefen[i])]
 dC_mol_m3 <- ppm_to_mol(dC_ppm,unit_in = "ppm",T_C = T_soil,p_kPa = p_hPa/10)
 dC_mumol_m3 <- dC_mol_m3*10^6
 
-D0_cm2_s <- D0_T_p(T_soil,"CO2",p_hPa/10)
+D0_cm2_s <- D0_T_p(T_soil,p_hPa/10)
 D0_m2_s <- D0_cm2_s/10^4
 
   j2 <- j
@@ -195,19 +195,22 @@ data_PSt0 <- lapply(na.omit(unique(data$Position)),function(x) subset(data, Pump
 ##################
 #mit glm oder gam
 data$preds <- NA
+data$preds2 <- NA
 glmgam <- T
 if(glmgam == T){
 
-for(j in seq_along(data_PSt0)){
+for(j in seq_along(data_PSt0)[-c(3,5)]){
 for(i in (1:7)*-3.5){
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
-  fm <- glm(CO2_roll_inj ~ CO2_roll_ref ,data=subset(data_PSt0[[j]],tiefe==i))
-  #fm2 <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0[[j]],tiefe==i))
+  fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[j]],tiefe==i))
+  
+  fm2 <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0[[j]],tiefe==i))
   
   pos <- na.omit(unique(data$Position))[j]
   ID <- which(data$tiefe==i & data$Position == pos& !is.na(data$CO2_ref))
+  
   data$preds[ID] <- predict(fm,newdata = data[ID,])
-  #data$preds2[ID] <- predict(fm2,newdata = data[ID,])
+  data$preds2[ID] <- predict(fm2,newdata = data[ID,])
   }
 }
 }
@@ -230,6 +233,7 @@ for(i in seq_along(data_kal)){
 #data$CO2_tracer <- data$CO2_roll_inj - (data$CO2_roll_ref + data$offset)
 data$CO2_tracer <- data$CO2_inj - (data$CO2_ref + data$offset)
 data$CO2_tracer_glm <- data$CO2_inj - (data$preds)
+data$CO2_tracer_gam <- data$CO2_inj - (data$preds2)
 
 data$tracer_pos <- data$CO2_tracer > 0
 data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$CO2_inj)
@@ -241,13 +245,16 @@ data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$C
 #plots glm gam offset
 plotgam <- F
 if(plotgam==T){
-data_sub <- subset(data,date>range2[1] & date < range2[2])
+  range2 <- range(data$date[data$Position ==7],na.rm = T)
+data_sub <- subset(data,date>range2[1] & date < range2[2]& tiefe==-21)
 ggplot(data_sub)+
-  geom_line(aes(date,CO2_roll_ref,col="ref"))+
+  #geom_line(aes(date,CO2_roll_ref,col="ref"))+
   geom_line(aes(date,preds,col="glm"))+
-  #geom_line(aes(date,preds2,col="gam"))+
-  geom_line(aes(date,CO2_roll_ref+offset,col="ref+offset"))+
+  geom_line(aes(date,preds2,col="gam"))+
+  #geom_line(aes(date,CO2_roll_ref+offset,col="ref+offset"))+
+  geom_line(data=subset(data_sub,Pumpstufe==0),aes(date,CO2_roll_inj,col="inj"))+
   facet_wrap(~tiefe,scales="free")
+
 ggplot(subset(data,Pumpstufe==0&date > Pumpzeiten$ende[2]& tiefe < 0))+
   geom_line(aes(date,CO2_roll_inj),lwd=1)+
   geom_line(aes(date,preds,col="glm"))+

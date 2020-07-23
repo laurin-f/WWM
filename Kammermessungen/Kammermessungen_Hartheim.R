@@ -56,6 +56,6 @@ ggplot(Kammer_flux)+
   geom_line(aes(date,CH4flux,col=kammer))+
   geom_ribbon(aes(x=date,ymin=CH4flux_min,ymax=CH4flux_max,fill=kammer),alpha=0.3)
 
-save(Kammer_flux,file=paste0(kammer_datapfad,"Kammer_flux.RData"))
+save(Kammer_flux,CO2_flux,file=paste0(kammer_datapfad,"Kammer_flux.RData"))
 #Metadaten laden
 

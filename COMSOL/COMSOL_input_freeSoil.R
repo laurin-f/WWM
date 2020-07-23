@@ -120,7 +120,7 @@ DS_eps$DSD0 <- DS_eps$c * DS_eps$eps^DS_eps$d
 
 DS_eps$DS_cm2_s <- DS_eps$DSD0 * D0_T_p(DS_eps$T_C)
 DS_eps$DS_m2_s <- DS_eps$DS_cm2_s / 10^4
-DS_eps$DS_m2_s
+DS_eps
 ###############################
 #COMSOL input parameter sweep
 #data_agg

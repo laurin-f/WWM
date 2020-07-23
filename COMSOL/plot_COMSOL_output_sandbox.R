@@ -57,7 +57,7 @@ sweep_long$tiefe <- set_units(sweep_long$z - z_box,cm)
 ######################
 #fm
 
-D0_CO2 <- D0_T_p(15) #18°C cm2/s
+D0_CO2 <- D0_T_p(20) #18°C cm2/s
 D0_CO2_m2 <- D0_CO2/10^4 #m2/s
 
 
@@ -118,7 +118,7 @@ DS_D0_long$method <- str_remove(DS_D0_long$method,"DS_D0_")
 DS_D0_long <- rbind(DS_D0_long,thomas_ref)
 
 DS_D0_mat$DS_D0_COMSOL*D0_CO2_m2
-ggplot(DS_D0_long)+geom_col(aes(material,DS_D0,fill=method),position=position_dodge2(preserve = "single"))+ggsave(paste0(plotpfad,"sandkiste/DS_D0_SandSplitt_vergleich.png"),width=9,height=4)
+ggplot(DS_D0_long)+geom_col(aes(material,DS_D0,fill=method),position=position_dodge2(preserve = "single"))#+ggsave(paste0(plotpfad,"sandkiste/DS_D0_SandSplitt_vergleich.png"),width=9,height=4)
 
 DS_D0_label <- tidyr::pivot_wider(DS_D0_long,names_from = method,values_from = DS_D0)
 
@@ -133,7 +133,7 @@ ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
   facet_wrap(~material)+
   geom_text(data=subset(DS_D0_label,material%in% data_sub$material),aes(y= -1,x=6000,label = label),hjust="right")+
   #annotate("text",y= c(-1,-1,-1),x=c(6000,6000,6000),label=c(label1,label2,label3),hjust="right")+
-  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="")+ggsave(paste0(plotpfad,"sandkiste/comsol_mod_obs.png"),width = 8,height=4)
+  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="")#+ggsave(paste0(plotpfad,"sandkiste/comsol_mod_obs.png"),width = 8,height=4)
 
 # Fine gravel 0.235 (0.008) 0.218 0.214
 # Mixture 0.185 (0.006) 0.164 0.141
