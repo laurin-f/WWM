@@ -4,14 +4,14 @@
 \alias{D0_T_p}
 \title{Function to calculate temperature dependent D0 in cm2/s}
 \usage{
-D0_T_p(T_C = 20, gas = "CO2", p_kPa = 101.325)
+D0_T_p(T_C = 20, p_kPa = 101.325, unit = "cm^2/s", gas = "CO2")
 }
 \arguments{
 \item{T_C}{Temperature in Celsius}
 
-\item{gas}{CO2 or CH4}
-
 \item{p_kPa}{pressure in kPa}
+
+\item{gas}{CO2 or CH4}
 }
 \value{
 

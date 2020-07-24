@@ -49,8 +49,7 @@ flux_all <- rquery::natural_join(flux,flux_old,by="date",jointype="FULL")
 }else{
   flux_all <- flux_old
 }
-plot <- T
-if(plot == T){
+
   
   ggplot(data)+geom_line(aes(zeit,CO2_tara,col=as.factor(messid),linetype=as.factor(Pumpstufe)))
   
@@ -58,7 +57,7 @@ if(plot == T){
     geom_line(aes(date,ml_per_min,col=as.factor(Pumpstufe)))+
     ggnewscale::new_scale_color()+
     geom_point(data=flux_messid,aes(date,ml_per_min,col=as.factor(messid),shape=as.factor(Pumpstufe)))
-}
+
 
 write.csv(flux_all,file = paste0(metapfad_tracer,"Pumpstufen_flux.txt"),row.names = F)
 

@@ -48,8 +48,9 @@ ppm_to_mol <- function(data,
 #'
 #' @examples D0_temp(15)
 D0_T_p <- function(T_C = 20,
-                    p_kPa = 101.325,
-                    gas = "CO2"){
+                   p_kPa = 101.325,
+                   unit = "cm^2/s",
+                   gas = "CO2"){
 
   D0 <- c(CO2 = 0.1381, CH4= 0.1952) # cm2/s
 
@@ -60,5 +61,6 @@ D0_T_p <- function(T_C = 20,
   alpha <- 1.81
   T_K <- T_C + 273.15
 
-  D0_T_p <- D0[gas] * (T_K/T0)^alpha * (p0/p_kPa)
+  D0_T_p_cm2_s <- D0[gas] * (T_K/T0)^alpha * (p0/p_kPa)
+  D0_T_p <- change_unit(D0_T_p_cm2_s,"cm^2/s",unit)
   return(D0_T_p)}

@@ -4,7 +4,7 @@
 \alias{read_sampler}
 \title{Read sampler data from database}
 \usage{
-read_sampler(table.name = "sampler1", format = "long", ...)
+read_sampler(table.name = "sampler1u2", format = "long", ...)
 }
 \arguments{
 \item{table.name}{name of the table in the database}

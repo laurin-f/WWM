@@ -51,10 +51,10 @@ ggplot(kammer_sub[[2]])+geom_line(aes(CO2_mol_per_m3,z),orientation = "y")
 
 for(i in seq_along(kammer_sub)){
 kammer_sub[[i]] <- kammer_sub[[i]][order(kammer_sub[[i]]$z),]
-D0 <- D0_T_p(kammer_sub[[i]]$T_soil,p_kPa = kammer_sub[[i]]$PressureActual_hPa/10)
+D0 <- D0_T_p(kammer_sub[[i]]$T_soil,p_kPa = kammer_sub[[i]]$PressureActual_hPa/10,"m^2/s")
 kammer_sub[[i]]$D0 <- D0
-kammer_sub[[i]]$DS_max_m2_s <- kammer_sub[[i]]$DSD0_PTF_max * D0 / 10^4
-kammer_sub[[i]]$DS_min_m2_s <- kammer_sub[[i]]$DSD0_PTF_min * D0 / 10^4
+kammer_sub[[i]]$DS_max_m2_s <- kammer_sub[[i]]$DSD0_PTF_max * D0
+kammer_sub[[i]]$DS_min_m2_s <- kammer_sub[[i]]$DSD0_PTF_min * D0
 }
 sub_j <- kammer_sub[[1]]
 unique(sub_j$inj_mol_m2_s)
@@ -79,7 +79,7 @@ write.table(paste("injection_rate,",unique(sub_j$inj_mol_m2_s)),paste0(metapfad_
 #COMSOL output
 ##############################
 F_Comsol <- data.frame(date=kammer_dates,Fz=NA,FZ_inj=NA)
-j <- 2
+
 for(j in seq_along(kammer_dates)){
 date_chr <- format(kammer_dates[j],"%m_%d_%H")
 
@@ -104,7 +104,8 @@ for(i in 1:nrow(DS_profil)){
   DS_profil$DS_PTF[i] <- mean(unlist(obs_mod[tiefenID,c("DS_min_m2_s","DS_max_m2_s")]))
   DS_profil$D0[i] <- mean(unlist(obs_mod[tiefenID,c("D0")]))
 }
-DS_profil_long <- reshape2::melt(DS_profil,id=grep("DS",colnames(DS_profil)),value.name="tiefe")
+
+DS_profil_long <- reshape2::melt(DS_profil,id=grep("DS|D0",colnames(DS_profil)),value.name="tiefe")
 
 obs_mod_plot <- ggplot(obs_mod)+
   geom_line(aes(y=tiefe,x=CO2_mod_mol_m3,col="mod"))+
@@ -143,11 +144,15 @@ dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units")#mol/m^3/cm
 dC_dz_mol_inj <- ppm_to_mol(dC_dz_inj,"ppm",out_class = "units")#mol/m^3/cm
 
 Fz_mumol_per_s_m2 <- best_DS$DS_1  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
+#Fz_mumol_per_s_m2 <- 5.603326e-06  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
 Fz_mumol_per_s_m2_inj <- best_DS$DS_1  * dC_dz_mol_inj * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
 
 
 F_Comsol$Fz[F_Comsol$date == kammer_dates[[j]]] <- Fz_mumol_per_s_m2
 F_Comsol$Fz_inj[F_Comsol$date == kammer_dates[[j]]] <- Fz_mumol_per_s_m2_inj
+for(k in 1:4){
+F_Comsol[F_Comsol$date == kammer_dates[[j]],paste0("DSD0",k)] <- DS_profil$DS[k]/DS_profil$D0[k]
+}
 }
 
 #ggplot(subset(data))+geom_line(aes(date,CO2_tracer_glm,col=as.factor(tiefe)))+geom_vline(xintercept = kammer_dates_all$date)
@@ -162,3 +167,9 @@ ggplot(subset(Kammer_flux))+
   ggsave(paste0(plotpfad,"Flux_Kammer_Comsol.png"),width=7,height = 7)
 
 ggplot(subset(CO2_flux))+geom_point(aes(date,mumol_per_s_m2,col="kammer"))+geom_point(data=F_Comsol,aes(date,Fz,col="Comsol"),size=2)#+ggsave(paste0(plotpfad,"Flux_Kammer_Comsol",date_chr,".png"),width=7,height = 7)
+colnames(data)
+ggplot(subset(data, tiefe%in%c(-3.5,-7,-10.5)))+
+  geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(tiefe)),alpha=0.2)+
+  geom_line(aes(date,DSD0_PTF,col=as.factor(tiefe)))+
+  geom_point(data=F_Comsol,aes(date,DSD01,col="DSD01"))+
+  geom_point(data=F_Comsol,aes(date,DSD02,col="DSD02"))
