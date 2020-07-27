@@ -48,8 +48,8 @@ data <- merge(data,klima,by="date",all.x = T)
 
 
 #intervalle die am anfang und am ende der Pumpversuche verweorfen werden
-stunden_bis_steadystate <- rep(10,nrow(Pumpzeiten))
-stunden_cut_off <- rep(0,nrow(Pumpzeiten))
+sec_bis_steadystate <- rep(10,nrow(Pumpzeiten))*3600
+sec_cut_off <- rep(0,nrow(Pumpzeiten))*3600
 
 
 #Schleife um Zeiträume mit Pumpzeiten von Metadaten zu übernehmen
@@ -57,7 +57,8 @@ cols2data <- c("Pumpstufe","Position")
 data[,cols2data] <- NA
 
 for(i in seq_along(Pumpzeiten$Pumpstufe)){
-  Pumpzeiten_lim <- data$date > (Pumpzeiten$start[i] + stunden_bis_steadystate[i] * 60 * 60) & if(!is.na(Pumpzeiten$ende[i])) {data$date < (Pumpzeiten$ende[i] - stunden_cut_off[i] * 60 * 60)}else{ T }
+  #Pumpzeiten_lim <- data$date > (Pumpzeiten$start[i] + sec_bis_steadystate[i]) & if(!is.na(Pumpzeiten$ende[i])) {data$date < (Pumpzeiten$ende[i] - sec_cut_off[i])}else{ T }
+  Pumpzeiten_lim <- data$date > ifelse(Pumpzeiten$Pumpstufe[i] == 0,Pumpzeiten$start[i] + sec_bis_steadystate[i],Pumpzeiten$start[i]) & if(!is.na(Pumpzeiten$ende[i])) {data$date < (Pumpzeiten$ende[i] - sec_cut_off[i])}else{ T }
   for(j in cols2data){
     data[Pumpzeiten_lim,j] <- Pumpzeiten[i,j]
   }
@@ -262,8 +263,12 @@ colnames(data_wide) <- str_replace(colnames(data_wide),"Fz_tiefe0","injection_ml
 ######################
 #data_agg
 
-data_agg <- aggregate(data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure",colnames(data))],list(hour=round_date(data$date,"hours"),tiefe=data$tiefe),mean,na.rm=T)
-data_agg$date <- with_tz(data_agg$date,"UTC")
+#data_agg <- aggregate(data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure|DS",colnames(data))],list(hour=round_date(data$date,"hours"),tiefe=data$tiefe),mean,na.rm=T)
+#data_agg$date <- with_tz(data_agg$date,"UTC")
+data_agg <- data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure|DS",colnames(data))] %>%
+  group_by(hour=round_date(data$date,"hours"),tiefe=data$tiefe) %>%
+  summarise_all(mean,na.rm=T)
+  
 data_agg <- subset(data_agg, Pumpstufe != 0)
 save(data,data_agg,Pumpzeiten,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
 

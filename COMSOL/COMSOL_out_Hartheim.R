@@ -28,7 +28,7 @@ A_inj <- set_units(1^2*pi,"mm^2")
 
 #hier eventuell noch T_C und p_kPa berücksichtigen
 #injektionrate in mol/m^2/s
-change_unit(data_agg$PressureActual_hPa,"hPa","kPa")
+#change_unit(data_agg$PressureActual_hPa,"hPa","kPa")
 inj_mol_min <- ppm_to_mol(data_agg$Fz,"cm^3/min",out_class = "units",T_C = data_agg$Ta_2m,p_kPa = data_agg$PressureActual_hPa/10) %>%
   round(digits=10)
 
@@ -40,7 +40,7 @@ T_plot <- ggplot(data_agg)+geom_line(aes(date,Ta_2m))
 p_plot <- ggplot(data_agg)+geom_line(aes(date,PressureActual_hPa))
 egg::ggarrange(inj_plot,T_plot,p_plot,heights = c(3,1,1))
 
-data_agg$inj_mol_m2_s
+#data_agg$inj_mol_m2_s
 #Parameter file lesen
 pars_fs <- read.table((paste0(metapfad,"COMSOL/parameter_freeSoil.csv")),sep=";",stringsAsFactors = F)
 #Modell tiefe als Character
@@ -54,10 +54,11 @@ z_soil_cm <- as.numeric(set_units(z_soil,"cm"))
 #####################################
 #Datei mit Parameter sweep
 CO2_mod_sweep <- readLines(paste0(comsolpfad,"CO2_mod_Hartheim.txt"))
+CO2_mod_sweep <- readLines(paste0(comsolpfad,"CO2_mod_Hartheim_DS1_sweep_07_14_15.txt"))
 #Anzahl von DS schichten im Modell 
-schichten <- 4
+schichten <- unique(as.numeric(str_extract_all(CO2_mod_sweep[9],"(?<=DS_)\\d",simplify = T)))
 #Parameter die in der Datei gesweept wurden
-pars <- c("injection_rate","CO2_atm",paste0("DS_",1:schichten))
+pars <- c("injection_rate","CO2_atm",paste0("DS_",schichten))
 #Regular Expression für die unterschiedlichen Werte die die Parameter annehmen
 value_regexp <- "\\d+(\\.\\d+)?(E-\\d)?"
 #Spaltennahmen der sweep datei ausschneiden
@@ -69,12 +70,13 @@ CO2_sweep <- as.data.frame(apply(CO2_sweep_mat,2,as.numeric))
 #Spaltennamen
 colnames(CO2_sweep) <- colnames_sweep
 #ins long format
-sweep_long <- reshape2::melt(CO2_sweep,id=1:2,value.name="CO2_mol_per_m3",variable="par")
+#sweep_long <- reshape2::melt(CO2_sweep,id=1:2,value.name="CO2_mol_per_m3",variable="par")
+sweep_long <- tidyr::pivot_longer(CO2_sweep,cols=-(1:2),names_patter= paste0(paste(pars,collapse = "=(.*), "),"=(.*)"),values_to="CO2_mol_per_m3",names_to=pars)
 
 #parameter als extra spalte aus character ausschneiden
-for(i in pars){
-  sweep_long[,i] <- as.numeric(str_extract(sweep_long$par,paste0("(?<=",i,"=)",value_regexp)))
-}
+# for(i in pars){
+#   sweep_long[,i] <- as.numeric(str_extract(sweep_long$par,paste0("(?<=",i,"=)",value_regexp)))
+# }
 
 #einheit in ppm
 sweep_long$CO2_mod <- ppm_to_mol(sweep_long$CO2_mol_per_m3,"mol/m^3","units")
@@ -89,23 +91,27 @@ sweep_long$tiefe <- set_units(sweep_long$z - z_soil_cm,cm)
 #modell mit obs vergleichen
 ############################################
 
-D0_CO2 <- D0_T_p(15) #18°C cm2/s
-D0_CO2_m2 <- D0_CO2/10^4 #m2/s
+D0_CO2_m2 <- D0_T_p(20,unit="m2/s") #20°C m2/s
+
 
 #subset für datum bei der Kammermessung durchgeführt wurde
 kammer_date <- ymd_h("2020-06-09 11")
+kammer_date <- ymd_h("2020-07-14 15")
 
-CO2_obs <- subset(data_agg,hour== kammer_date)
+CO2_obs <- subset(data,date== kammer_date)
+#CO2_obs <- subset(data_agg,hour== kammer_date)
 CO2_obs$z <- z_soil_cm + CO2_obs$tiefe
 #umsortieren
 CO2_obs <- CO2_obs[order(-CO2_obs$tiefe),]
-
+CO2_obs$CO2_mol_per_m3 <- ppm_to_mol(CO2_obs[,"CO2_tracer_glm"],"ppm",p_kPa = CO2_obs$PressureActual_hPa/10,T_C = CO2_obs$T_soil)
 #plot des gemessenen Tiefenprofils 
 ggplot(CO2_obs)+geom_path(aes(CO2_mol_per_m3,tiefe))
+
 
 #Injecitonsrate bei Kammermessungen
 injection_rate_i <-round(unique(CO2_obs$inj_mol_m2_s),6)
 injection_rate_i <- 0.016468
+injection_rate_i <- 0.031923
 unique(sweep_long$injection_rate)
 #subset des Sweeps mit nur der richtigen injektionsrate
 sweep_sub_id <- grep(paste0("injection_rate=",injection_rate_i),colnames(CO2_sweep))
@@ -127,7 +133,8 @@ DS_long <- reshape2::melt(DS_wide, id = "rmse",variable="Schicht",value.name="DS
 
 ##########################################
 #dottyplot
-ggplot(subset(DS_long,rmse < sort(unique(rmse))[1000]))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
+ggplot(subset(DS_long,rmse < sort(unique(rmse))))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
+ggplot(subset(DS_long))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
 
 #########################################
 #Bester RMSE
