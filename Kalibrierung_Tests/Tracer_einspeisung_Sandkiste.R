@@ -184,7 +184,7 @@ plt2 <- plt+
 
 ##########################
 #plot period x
-period_x <- 10
+period_x <- 7
 Pumpzeiten_x <- subset(Pumpzeiten, period == period_x)
 
 ggplot(subset(plt_data,period %in% period_x))+

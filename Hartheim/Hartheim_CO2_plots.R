@@ -323,6 +323,7 @@ F_z_PTF+ggsave(paste0(plotpfad,"Vergleich_Flux_PTF_Kammer.png"),width=9,height=5
     #geom_line(aes(date,CO2_roll_ref,col="ref"))+
     geom_line(aes(date,preds,col="glm"))+
     geom_line(aes(date,preds2,col="gam"))+
+    geom_line(aes(date,CO2_roll_ref+preds_drift,col="drift"))+
     #geom_line(aes(date,CO2_roll_ref+offset,col="ref+offset"))+
     geom_line(data=subset(data_sub,Pumpstufe==0),aes(date,CO2_roll_inj,col="inj"))+
     facet_wrap(~tiefe,scales="free")
@@ -337,8 +338,9 @@ F_z_PTF+ggsave(paste0(plotpfad,"Vergleich_Flux_PTF_Kammer.png"),width=9,height=5
     geom_line(aes(date,CO2_roll_inj),lwd=1)+
     geom_line(aes(date,preds,col="glm"))+
     geom_line(aes(date,preds2,col="gam"))+
+    geom_line(aes(date,CO2_roll_ref+preds_drift,col="ref+drift"))+
     geom_line(aes(date,CO2_roll_ref+offset,col="ref+offset"))+
-    facet_wrap(~tiefe,scales="free")+ggsave(paste0(plotpfad,"hartheim/modellvergleich_per1_fit1u2.pdf"),height = 8,width=15)
+    facet_wrap(~tiefe,scales="free")#+ggsave(paste0(plotpfad,"hartheim/modellvergleich_per1_fit1u2.pdf"),height = 8,width=15)
   ggplot(subset(data,Pumpstufe==0))+
     geom_line(aes(date,CO2_roll_inj - preds,col="glm"))+
     geom_line(aes(date,CO2_roll_inj - preds2,col="gam"))+

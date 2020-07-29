@@ -25,6 +25,7 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 Kammer_flux$date
 offset_method <- "glm"
+optim_method <- "snopt"
 data$CO2_mol_per_m3 <- ppm_to_mol(data[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data$PressureActual_hPa/10,T_C = data$T_soil)
 
 data$CO2_mol_per_m3[data$tiefe == 0]<- 0
@@ -43,8 +44,8 @@ data$r <- 0
 kammer_dates_all <- aggregate(list(date=Kammer_flux$date),list(day=Kammer_flux$day),mean)
 #kammer messungen
 
-mod_dates <- sort(unique(data_agg$hour[day(data_agg$hour) == 13]))
-
+mod_dates <- sort(unique(data_agg$hour[day(data_agg$hour) %in% 10:14]))
+#mod_dates <- ymd_h("2020.07.14 15")
 
 #mod_dates <- ymd_hm(c("2020-06-09 11:00","2020.07.08 11:00","2020.07.14 15:00"))
 data_sub <- lapply(mod_dates,function(x) subset(data[,c("tiefe","tiefenstufe","date","z","r","CO2_mol_per_m3","inj_mol_m2_s","DSD0_PTF_max","DSD0_PTF_min","T_soil","PressureActual_hPa","CO2_ref","CO2_inj")], date==x))
@@ -74,46 +75,67 @@ for(j in seq_along(data_sub)){
   #write.table(paste("injection_rate,",unique(sub_j$inj_mol_m2_s)),paste0(metapfad_comsol,"inj_rate",".csv"),col.names = F,row.names = F,sep=",",quote=F)
   
   modelname <- "Diffusion_freeSoil_optim"
-  cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph -outputfile ",COMSOL_progammpath,modellname,"_solved.mph -pname injection_rate -plist ",injection_rate)
+  if(optim_method == "nelder"){
+  cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph -outputfile ",COMSOL_progammpath,modelname,"_solved.mph -study std6 -pname injection_rate -plist ",injection_rate)
+  }
+  if(optim_method == "snopt"){
+  cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph -outputfile ",COMSOL_progammpath,modelname,"_solved.mph -job b1 -pname injection_rate -plist ",injection_rate)
+  }
   
   print(paste("starting with",mod_dates[j]))
   tictoc::tic()
-  console_out <- shell(cmd,translate=T,intern=T)
-  print(paste(mod_dates[j],"calculated in:"))
+  #console_out <- 
+    shell(cmd,translate=T,intern=F)
+  #print(paste(mod_dates[j],"calculated in:"))
   tictoc::toc()
   date_chr <- format(mod_dates[j],"%m_%d_%H")
-  comsoloutfiles_raw <- paste0(comsolpfad,c("Objective_table.txt","Probe_table.txt"))
-  comsoloutfiles <- str_replace(comsoloutfiles_raw,"\\.txt",paste0("_",offset_method,"_",date_chr,".txt"))
+  #comsoloutfiles_raw <- paste0(comsolpfad,c("Objective_table.txt","Probe_table.txt"))
+  if(optim_method == "nelder"){
+    comsoloutfiles_raw <- list.files(comsolpfad,"Probe_table.txt|Probe_Table.txt",full.names = T)
+  }
+  if(optim_method =="snopt"){
+    comsoloutfiles_raw <- list.files(comsolpfad,"CO2_optim.txt",full.names = T)
+  }
+  comsoloutfiles <- str_replace(comsoloutfiles_raw,"\\.txt",paste0("_",offset_method,"_",optim_method,"_",date_chr,".txt"))
   file.rename(comsoloutfiles_raw,comsoloutfiles)
 }
  
 ##############################
 #COMSOL output
 ##############################
-F_Comsol <- data.frame(date=mod_dates,Fz=NA,Fz_inj=NA)
+date_pattern <- "\\d{2}_\\d{2}_\\d{2}.txt"
+mod_files <- list.files(comsolpfad,pattern = paste(offset_method,optim_method,date_pattern,sep="_"))
 
-for(j in seq_along(mod_dates)){
-date_chr <- format(mod_dates[j],"%m_%d_%H")
+mod_date_all_chr <- sort(unique(str_extract(mod_files,date_pattern)))
+mod_dates_all <- ymd_h(paste("2020",mod_date_all_chr))
 
-# CO2_mod <- read.csv(paste0(comsolpfad,"CO2_optim_",date_chr,".txt"),skip=9,sep="",header=F)
-# colnames(CO2_mod) <- c("r","z","CO2_mod_mol_m3")
-# obs_mod <- merge(data_sub[j],CO2_mod)
-# 
-# 
+F_Comsol <- data.frame(date=mod_dates_all,Fz=NA,Fz_inj=NA)
+plot <- T
+for(j in seq_along(mod_dates_all)){
+date_chr <- format(mod_dates_all[j],"%m_%d_%H")
+
+if(optim_method == "snopt"){
+CO2_optim <- read.csv(paste0(comsolpfad,"CO2_optim_",offset_method,"_",optim_method,"_",date_chr,".txt"),skip=9,sep="",header=F)
+colnames(CO2_optim) <- c("r","z","CO2_mod_mol_m3",paste0("DS_",1:4))
+CO2_mod <- CO2_optim[,1:3]
+best_DS <- CO2_optim[1,4:7]
+}
+if(optim_method =="nelder"){
 # DS_mod <- read.csv(paste0(comsolpfad,"Objective_table_",date_chr,".txt"),skip=5,sep="",header=F)
 # colnames_DS <- read.csv(paste0(comsolpfad,"Objective_table_",date_chr,".txt"),skip=4,nrows=1,sep="",header=F,stringsAsFactors = F)
 # colnames(DS_mod) <- str_remove(colnames_DS[-1],"comp1.")
 # best_DS <- tail(DS_mod,1)
 
-DS_mod <- read.csv(paste0(comsolpfad,"Probe_table_",offset_method,"_",date_chr,".txt"),skip=5,sep="",header=F)
+DS_mod <- read.csv(paste0(comsolpfad,"Probe_table_",offset_method,"_",optim_method,"_",date_chr,".txt"),skip=5,sep="",header=F)
 colnames_DS_raw <- readLines(paste0(comsolpfad,"Probe_table_",offset_method,"_",date_chr,".txt"),n=5)
 colnames_DS <- str_extract_all(colnames_DS_raw[5],"injection_rate|DS_\\d|Probe \\d",simplify = T)
 colnames(DS_mod) <- str_replace(colnames_DS,"Probe ","CO2mod_tiefenstufe")
 
 CO2_mod <- tidyr::pivot_longer(tail(DS_mod[,grep("CO2",colnames(DS_mod))],1),everything(),names_prefix = "CO2mod_tiefenstufe",values_to = "CO2_mod_mol_m3",names_to = "tiefenstufe")
 
-obs_mod <- merge(data_sub[j],CO2_mod)
 best_DS <- tail(DS_mod[grep("DS",colnames_DS)],1)
+}
+obs_mod <- merge(data_sub[j],CO2_mod)
 
 schichten <- 4
 schicht_grenzen <- seq(0,by=-7,length.out = schichten)
@@ -127,6 +149,7 @@ for(i in 1:nrow(DS_profil)){
   DS_profil$D0[i] <- mean(unlist(obs_mod[tiefenID,c("D0")]))
 }
 
+if(plot == T){
 DS_profil_long <- reshape2::melt(DS_profil,id=grep("DS|D0",colnames(DS_profil)),value.name="tiefe")
 
 obs_mod_plot <- ggplot(obs_mod)+
@@ -145,13 +168,14 @@ DSD0_plot <- ggplot(DS_profil_long)+
   geom_line(aes(DS/D0,tiefe,col="DS_COMSOL"),orientation = "y")+
   labs(x="DS/D0",y="",color="method",fill="method")+
   ylim(range(obs_mod$tiefe))#+ggsave(paste0(plotpfad,"DSD0_Comsol_PTF",date_chr,".png"),width=7,height = 7)
-
-
-#png(paste0(plotpfad,"DSD0_Comsol_PTF",date_chr,".png"),width=10,height = 7,units = "in",res=300)
-ds_profil_plot <- egg::ggarrange(obs_mod_plot,DSD0_plot,ncol=2)
+# 
+# 
+# #png(paste0(plotpfad,"DSD0_Comsol_PTF",date_chr,".png"),width=10,height = 7,units = "in",res=300)
+ #ds_profil_plot <- 
+   egg::ggarrange(obs_mod_plot,DSD0_plot,ncol=2)
 
 #dev.off()
-
+}
 slope_0_7cm <- glm(CO2_ref ~ tiefe, data= subset(data_sub[[j]],tiefe >= -7))#ppm/cm
 slope_0_7cm_inj <- glm(CO2_inj ~ tiefe, data= subset(data_sub[[j]],tiefe >= -7))#ppm/cm
 #plot(data_sub[[j]]$tiefe,data_sub[[j]]$CO2_ref)
@@ -170,28 +194,28 @@ Fz_mumol_per_s_m2 <- best_DS$DS_1  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mo
 Fz_mumol_per_s_m2_inj <- best_DS$DS_1  * dC_dz_mol_inj * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
 
 
-F_Comsol$Fz[F_Comsol$date == mod_dates[[j]]] <- Fz_mumol_per_s_m2
-F_Comsol$Fz_inj[F_Comsol$date == mod_dates[[j]]] <- Fz_mumol_per_s_m2_inj
+F_Comsol$Fz[F_Comsol$date == mod_dates_all[[j]]] <- Fz_mumol_per_s_m2
+F_Comsol$Fz_inj[F_Comsol$date == mod_dates_all[[j]]] <- Fz_mumol_per_s_m2_inj
 for(k in 1:4){
-F_Comsol[F_Comsol$date == mod_dates[[j]],paste0("DSD0",k)] <- DS_profil$DS[k]/DS_profil$D0[k]
+F_Comsol[F_Comsol$date == mod_dates_all[[j]],paste0("DSD0",k)] <- DS_profil$DS[k]/DS_profil$D0[k]
 }
 }
 
-ggplot(subset(data))+geom_line(aes(date,CO2_tracer_glm,col=as.factor(tiefe)))+geom_vline(xintercept = kammer_dates_all$date)
+#ggplot(subset(data))+geom_line(aes(date,CO2_tracer_glm,col=as.factor(tiefe)))+geom_vline(xintercept = kammer_dates_all$date)
 ggplot(subset(Kammer_flux))+
   geom_ribbon(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,fill=kammer),alpha=0.2)+
   geom_line(aes(date,CO2flux,col=kammer))+
   ggnewscale::new_scale_color()+
-  geom_point(data=F_Comsol,aes(date,Fz,col=""))+
+  geom_line(data=F_Comsol,aes(date,Fz,col=""))+
   #geom_point(data=F_Comsol,aes(date,Fz_inj,col=""))+
   scale_color_manual("COMSOL",values=1)+
-  labs(y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
-  ggsave(paste0(plotpfad,"Flux_Kammer_Comsol.png"),width=7,height = 7)
+  labs(y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))#+
+  #ggsave(paste0(plotpfad,"Flux_Kammer_Comsol.png"),width=7,height = 7)
 
 ggplot(subset(CO2_flux))+
   geom_point(aes(date,mumol_per_s_m2,col="kammer"))+
   geom_line(data=F_Comsol,aes(date,Fz,col="Comsol"),size=2)+
-  xlim(c(min(mod_dates)-3600*24*1,max(mod_dates)+3600*24*3))#+ggsave(paste0(plotpfad,"Flux_Kammer_Comsol",date_chr,".png"),width=7,height = 7)
+  xlim(c(min(mod_dates_all)-3600*24*1,max(mod_dates_all)+3600*24*3))#+ggsave(paste0(plotpfad,"Flux_Kammer_Comsol",date_chr,".png"),width=7,height = 7)
 
 
 data_plot <- data %>%
@@ -203,4 +227,4 @@ ggplot(subset(data_plot))+
   geom_line(aes(date,DSD0_PTF,col=as.factor(tiefe)))+
   ggnewscale::new_scale_color()+
   geom_line(data=F_Comsol_long,aes(date,DSD0,col=name))+
-  xlim(c(min(mod_dates)-3600*24*1,max(mod_dates)+3600*24*3))
+  xlim(c(min(mod_dates_all)-3600*24*1,max(mod_dates_all)+3600*24*3))

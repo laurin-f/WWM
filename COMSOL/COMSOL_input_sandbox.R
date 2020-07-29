@@ -35,6 +35,7 @@ inj_mol_mm2_s <- set_units(injection_rates,"mol/s")/A_inj
 data_agg$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
 
 data_sub <- subset(data_agg, respi_sim == "nein" & Versuch %in% c(3:10) & Pumpstufe %in% c(1.5,3))
+
 colnames(data_sub) <- str_replace(colnames(data_sub),"^DS$","DS_glm")
 data_sub$DS_glm <- set_units(data_sub$DS_glm, "cm^2/s")
 data_sub$DS_glm <- set_units(data_sub$DS_glm, "m^2/s")

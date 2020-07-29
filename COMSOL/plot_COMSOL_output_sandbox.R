@@ -41,7 +41,7 @@ CO2_sweep <- as.data.frame(apply(CO2_sweep_mat,2,as.numeric))
 colnames(CO2_sweep) <- colnames_sweep
 
 sweep_long <- reshape2::melt(CO2_sweep,id=1:2,value.name="CO2_mol_per_m3",variable="par")
-
+unique(sweep_long$DS)
 #parameter als extra spalte aus character ausschneiden
 for(i in pars){
   sweep_long[,i] <- as.numeric(str_extract(sweep_long$par,paste0("(?<=",i,"=)",value_regexp)))
@@ -57,7 +57,7 @@ sweep_long$tiefe <- set_units(sweep_long$z - z_box,cm)
 ######################
 #fm
 
-D0_CO2 <- D0_T_p(20) #18°C cm2/s
+D0_CO2 <- D0_T_p(40) #18°C cm2/s
 D0_CO2_m2 <- D0_CO2/10^4 #m2/s
 
 
@@ -109,7 +109,8 @@ DS_D0_mat <- aggregate(list(DS_D0_COMSOL=mod_results$DS_D0_mod,DS_D0_glm= mod_re
 DS_mat <- aggregate(list(DS_COMSOL=mod_results$DS_mod, DS_glm= mod_results$DS_glm),list(material=mod_results$material),mean)
 DS_D0_mat
 DS_mat
-write.csv(DS_D0_mat,file=paste0(comsolpfad,"DS_D0_mat.txt"),row.names = F)
+write.csv(DS_D0_mat,file=paste0(comsolpfad,"DS_D0_mat_agg.txt"),row.names = F)
+write.csv(mod_results[,c("material","DS_D0_mod")],file=paste0(comsolpfad,"DS_D0_mat.txt"),row.names = F)
 
 thomas_ref <- data.frame(material=c("Sand","Kies","Sand & Kies"), DS_D0=c(0.239, 0.235, 0.185),method="Flühler \n(Laemmel et al. 2017)")
 
