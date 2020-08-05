@@ -211,6 +211,14 @@ Tracer_glm <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   ggsave(paste0(plotpfad,"Einspeisung2_glm.png"),width=10,height=7)
 Tracer_glm+geom_vline(xintercept = kammer_dates[1])+xlim(ymd_h(c("2020.07.08 06","2020.07.08 14")))
 
+Tracer_gam <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
+  geom_line(aes(date,preds2,col=as.factor(tiefe),linetype="ref + offset"))+
+  geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds2,fill=as.factor(tiefe)),alpha=0.3)+
+  labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tracer signal")+
+  geom_vline(xintercept = Pumpzeiten$start)+
+  ggsave(paste0(plotpfad,"Einspeisung2_gam.png"),width=10,height=7)
+
 #tracer offset
 Tracer_offset <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
@@ -230,7 +238,8 @@ Tracer_drift <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   geom_line(aes(date,CO2_roll_ref + preds_drift,col=as.factor(tiefe),linetype="ref + preds_drift"))+
   geom_ribbon(aes(date,ymax=CO2_inj,ymin=CO2_ref+ preds_drift,fill=as.factor(tiefe)),alpha=0.3)+
   labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tracer signal")+
-  geom_vline(xintercept = Pumpzeiten$start)
+  geom_vline(xintercept = Pumpzeiten$start)+
+  ggsave(paste0(plotpfad,"Einspeisung2_drift.png"),width=10,height=7)
 
 Tracer_glm
 Tracer_offset
