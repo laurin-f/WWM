@@ -25,11 +25,11 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 Kammer_flux$date
 #which method for tracer calculation should be used glm gam offset or drift
-offset_method <- "glm"
+offset_method <- "gam"
 #which optimization method should be used nelder or snopt
-optim_method <- "nelder"
+optim_method <- "snopt"
 n_DS <- "3DS"
-overwrite <- F
+overwrite <- T
 
 #CO2 in tracer in mol pro m3 
 data$CO2_mol_per_m3 <- ppm_to_mol(data[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data$PressureActual_hPa/10,T_C = data$T_soil)
@@ -65,11 +65,12 @@ mod_dates <- sort(unique(data$date[day(data$date) %in% 4:15 & month(data$date) =
 
 #mod_dates <- ymd_h("2020.07.14 15")
 
-#data_list <- lapply(mod_dates_hourly,function(x) subset(data[,c("tiefe","tiefenstufe","date","z","r","CO2_mol_per_m3","inj_mol_m2_s","DSD0_PTF_max","DSD0_PTF","DSD0_PTF_min","DS_max_m2_s","DS_min_m2_s","DS_mean_m2_s","T_soil","PressureActual_hPa","CO2_ref","CO2_inj","D0")], date==x))
-#names(data_list) <- as.character(mod_dates_hourly)
+data_list <- lapply(mod_dates_hourly,function(x) subset(data[,c("tiefe","tiefenstufe","date","z","r","CO2_mol_per_m3","inj_mol_m2_s","DSD0_PTF_max","DSD0_PTF","DSD0_PTF_min","DS_max_m2_s","DS_min_m2_s","DS_mean_m2_s","T_soil","PressureActual_hPa","CO2_ref","CO2_inj","D0")], date==x))
+names(data_list) <- as.character(mod_dates_hourly)
 
 
 mod_dates <- ymd_hm(c("2020-07-06 15:00","2020.07.08 11:00","2020.07.14 15:00"))
+#mod_dates <- mod_dates[2]
 
 
 
@@ -79,7 +80,6 @@ names(data_sub) <- mod_dates
 ggplot(data_sub[[1]])+geom_line(aes(CO2_mol_per_m3,z),orientation = "y")+labs(title = offset_method,subtitle = mod_dates[1])
 ggplot(data_sub[[2]])+geom_line(aes(CO2_mol_per_m3,z),orientation = "y")+labs(title = offset_method,subtitle = mod_dates[2])
 ggplot(data_sub[[3]])+geom_line(aes(CO2_mol_per_m3,z),orientation = "y")+labs(title = offset_method,subtitle = mod_dates[3])
-
 
 
 ##############################################
@@ -144,9 +144,9 @@ for(j in seq_along(data_sub)){
 #COMSOL output
 ##############################
 #alle dateien mit der gewünschten methode und datum 
-optim_method <- "snopt"
-n_DS <- "3DS"
-offset_method <- "gam"
+# optim_method <- "snopt"
+# n_DS <- "3DS"
+# offset_method <- "gam"
 plot <- F
 
 date_pattern <- "\\d{2}_\\d{2}_\\d{2}.txt"
@@ -158,9 +158,9 @@ mod_dates_all <- ymd_h(paste("2020",mod_date_all_chr))
 mod_dates_all <- mod_dates
 F_list <- list()
 F_Comsol <- data.frame(date=mod_dates_all,Fz=NA,Fz_inj=NA)
-for(l in c("gam","glm")){
+#for(l in c("gam","glm")){
   
-offset_method <- l
+#offset_method <- l
 
 ####################################
 #read loop
@@ -189,6 +189,7 @@ colnames(DS_mod) <- str_replace(colnames_DS,"Probe ","CO2mod_tiefenstufe")
 CO2_mod <- tidyr::pivot_longer(tail(DS_mod[,grep("CO2",colnames(DS_mod))],1),everything(),names_prefix = "CO2mod_tiefenstufe",values_to = "CO2_mod_mol_m3",names_to = "tiefenstufe")
 
 best_DS <- tail(DS_mod[grep("DS",colnames_DS)],1)
+print(best_DS)
 }
 obs_j <- data_list[[as.character(mod_dates_all)[j]]]
 obs_mod <- merge(obs_j,CO2_mod)
@@ -262,26 +263,23 @@ Fz_mumol_per_s_m2 <- best_DS$DS_1  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mo
 
 
 F_Comsol$Fz[F_Comsol$date == mod_dates_all[[j]]] <- Fz_mumol_per_s_m2
-for(k in 1:4){
+for(k in 1:n_DS_num){
 F_Comsol[F_Comsol$date == mod_dates_all[[j]],paste0("DSD0",k)] <- DS_profil$DS[k]/DS_profil$D0[k]
+F_Comsol[F_Comsol$date == mod_dates_all[[j]],paste0("DS",k)] <- DS_profil$DS[k]
 }
 }
-F_list[[l]] <- F_Comsol
-}
+#F_list[[l]] <- F_Comsol
+#}
 #################################
 #plots
-# ggplot(subset(data))+
-#   geom_line(aes(date,CO2_tracer_glm,col=as.factor(tiefe)))+
-#   geom_vline(xintercept = kammer_dates_all$date)+
-#   geom_vline(xintercept = ymd_h("2020.07.06 15"))+
-#   xlim(ymd_h(c("2020.07.06 00","2020.07.06 16")))
+#ggplot(subset(data))+geom_line(aes(date,CO2_tracer_glm,col=as.factor(tiefe)))+geom_vline(xintercept = kammer_dates_all$date)+xlim(ymd_h(c("2020.07.06 00","2020.07.06 16")))
 #F_Comsol_snopt <- F_Comsol
 ggplot(subset(Kammer_flux))+
   geom_ribbon(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,fill=kammer),alpha=0.2)+
   geom_line(aes(date,CO2flux,col=kammer))+
   ggnewscale::new_scale_color()+
   geom_point(data=F_Comsol,aes(date,Fz,col="gam"))+
-  geom_point(data=F_Comsol_snopt,aes(date,Fz,col="glm"))+
+  #geom_point(data=F_Comsol_snopt,aes(date,Fz,col="glm"))+
   #geom_point(data=F_Comsol,aes(date,Fz_inj,col=""))+
   scale_color_manual("COMSOL",values=1:2)+
   labs(title=paste(offset_method,optim_method,n_DS),y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))#+
