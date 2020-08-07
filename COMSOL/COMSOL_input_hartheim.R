@@ -18,6 +18,7 @@ COMSOL_progammpath <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Pro
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr")
+ggopt()
 check.packages(packages)
 
 load(paste0(samplerpfad,"Hartheim_CO2.RData"))
@@ -25,7 +26,7 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 Kammer_flux$date
 #which method for tracer calculation should be used glm gam offset or drift
-offset_method <- "gam"
+offset_method <- "glm"
 #which optimization method should be used nelder or snopt
 optim_method <- "snopt"
 n_DS <- "3DS"
@@ -61,15 +62,16 @@ data$date_hour <- round_date(data$date,"hours")
 mod_dates_hourly <- sort(unique(data$date[data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 
 #dates für die DS modelliert werden soll
-mod_dates <- sort(unique(data$date[day(data$date) %in% 4:15 & month(data$date) == 7 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+mod_dates <- sort(unique(data$date[day(data$date) %in% 4:8 & month(data$date) == 7 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 
 #mod_dates <- ymd_h("2020.07.14 15")
-
+if(!exists("data_list")){
 data_list <- lapply(mod_dates_hourly,function(x) subset(data[,c("tiefe","tiefenstufe","date","z","r","CO2_mol_per_m3","inj_mol_m2_s","DSD0_PTF_max","DSD0_PTF","DSD0_PTF_min","DS_max_m2_s","DS_min_m2_s","DS_mean_m2_s","T_soil","PressureActual_hPa","CO2_ref","CO2_inj","D0")], date==x))
 names(data_list) <- as.character(mod_dates_hourly)
-
+}
 
 mod_dates <- ymd_hm(c("2020-07-06 15:00","2020.07.08 11:00","2020.07.14 15:00"))
+mod_dates <- ymd_hm(c("2020-06-09 11:00","2020-07-06 15:00","2020.07.08 11:00","2020.07.14 15:00"))
 #mod_dates <- mod_dates[2]
 
 
@@ -144,9 +146,9 @@ for(j in seq_along(data_sub)){
 #COMSOL output
 ##############################
 #alle dateien mit der gewünschten methode und datum 
-# optim_method <- "snopt"
-# n_DS <- "3DS"
-# offset_method <- "gam"
+ optim_method <- "snopt"
+ n_DS <- "3DS"
+ offset_method <- "glm"
 plot <- F
 
 date_pattern <- "\\d{2}_\\d{2}_\\d{2}.txt"
@@ -203,6 +205,11 @@ if(n_DS == "3DS"){
 schichten <- 3
 schicht_grenzen <- c(0,-10.5,-21)
 tiefen <- c(-5.25,-15.75,-24.5)
+}
+if(n_DS == "2DS"){
+schichten <- 2
+schicht_grenzen <- c(0,-14)
+tiefen <- c(-7,-24.5)
 }
 schicht_untergrenzen <- c(schicht_grenzen[-1],-z_soil_cm)
 DS_profil <- data.frame(DS=unlist(best_DS),tiefe=tiefen,top=schicht_grenzen,bottom=schicht_untergrenzen)
@@ -272,37 +279,45 @@ F_Comsol[F_Comsol$date == mod_dates_all[[j]],paste0("DS",k)] <- DS_profil$DS[k]
 #}
 #################################
 #plots
-#ggplot(subset(data))+geom_line(aes(date,CO2_tracer_glm,col=as.factor(tiefe)))+geom_vline(xintercept = kammer_dates_all$date)+xlim(ymd_h(c("2020.07.06 00","2020.07.06 16")))
+#ggplot(subset(data))+geom_line(aes(date,CO2_mol_per_m3,col=as.factor(tiefe)))+geom_vline(xintercept = kammer_dates_all$date)+xlim(ymd_h(c("2020.07.06 00","2020.07.06 16")))
+ 
+#tiefe10 <- subset(data,tiefe==-10.5)
+#NA_times <- tiefe10$date[is.na(tiefe10$CO2_mol_per_m3)]
+
 #F_Comsol_snopt <- F_Comsol
 ggplot(subset(Kammer_flux))+
   geom_ribbon(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,fill=kammer),alpha=0.2)+
   geom_line(aes(date,CO2flux,col=kammer))+
   ggnewscale::new_scale_color()+
-  geom_point(data=F_Comsol,aes(date,Fz,col="gam"))+
+  geom_point(data=subset(F_Comsol),aes(date,Fz))+
   #geom_point(data=F_Comsol_snopt,aes(date,Fz,col="glm"))+
   #geom_point(data=F_Comsol,aes(date,Fz_inj,col=""))+
   scale_color_manual("COMSOL",values=1:2)+
+  #xlim(c(min(F_Comsol$date[-1]),max(F_Comsol$date[])))+
   labs(title=paste(offset_method,optim_method,n_DS),y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))#+
   #ggsave(paste0(plotpfad,"Flux_Kammer_Comsol.png"),width=7,height = 7)
 
-ggplot(subset(CO2_flux))+
-  geom_point(aes(date,mumol_per_s_m2,col="kammer"))+
-  geom_line(data=F_Comsol,aes(date,Fz,col="Comsol"),size=2)+
-  xlim(c(min(mod_dates_all)-3600*24*1,max(mod_dates_all)+3600*24*3))#+ggsave(paste0(plotpfad,"Flux_Kammer_Comsol",date_chr,".png"),width=7,height = 7)
-
+# ggplot(subset(CO2_flux))+
+#   geom_point(aes(date,mumol_per_s_m2,col="kammer"))+
+#   geom_line(data=F_Comsol,aes(date,Fz,col="Comsol"),size=2)+
+#   xlim(c(min(mod_dates_all)-3600*24*1,max(mod_dates_all)+3600*24*3))#+ggsave(paste0(plotpfad,"Flux_Kammer_Comsol",date_chr,".png"),width=7,height = 7)
 
 data_plot <- data %>%
   group_by(tiefe,date_hour=round_date(data$date,"hours")) %>%
   summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max),DSD0_PTF= mean(DSD0_PTF),date=mean(date))
-F_Comsol_long <- tidyr::pivot_longer(F_Comsol,starts_with("DS"),values_to="DSD0")
-F_Comsol_snopt_long <- tidyr::pivot_longer(F_Comsol_snopt,starts_with("DS"),values_to="DSD0")
+#F_Comsol_long <- tidyr::pivot_longer(F_Comsol,starts_with("DS"),values_to="DSD0")
+F_Comsol_long <- tidyr::pivot_longer(F_Comsol,starts_with("DS"),names_pattern = "(DSD?0?)(\\d)",values_to = "test",names_to=c(".value","number"))
+#F_Comsol_snopt_long <- tidyr::pivot_longer(F_Comsol_snopt,starts_with("DS"),values_to="DSD0")
+
+ggplot(subset(data_plot))+
+  geom_line(data=F_Comsol_long,aes(date,DS,col=number,linetype="nelder"))
 ggplot(subset(data_plot))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(tiefe)),alpha=0.2)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(tiefe)))+
   ggnewscale::new_scale_color()+
   geom_line(data=F_Comsol_long,aes(date,DSD0,col=name,linetype="nelder"))+
-  geom_line(data=F_Comsol_snopt_long,aes(date,DSD0,col=name,linetype="snopt"))+
-  xlim(c(min(mod_dates_all)-3600*24*1,max(mod_dates_all)+3600*24*3))
+  #geom_line(data=F_Comsol_snopt_long,aes(date,DSD0,col=name,linetype="snopt"))+
+  xlim(c(min(mod_dates_all[-1])-3600*24*1,max(mod_dates_all)+3600*24*3))
 
 ggplot(data)+
   geom_line(aes(date,CO2_tracer_glm,col=as.factor(tiefe)))+

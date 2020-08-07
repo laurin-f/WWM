@@ -48,7 +48,7 @@ data <- merge(data,klima,by="date",all.x = T)
 
 
 #intervalle die am anfang und am ende der Pumpversuche verweorfen werden
-sec_bis_steadystate <- rep(10,nrow(Pumpzeiten))*3600
+sec_bis_steadystate <- rep(12,nrow(Pumpzeiten))*3600
 sec_cut_off <- rep(0,nrow(Pumpzeiten))*3600
 
 
@@ -213,9 +213,7 @@ for(i in seq_along(data_kal)){
 data$preds <- NA
 data$preds2 <- NA
 data$preds_drift <- NA
-data$preds_drift2 <- NA
-glmgam <- T
-if(glmgam == T){
+
 
 for(j in seq_along(data_PSt0)[-c(3,5)]){
 for(i in (1:7)*-3.5){
@@ -232,7 +230,6 @@ for(i in (1:7)*-3.5){
   data$preds_drift[ID] <- predict(fm_drift,newdata = data[ID,])
   data$preds2[ID] <- predict(fm2,newdata = data[ID,])
   }
-}
 }
 
 

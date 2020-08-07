@@ -36,7 +36,7 @@ data_PSt0$preds_drift <- NA
 days<-unique(data_PSt0$ymd)
 combs <- combn(seq_along(days),6)
 ncv <- ncol(combs)
-R2 <- data.frame(glm=rep(NA,ncv),gam=rep(NA,ncv),drift=rep(NA,ncv),offset=rep(NA,ncv))
+rmse <- data.frame(glm=rep(NA,ncv),gam=rep(NA,ncv),drift=rep(NA,ncv),offset=rep(NA,ncv))
 
 for(j in 1:ncv){
 #cv_sample <- sample(1:length(days),4)
@@ -64,15 +64,17 @@ fitdays <- days[cv_sample]
 
   data_PSt0$cv <- ifelse(data_PSt0$ymd %in% fitdays,"fit","val")
   
-  fmcv_glm <- glm(CO2_roll_inj ~ preds_glm,data=subset(data_PSt0,cv=="val" & tiefe >= -7))
-  fmcv_gam <- glm(CO2_roll_inj ~ preds_gam,data=subset(data_PSt0,cv=="val"& tiefe >= -7))
-  fmcv_drift <- glm(CO2_roll_inj ~ I(CO2_ref + preds_drift),data=subset(data_PSt0,cv=="val"& tiefe >= -7))
-  fmcv_offset <- glm(CO2_roll_inj ~ I(CO2_ref + offset),data=subset(data_PSt0,cv=="val"& tiefe >= -7))
+  sub_temp <- subset(data_PSt0,cv=="val" & tiefe >= -7)
+  rmse_glm <- RMSE(obs=sub_temp$CO2_roll_inj,mod=sub_temp$preds_glm)
+  rmse_gam <- RMSE(obs=sub_temp$CO2_roll_inj,mod=sub_temp$preds_gam)
+  rmse_drift <- RMSE(obs=sub_temp$CO2_roll_inj,mod=sub_temp$preds_drift + sub_temp$CO2_roll_ref)
+  rmse_offset <- RMSE(obs=sub_temp$CO2_roll_inj,mod=sub_temp$offset + sub_temp$CO2_roll_ref)
   
-  R2$glm[j] <- 1 - fmcv_glm$deviance/fmcv_glm$null.deviance
-  R2$gam[j] <- 1 - fmcv_gam$deviance/fmcv_gam$null.deviance
-  R2$drift[j] <- 1 - fmcv_drift$deviance/fmcv_drift$null.deviance
-  R2$offset[j] <- 1 - fmcv_offset$deviance/fmcv_offset$null.deviance
+  
+  rmse$glm[j] <- rmse_glm
+  rmse$gam[j] <- rmse_gam
+  rmse$drift[j] <- rmse_drift
+  rmse$offset[j] <-  rmse_offset
 }
 ########################
 
@@ -84,9 +86,11 @@ fitdays <- days[cv_sample]
 # 
 # data_sub$tracer_pos <- data_sub$CO2_tracer > 0
 # data_sub$CO2_ref_offst <- ifelse(data_sub$tracer_pos, data_sub$CO2_ref + data_sub$offset, data_sub$CO2_inj)
-
-R2_long <- tidyr::pivot_longer(R2,everything())
-ggplot(R2_long)+
+#rmse_old <- rmse
+#rmse <- rmse_old[-1,]
+rmse_long <- tidyr::pivot_longer(rmse,everything())
+#rmse <- rmse_old
+ggplot(subset(rmse_long,name %in% c("glm","gam")))+
   #geom_point(aes(name,value))+ylim(c(0.8,1))
   geom_boxplot(aes(name,value))
 #data_PSt0$cv <- ifelse(data_PSt0$ymd %in% fitdays,0.3,0.6)
@@ -108,6 +112,16 @@ ggplot(data_PSt0)+
   geom_line(aes(date,preds_gam,col="gam"))+
   geom_line(aes(date,CO2_roll_inj,col="inj"))+
   facet_wrap(~tiefe,scales="free")
+ggplot(subset(data_sub,tiefe %in% c(-3.5,-7)))+
+  geom_line(aes(date,CO2_tracer_glm,col="glm"))+
+  geom_line(aes(date,CO2_tracer_gam,col="gam"))+
+  facet_wrap(~tiefe,scales="free",ncol=1)
 
-test <- subset(data_PSt0,tiefe==i & ymd %in% fitdays)
-any(!is.na(test$CO2_roll_ref))
+
+ggplot(data_sub)+
+  geom_line(aes(date,CO2_tracer_glm,col="glm"))+
+  geom_line(aes(date,CO2_tracer_gam,col="gam"))+
+  facet_wrap(~tiefe,scales="free")+
+  geom_rect(data = subset(Pumpzeiten, Pumpstufe != 0),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.3)+
+  xlim(range(data_sub$date))
+ggplot(data_sub)+geom_point(aes(date,Fz))
