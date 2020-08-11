@@ -25,10 +25,10 @@ test <- dbReadTable(con,table_name)
 #dbGetQuery(con, "PRAGMA table_info(sampler1);")
 
 all_files <- list.files(dynpfad)
-files <- str_subset(all_files,"20200609_.*_diff")
+files <- str_subset(all_files,"20200811")
 
-#rm_file_from_db(files[1] ,table_name = "dynament_test")
-
+#rm_file_from_db(files[1] ,table_name = "sampler1u2")
+#sapply(files,rm_file_from_db,table_name = "sampler1u2")
 con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,db_name))
 query2 <- paste0("SELECT datetime(date_int,'unixepoch') AS date, * FROM ",table_name)
 data<-dbGetQuery(con,query2)

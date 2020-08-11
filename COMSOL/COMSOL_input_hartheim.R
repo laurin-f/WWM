@@ -70,8 +70,8 @@ data_list <- lapply(mod_dates_hourly,function(x) subset(data[,c("tiefe","tiefens
 names(data_list) <- as.character(mod_dates_hourly)
 }
 
-mod_dates <- ymd_hm(c("2020-07-06 15:00","2020.07.08 11:00","2020.07.14 15:00"))
-mod_dates <- ymd_hm(c("2020-06-09 11:00","2020-07-06 15:00","2020.07.08 11:00","2020.07.14 15:00"))
+mod_dates <- ymd_hm(c("2020-07-08 11:00","2020.07.08 12:00","2020.07.14 15:00"))
+mod_dates <- ymd_hm(c("2020-06-09 11:00","2020-07-06 15:00","2020.07.08 11:00","2020.07.08 12:00","2020.07.14 15:00"))
 #mod_dates <- mod_dates[2]
 
 

@@ -15,5 +15,8 @@ RMSE <- function(mod,obs,normalize=F){
   if(normalize =="sd"){
     rmse <- rmse/sd(obs,na.rm = T)
   }
+  if(normalize =="mean_each"){
+    rmse <- sqrt(mean(((mod-obs)/obs)^2,na.rm = T))
+  }
   return(rmse)
 }
