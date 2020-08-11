@@ -22,7 +22,7 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 #######################
 #einheiten anpassen für COMSOl
 #Tracersignal in COMSOL Einheit umrechnen
-offset_method <- "glm"
+offset_method <- "gam"
 ######################
 
 data$CO2_mol_per_m3 <- ppm_to_mol(data[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data$PressureActual_hPa/10,T_C = data$T_soil)
@@ -33,8 +33,9 @@ data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
 
 data$date_hour <- round_date(data$date,"hours")
 mod_dates <- sort(unique(data$date[day(data$date) %in% 7:14 & month(data$date) == 7 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+mod_dates <- sort(unique(data$date[day(data$date) %in% 7:14 & month(data$date) == 7 & data$Pumpstufe != 0 ]))
 #mod_dates <- sort(unique(data$date[data$Pumpstufe != 0 & data$date %in% data$date_hour]))
-mod_dates <- ymd_hm(c("2020-07-08 11:00","2020.07.08 12:00","2020.07.14 15:00"))
+#mod_dates <- ymd_hm(c("2020-07-08 11:00","2020.07.08 12:00","2020.07.14 15:00"))
 #mod_dates <- ymd_hm(c("2020-06-09 11:00","2020.07.08 11:00","2020.07.08 12:00","2020.07.14 15:00"))
 data_sub <- lapply(mod_dates,function(x) subset(data[,c("tiefe","tiefenstufe","date","CO2_mol_per_m3","inj_mol_m2_s","DSD0_PTF_max","DSD0_PTF_min","T_soil","PressureActual_hPa","CO2_ref","CO2_inj")], date==x))
 injection_rates_raw <- sapply(data_sub,'[[',"inj_mol_m2_s")[1,]
@@ -70,6 +71,9 @@ z_soil <- set_units(as.numeric(z_soil_ch[,1]),unit,mode="standard")
 z_soil_cm <- as.numeric(set_units(z_soil,"cm"))
 #z_soil_cm <- 200
 
+data_mod_range <- subset(data,date > min(mod_dates) & date < max(mod_dates))
+data_agg_mod <- data_mod_range %>% group_by(date_hour,tiefe) %>% summarise_all(mean)
+
 #####################################
 #Datei mit Parameter sweep
 #CO2_mod_sweep <- readLines(paste0(comsolpfad,"CO2_mod_Hartheim.txt"))
@@ -90,8 +94,8 @@ CO2_sweep <- as.data.frame(apply(CO2_sweep_mat,2,as.numeric))
 #Spaltennamen
 colnames(CO2_sweep) <- colnames_sweep
 #ins long format
-#sweep_long <- reshape2::melt(CO2_sweep,id=1:2,value.name="CO2_mol_per_m3",variable="par")
-sweep_long <- tidyr::pivot_longer(CO2_sweep,cols=-(1:2),names_patter= paste0(paste(pars,collapse = "=(.*), "),"=(.*)"),values_to="CO2_mol_per_m3",names_to=pars)
+
+#sweep_long <- tidyr::pivot_longer(CO2_sweep,cols=-(1:2),names_patter= paste0(paste(pars,collapse = "=(.*), "),"=(.*)"),values_to="CO2_mol_per_m3",names_to=pars)
 
 #parameter als extra spalte aus character ausschneiden
 # for(i in pars){
@@ -99,12 +103,10 @@ sweep_long <- tidyr::pivot_longer(CO2_sweep,cols=-(1:2),names_patter= paste0(pas
 # }
 
 #einheit in ppm
-sweep_long$CO2_mod <- ppm_to_mol(sweep_long$CO2_mol_per_m3,"mol/m^3","units")
+#sweep_long$CO2_mod <- ppm_to_mol(sweep_long$CO2_mol_per_m3,"mol/m^3","units")
 
 #tiefe umrechnen
-sweep_long$tiefe <- set_units(sweep_long$z - z_soil_cm,cm)
-
-
+#sweep_long$tiefe <- set_units(sweep_long$z - z_soil_cm,cm)
 
 
 ##########################################
@@ -116,12 +118,16 @@ F_list <- list()
 
 n_best <- 10
 #subset für datum bei der Kammermessung durchgeführt wurde
-
+F_df <- data.frame(date=mod_dates,Fz=NA)
+F_df[,paste0("DS_",rep(c("","min_","max_","sorted_"),each=n_DS),1:n_DS)]<- NA
 for(k in seq_along(mod_dates)){
-  if((k / length(mod_dates)*100) %% 10 == 0){
+  if(round(k / length(mod_dates)*100,2) %% 10 == 0){
 print(paste0(k / length(mod_dates)*100,"% ",mod_dates[k]))}
 kammer_date <- mod_dates[k]
 
+
+
+#CO2_obs <- subset(data_agg_mod,date_hour== kammer_date)
 CO2_obs <- subset(data,date== kammer_date)
 D0_CO2_m2 <- mean(D0_T_p(T_C = CO2_obs$T_soil,p_kPa = CO2_obs$PressureActual_hPa/10,unit="m2/s")) #20°C m2/s
 
@@ -173,8 +179,8 @@ DS_long <- reshape2::melt(DS_wide, id = "rmse",variable="Schicht",value.name="DS
 best.fit.id <- which.min(rmse)
 good.fit.id <- which(rmse <= sort(rmse)[n_best])
 best.fit.id2 <- which.min(DS_sorted$rmse)
-best.rmse <- min(rmse)
-best.rmse_sorted <- min(DS_sorted$rmse)
+#best.rmse <- min(rmse)
+#best.rmse_sorted <- min(DS_sorted$rmse)
 
 #Bester Parametersatz
 best_DS <- as.numeric(DS_mat[best.fit.id,])
@@ -189,8 +195,9 @@ best_DS_sorted <- as.numeric(DS_sorted[best.fit.id2,-1])
 names(best_DS_sorted) <- paste0("DS_sorted_",1:length(best_DS_sorted))
 DS_vec <- c(best_DS,max_DS,min_DS,best_DS_sorted)
 #DS_list[[as.character(mod_dates)[k]]] <- best_DS
-DS_list[[as.character(mod_dates)[k]]] <- DS_vec
+#DS_list[[as.character(mod_dates)[k]]] <- DS_vec
 
+F_df[F_df$date == mod_dates[k],names(DS_vec)] <- DS_vec
 ################
 #flux
 slope_0_7cm <- glm(CO2_ref ~ tiefe, data= subset(CO2_obs,tiefe >= -7))#ppm/cm
@@ -207,46 +214,93 @@ dC_dz <- -slope_0_7cm$coefficients[2]
 dC_dz#ppm/cm
 #DS = -FZ * dz / dC
 
-dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units")#mol/m^3/cm
+dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units",T_C = CO2_obs$T_soil[CO2_obs$tiefe == -3.5],p_kPa = unique(CO2_obs$PressureActual_hPa)/10)#mol/m^3/cm
 
 Fz_mumol_per_s_m2 <- best_DS_sorted[1]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
 names(Fz_mumol_per_s_m2) <- "Fz"
 #Fz_mumol_per_s_m2 <- 3.603326e-06  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
-F_list[[as.character(mod_dates)[k]]] <- Fz_mumol_per_s_m2
-
+#F_list[[as.character(mod_dates)[k]]] <- Fz_mumol_per_s_m2
+F_df$Fz[F_df$date == mod_dates[k]] <- Fz_mumol_per_s_m2
 }
 }
 #########################################
 #ende for loop
-F_df <- as.data.frame(do.call(rbind,F_list))
+save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS.RData"))
+#F_df <- as.data.frame(do.call(rbind,F_list))
 F_df$date <- ymd_hms(rownames(F_df))
 DS_df <- as.data.frame(do.call(rbind,DS_list))
 DS_df$date <- ymd_hms(rownames(DS_df))
 
-DS_long <-tidyr::pivot_longer(DS_df,starts_with("DS"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
+DS_long <-tidyr::pivot_longer(F_df,starts_with("DS"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 
+F_df$Fz[F_df$date > (round_date(Pumpzeiten$start,"hours")[13]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[13]+10*3600)]<-NA
 
-F_df$Fz[F_df$date %in% (round_date(Pumpzeiten$start,"hours")[13]+0:10*3600)]<-NA
+  F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=120,mean,fill=NA)
+
 ggplot(subset(Kammer_flux))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=kammer),width=10000)+
   geom_point(aes(date,CO2flux,col=kammer))+
   ggnewscale::new_scale_color()+
-  geom_point(data=subset(F_df),aes(date,Fz))+
-  geom_line(data=subset(F_df),aes(date,Fz))+
+  #geom_point(data=subset(F_df),aes(date,Fz))+
+  geom_line(data=subset(F_df),aes(date,Fz,col="raw"),alpha=0.3)+
+  geom_line(data=subset(F_df),aes(date,Fz_roll,col="roll"))+
   #geom_point(data=F_Comsol_snopt,aes(date,Fz,col="glm"))+
   #geom_point(data=F_Comsol,aes(date,Fz_inj,col=""))+
   scale_color_manual("COMSOL",values=1:2)+
   #xlim(c(min(F_df$date[-1]),max(F_df$date[])+3600*5))+
-  xlim(ymd_h(c("2020.07.06 8","2020.07.14 19")))+
+  xlim(ymd_h(c("2020.07.04 8","2020.07.14 19")))+
+  #xlim(ymd_h(c("2020.07.07 0","2020.07.08 19")))+
   labs(title=paste(offset_method,n_DS),y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))
 #F_df_gam <- F_df
 
+
+Kammer_flux$date
+
 ggplot(DS_long)+
   geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
-  #geom_line(aes(date,DS,col=id))+
+  geom_line(aes(date,DS,col=id))+
   geom_line(aes(date,DS_sorted,col=id))
 #mal anschauen
 paste(names(best_DS),best_DS)
+##############################################################
+
+Kammer_agg <- Kammer_flux %>% group_by(day) %>% summarise(kammer_min = min(CO2flux_min),kammer_max = max(CO2flux_max), kammerflux = mean(CO2flux),date =mean(date))
+
+Kammer_agg <- subset(Kammer_agg,day%in%ymd(c("2020.07.08","2020.07.10","2020.07.14")))
+Kammer_agg$Fz_mod <- NA
+F_sub <- subset(F_df, !is.na(Fz_roll))
+for(i in 1:nrow(Kammer_agg)){
+  Kammer_agg$Fz_mod[i] <- F_sub$Fz_roll[which.min(abs(F_sub$date - Kammer_agg$date[i]))]
+}
+ggplot(Kammer_agg)+geom_errorbar(aes(x=Fz_mod,ymin=kammer_min,ymax=kammer_max))+geom_abline(slope=1,intercept = 0)
+Kammer_sub <- subset(CO2_flux,day%in%ymd(c("2020.07.08","2020.07.10","2020.07.14")) & kammer != "D")
+Kammer_sub$Fz_mod <- NA
+F_sub <- subset(F_df, !is.na(Fz_roll))
+for(i in 1:nrow(Kammer_sub)){
+  Kammer_sub$Fz_mod[i] <- F_sub$Fz_roll[which.min(abs(F_sub$date - Kammer_sub$date[i]))]
+}
+f_range <- range(Kammer_sub[,c("Fz_mod","mumol_per_s_m2")])
+ggplot(Kammer_sub)+
+  #geom_errorbar(aes(x=Fz_mod,ymin=CO2flux_min,ymax=CO2flux_max,col=kammer))+
+  geom_point(aes(x=Fz_mod,y=mumol_per_s_m2,col=kammer))+
+  geom_abline(slope=1,intercept = 0)+lims(x = f_range, y = f_range)
+ggplot(Kammer_agg)+
+  geom_point(aes(date,kammerflux,col="obs"))+
+  geom_errorbar(aes(x=date,ymin=kammer_min,ymax=kammer_max,col="obs"))+
+  geom_point(aes(date,Fz_mod,col="mod"))
+
+F_Comsol$day <- as_date(F_Comsol$date)
+F_vergleich <- merge(F_Comsol,Kammer_agg,by="day")
+ggplot(F_vergleich)+geom_point(aes(kammerflux,Fz))+geom_abline(intercept = 0,slope=1)+geom_errorbar(aes(xmin=kammer_min,xmax=kammer_max,y=Fz))+xlim(c(1,5.5))+ylim(c(1,5.5))
+
+
+
+
+
+####################################################
+##ALT
+
+###################################################################################
 #write.table(paste(names(best_DS),best_DS),file=paste0(comsolpfad,"best_DS_Hartheim.txt"),col.names = F,row.names = F,quote = F)
 DS_D0 <- best_DS/D0_CO2_m2 #m2/s
 
@@ -349,10 +403,6 @@ dC_dz#ppm/cm
 
 dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units")#mol/m^3/cm
 
-Fz_mol_per_min_m2 <- DS_profil$DS[DS_profil$top == 0]*60  * dC_dz_mol * 100#m2/min * mol/m3/m = mol/min/m2
-
-Fz_ml_per_min_m2 <- DS_profil$DS[DS_profil$top == 0]*60 * 10^4 * dC_dz/10^6 * 10^4#cm2/min /cm  = ml/min/m2
-#Fz_ml_per_min_m2 <- 2.7e-6*60 * 10^4 * dC_dz/10^6 * 10^4#cm2/min /cm  = ml/min/m2
 
 Fz_ml_per_min_m2
 colnames(CO2_obs)

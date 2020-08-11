@@ -26,10 +26,10 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 Kammer_flux$date
 #which method for tracer calculation should be used glm gam offset or drift
-offset_method <- "glm"
+offset_method <- "gam"
 #which optimization method should be used nelder or snopt
 optim_method <- "snopt"
-n_DS <- "3DS"
+n_DS <- "4DS"
 overwrite <- T
 
 #CO2 in tracer in mol pro m3 
@@ -82,6 +82,7 @@ names(data_sub) <- mod_dates
 ggplot(data_sub[[1]])+geom_line(aes(CO2_mol_per_m3,z),orientation = "y")+labs(title = offset_method,subtitle = mod_dates[1])
 ggplot(data_sub[[2]])+geom_line(aes(CO2_mol_per_m3,z),orientation = "y")+labs(title = offset_method,subtitle = mod_dates[2])
 ggplot(data_sub[[3]])+geom_line(aes(CO2_mol_per_m3,z),orientation = "y")+labs(title = offset_method,subtitle = mod_dates[3])
+ggplot(data_sub[[4]])+geom_line(aes(CO2_mol_per_m3,z),orientation = "y")+labs(title = offset_method,subtitle = mod_dates[4])
 
 
 ##############################################
@@ -148,7 +149,7 @@ for(j in seq_along(data_sub)){
 #alle dateien mit der gewünschten methode und datum 
  optim_method <- "snopt"
  n_DS <- "3DS"
- offset_method <- "glm"
+ offset_method <- "gam"
 plot <- F
 
 date_pattern <- "\\d{2}_\\d{2}_\\d{2}.txt"
@@ -157,7 +158,7 @@ mod_files <- list.files(comsolpfad,pattern = paste(offset_method,optim_method,n_
 mod_date_all_chr <- sort(unique(str_extract(mod_files,date_pattern)))
 mod_dates_all <- ymd_h(paste("2020",mod_date_all_chr))
 
-mod_dates_all <- mod_dates
+#mod_dates_all <- mod_dates
 F_list <- list()
 F_Comsol <- data.frame(date=mod_dates_all,Fz=NA,Fz_inj=NA)
 #for(l in c("gam","glm")){
