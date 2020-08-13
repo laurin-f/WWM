@@ -248,6 +248,7 @@ Tracer_offset
 #range 3
 
 #offset  drift glm
+
 ggplot(subset(data,date > range3[1] & date < range3[2]))+
   geom_line(aes(date,CO2_roll_ref + preds_drift,col=as.factor(tiefe),linetype="offset_drift"))+
   geom_line(aes(date,preds,col=as.factor(tiefe),linetype="glm"))+
@@ -258,9 +259,34 @@ ggplot(subset(data,date > range3[1] & date < range3[2]))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
   geom_line(aes(date,preds,col=as.factor(tiefe),linetype="ref + offset"))+
   geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds,fill=as.factor(tiefe)),alpha=0.3)+
-  labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tracer signal")+
-  geom_vline(xintercept = Pumpzeiten$start)#+
+  labs(title="glm",y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tracer signal")+
+  geom_vline(xintercept = Pumpzeiten$start)+
 ggsave(paste0(plotpfad,"Einspeisung3_glm.png"),width=10,height=7)
+
+#gam
+sub3 <- subset(data,date > range3[1] & date < range3[2]& tiefe !=0)
+sub3_calib <- sub3
+sub3_calib[which(sub3_calib$Pumpstufe != 0 | is.na(sub3_calib$Pumpstufe)),grep("CO2|preds",colnames(sub3_calib))] <- NA
+ggplot(subset(sub3_calib,tiefenstufe %in% c(1,3,6)))+
+  #annotate("text",x = Pumpzeiten$start[c(16,19)],y=Inf,label="calibration",col="grey")+
+  geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
+  geom_line(aes(date,CO2_roll_inj,col="inj"),lwd=1)+
+  geom_line(aes(date,CO2_roll_ref,col="ref"))+
+  geom_line(aes(date,preds2,col="offset model"))+
+  labs(y=expression(CO[2]*" [ppm]"),col="")+
+  facet_grid(tiefe~.,scales="free")+
+  #scale_color_viridis_d()
+  scale_color_brewer(type="qual",palette = 6)+
+  ggsave(paste0(plotpfad,"Einspeisung3_gam_calib.png"),width=7,height=6)
+  
+ggplot(sub3)+
+  geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
+  #geom_line(aes(date,CO2_roll_ref,col=as.factor(tiefe),linetype="ref",alpha=0.2))+
+  geom_line(aes(date,preds2,col=as.factor(tiefe),linetype="ref offset model"))+
+  geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds2,fill=as.factor(tiefe)),alpha=0.3)+
+  labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tiefe [cm]")+
+  ggsave(paste0(plotpfad,"Einspeisung3_gam.png"),width=7,height=4)
 
 #tracer drift
 ggplot(subset(data,date > range3[1] & date < range3[2]))+

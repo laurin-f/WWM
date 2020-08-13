@@ -144,6 +144,13 @@ data$DSD0_PTF <- data$c_PTF * data$eps^data$d_PTF
 data$DSD0_PTF_min <- data$c_PTF * data$eps_min^data$d_PTF
 data$DSD0_PTF_max <- data$c_PTF * data$eps_max^data$d_PTF
 
+#Laemmel et al 2017 ds models
+for(i in c("","_min","_max")){
+data[,paste0("DSD0_Buckingham",i)] <- data[,paste0("eps",i)]^2
+data[,paste0("DSD0_Millington",i)] <- data[,paste0("eps",i)]^2/(data[,paste0("PV",i)]/100)^(2/3)
+eps_phi <- data[,paste0("eps",i)]^2/(data[,paste0("PV",i)]/100)
+data[,paste0("DSD0_Deepoga",i)] <- 0.1*(2*eps_phi^2+0.04*eps_phi)
+}
 
 #F = -DS * dC/Dz
 data_wide <- tidyr::pivot_wider(data,id_cols=date,names_from = tiefe,values_from = grep("CO2|DSD0_PTF|T_soil|PressureActual",colnames(data)))

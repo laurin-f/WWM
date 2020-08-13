@@ -26,9 +26,9 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 Kammer_flux$date
 #which method for tracer calculation should be used glm gam offset or drift
-offset_method <- "gam"
+offset_method <- "glm"
 #which optimization method should be used nelder or snopt
-optim_method <- "snopt"
+optim_method <- "nelder"
 n_DS <- "4DS"
 overwrite <- T
 
@@ -62,7 +62,7 @@ data$date_hour <- round_date(data$date,"hours")
 mod_dates_hourly <- sort(unique(data$date[data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 
 #dates für die DS modelliert werden soll
-mod_dates <- sort(unique(data$date[day(data$date) %in% 4:8 & month(data$date) == 7 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+mod_dates <- sort(unique(data$date[day(data$date) %in% 6:9 & month(data$date) == 6 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 
 #mod_dates <- ymd_h("2020.07.14 15")
 if(!exists("data_list")){
@@ -72,7 +72,7 @@ names(data_list) <- as.character(mod_dates_hourly)
 
 mod_dates <- ymd_hm(c("2020-07-08 11:00","2020.07.08 12:00","2020.07.14 15:00"))
 mod_dates <- ymd_hm(c("2020-06-09 11:00","2020-07-06 15:00","2020.07.08 11:00","2020.07.08 12:00","2020.07.14 15:00"))
-#mod_dates <- mod_dates[2]
+mod_dates <- mod_dates[1]
 
 
 
@@ -148,7 +148,7 @@ for(j in seq_along(data_sub)){
 ##############################
 #alle dateien mit der gewünschten methode und datum 
  optim_method <- "snopt"
- n_DS <- "3DS"
+ n_DS <- "4DS"
  offset_method <- "gam"
 plot <- F
 
