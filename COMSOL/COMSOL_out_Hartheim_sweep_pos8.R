@@ -33,7 +33,7 @@ data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
 
 data$date_hour <- round_date(data$date,"hours")
 mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
-mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 ]))
+#mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 ]))
 
 
 
@@ -58,7 +58,7 @@ data_agg_mod <- data_mod_range %>% group_by(date_hour,tiefe) %>% summarise_all(m
 n_DS <- 3
 #################################################
 #Datei einlesen
-CO2_mod_sweep <- readLines(paste0(comsolpfad,"sweep_Hartheim_",n_DS,"DS_mod_dates3.txt"))
+CO2_mod_sweep <- readLines(paste0(comsolpfad,"sweep_Hartheim_",n_DS,"DS_mod_datespos8.txt"))
 ##################################################
 
 ############
@@ -220,7 +220,7 @@ for(i in 1:nrow(Pumpzeiten)){
 }
 #moving average
 F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=120,mean,fill=NA)
-#F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
+F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
 
 DS_long <-tidyr::pivot_longer(F_df,starts_with("DS"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 
@@ -236,7 +236,7 @@ ggplot()+
   #xlim(c(min(F_df$date[-1]),max(F_df$date[])+3600*5))+
   #xlim(ymd_h(c("2020.07.04 8","2020.07.14 19")))+
   #xlim(ymd_h(c("2020.06.07 0","2020.06.09 19")))+
-  labs(title=paste0(offset_method," ",n_DS,"DS"),y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
+  labs(title=paste0(offset_method," ",n_DS,"DS"),y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))#+
   ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS_pos8.png"),width=8,height = 4)
 #F_df_gam <- F_df
 
@@ -254,12 +254,12 @@ data_plot <- data %>%
   group_by(tiefe,date_hour=round_date(data$date,"hours")) %>%
   summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max),DSD0_PTF= mean(DSD0_PTF),date=mean(date))
 
-DS_long$tiefe <- DS_long$id*-7
+DS_long$tiefe <- as.numeric(DS_long$id)*-7
 ggplot(subset(data_plot))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(tiefe)),alpha=0.2)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(tiefe)))+
   ggnewscale::new_scale_color()+
-  geom_line(data=DS_long,aes(date,DS/D0_T_p(unit="m2/s"),col=as.factor(id),linetype="COMSOL"))+
+  geom_line(data=DS_long,aes(date,DS/D0_T_p(unit="m2/s"),col=as.factor(tiefe),linetype="COMSOL"))+
   xlim(range(DS_long$date))
 
   #geom_line(data=F_Comsol_snopt_long,aes(date,DSD0,col=name,linetype="snopt"))+
