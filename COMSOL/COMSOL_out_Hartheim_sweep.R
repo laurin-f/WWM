@@ -13,6 +13,7 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","ggforce","units","egg","dplyr")
 
 check.packages(packages)
+theme_set(theme_classic())
 
 ######################################
 #data_agg
@@ -63,8 +64,8 @@ n_DS <- 3
 #################################################
 #Datei einlesen
 CO2_mod_sweep <- readLines(paste0(comsolpfad,"sweep_Hartheim_",n_DS,"DS_mod_dates3.txt"))
-##################################################
 
+##################################################
 ############
 #Formatieren
 #Anzahl von DS schichten im Modell 
@@ -86,6 +87,43 @@ colnames(CO2_sweep) <- colnames_sweep
 #################
 #ins long format
 sweep_long <- tidyr::pivot_longer(CO2_sweep,cols=-(1:2),names_patter= paste0(paste(pars,collapse = "=(.*), "),"=(.*)"),values_to="CO2_mol_per_m3",names_to=pars)
+unique(sweep_long$injection_rate)
+range_Di <- range(as.numeric(sweep_long$DS_1))
+approx(as.numeric(sweep_long$DS_1),sweep_long$CO2_mol_per_m3,seq(range_Di[1],range_Di[2],len=100))
+
+df <- as.data.frame(sapply(sweep_long,as.numeric))
+df_wide <- df
+for(i in (unique(df$DS_1))){
+  for(j in (unique(df$DS_2))){
+    for(k in (unique(df$DS_3))){
+      for(l in (unique(df$z))){
+        for(m in (unique(df$injection_rate))){
+      #dfi <- subset(df, DS_2 == j & DS_3 == k & z == l & injection_rate == m)
+      dfj <- subset(df, DS_1 == i & DS_3 == k & z == l & injection_rate == m)
+      dfk <- subset(df, DS_1 == i & DS_2 == j & z == l & injection_rate == m)
+      
+      #approxi <- approx(dfi$DS_1,dfi$CO2_mol_per_m3,seq(min(dfi$DS_1),max(dfi$DS_1),len=40))
+      approxj <- approx(dfj$DS_2,dfj$CO2_mol_per_m3,seq(min(dfj$DS_2),max(dfj$DS_2),len=40))
+      approxk <- approx(dfk$DS_3,dfk$CO2_mol_per_m3,seq(min(dfk$DS_3),max(dfk$DS_3),len=40))
+      
+      #df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_1=",approxi$x)] <- approxi$y
+      df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_2=",approxj$x)] <- approxj$y
+      df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_3=",approxk$x)] <- approxk$y
+        }
+      }
+      print(paste0("k=",k))
+    }
+    print(paste0("j=",j))
+  }
+  print(paste0("i=",i))
+}
+df_long <- tidyr::pivot_longer(df_wide, grep("DS_\\d=.*",colnames(df_wide)),names_to = "DS_i")
+
+string <- str_split(df_long$DS_i,"=",simplify = T)
+for(i in paste0("DS_",1:3)){
+index <- which(string[,1]==DS_i)
+df_long[index,DS_i] <- as.numeric(string[index,2])
+}
 
 #inj_rates_2 <- unique(sweep_long2$injection_rate) %>% as.numeric() %>% round(3)
 #CO2_sweep <- CO2_sweep[,grep(paste(inj_rates_2,collapse = "|"),colnames(CO2_sweep))]
@@ -105,9 +143,11 @@ n_best <- 10
 F_df <- data.frame(date=mod_dates,Fz=NA)
 F_df[,paste0("DS_",rep(c("","min_","max_","sorted_"),each=n_DS),1:n_DS)]<- NA
 
+plot<-F
 ######################################
 #Schleife in der obs mit mod für unterschiedliche Zeiten verglichen werden
 for(k in seq_along(mod_dates)){
+
   #fortschritt angeben
   if(round(k / length(mod_dates)*100,0) %% 10 == 0){
     print(paste0(k / length(mod_dates)*100,"% ",mod_dates[k]))
@@ -141,7 +181,7 @@ for(k in seq_along(mod_dates)){
   sweep_sub <- CO2_sweep[,sweep_sub_id]
   
   #rmse jedes Sweeps berechnen
-  rmse <- apply(sweep_sub,2,RMSE,CO2_obs$CO2_mol_per_m3)
+  rmse <- apply(sweep_sub,2,RMSE,CO2_obs$CO2_mol_per_m3)#,normalize="mean_each")
   #rmse <- apply(sweep_sub,2,function(x) RMSE(x[1:4],CO2_obs$CO2_mol_per_m3[1:4]))
   
   #zu den RMSE werten die jeweiligen DS sets
@@ -163,14 +203,16 @@ for(k in seq_along(mod_dates)){
   #dottyplot
   #ggplot(subset(DS_long,rmse < sort(unique(rmse))[200]))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
   #ggplot(subset(DS_long))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
-  
   #########################################
   #Bester RMSE
   ########################################
   best.fit.id <- which.min(rmse)
   good.fit.id <- which(rmse <= sort(rmse)[n_best])
   best.fit.id2 <- which.min(DS_sorted$rmse)
- 
+  if(plot==T){
+    plot(CO2_obs$tiefe~CO2_obs$CO2_mol_per_m3)
+    lines(CO2_obs$tiefe~sweep_sub[,best.fit.id],col=2)
+  }
   #Bester Parametersatz
   best_DS <- as.numeric(DS_mat[best.fit.id,])
   names(best_DS) <- colnames(DS_mat)
@@ -213,7 +255,12 @@ for(k in seq_along(mod_dates)){
 #speichern
 #save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))
 #load(file=paste0(comsolpfad,"F_df_gam_3DS.RData"))
+load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8.RData"))
+F_df$Fz_roll <-NA
+F_df_pos8 <- F_df
 load(file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))
+F_df<-rbind(F_df,F_df_pos8)
+
 
 #######
 #DS_long
@@ -224,8 +271,13 @@ for(i in 1:nrow(Pumpzeiten)){
 }
 #moving average
 F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=120,mean,fill=NA)
+F_df$DS_roll_1 <- zoo::rollapply(F_df$DS_1,width=120,mean,fill=NA)
+F_df$DS_roll_2 <- zoo::rollapply(F_df$DS_2,width=120,mean,fill=NA)
+F_df$DS_roll_3 <- zoo::rollapply(F_df$DS_3,width=120,mean,fill=NA)
+#F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
 
-DS_long <-tidyr::pivot_longer(F_df,starts_with("DS"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
+DS_long <-tidyr::pivot_longer(F_df[!grepl("DS_roll_\\d$",colnames(F_df))],starts_with("DS_"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
+DS_long_roll <-tidyr::pivot_longer(F_df[!grepl("DS_(min_|max_|sorted_)?\\d$",colnames(F_df))],starts_with("DS_roll"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 
 ##################################
 #plot
@@ -234,23 +286,24 @@ DS_long <-tidyr::pivot_longer(F_df,starts_with("DS"),names_pattern = "(\\w+)_(\\
 ggplot(subset(Kammer_flux))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=kammer),width=10000)+
   geom_point(aes(date,CO2flux,col=kammer))+
+  labs(col="chamber")+
   ggnewscale::new_scale_color()+
   #geom_point(data=subset(F_df),aes(date,Fz))+
-  geom_line(data=subset(F_df),aes(date,Fz,col=""),alpha=0.3)+
-  geom_line(data=subset(F_df),aes(date,Fz_roll,col="moving avg"))+
+  geom_line(data=subset(F_df),aes(date,Fz,col=""),alpha=0.2)+
+  geom_line(data=subset(F_df),aes(date,Fz_roll,col=""))+
   scale_color_manual("gradient method",values=1:2)+
   #xlim(c(min(F_df$date[-1]),max(F_df$date[])+3600*5))+
-  xlim(ymd_h(c("2020.07.04 8","2020.07.14 19")))+
+  xlim(ymd_hms(c("2020-07-06 10:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
   #xlim(ymd_h(c("2020.07.06 13","2020.07.07 19")))+
-  labs(title=paste0(offset_method," ",n_DS,"DS"),y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))#+
-  #ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS.png"),width=8,height = 4)
+  labs(y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
+  ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS.png"),width=7,height = 4)
 #F_df_gam <- F_df
 
 #DS_plot
 ggplot(DS_long)+
   geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
   geom_line(aes(date,DS,col=id))+
-  geom_line(aes(date,DS_sorted,col=id))+
+  geom_line(aes(date,DS_sorted,col=id))#+
   ggsave(paste0(plotpfad,"DS_zeit_gam_3DS.png"),width=8,height = 4)
 
 range(F_df$DS_1,na.rm=T)
@@ -282,12 +335,30 @@ data_plot <- data %>%
   summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max),DSD0_PTF= mean(DSD0_PTF),date=mean(date))
 
 DS_long$tiefe <- as.numeric(DS_long$id)*-7
-ggplot(subset(data_plot2))+
-  geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(tiefe)),alpha=0.2)+
-  geom_line(aes(date,DSD0_PTF,col=as.factor(tiefe)))+
-  ggnewscale::new_scale_color()+
-  geom_line(data=DS_long,aes(date,DS/D0_T_p(unit="m2/s"),col=as.factor(tiefe),linetype="COMSOL"))+
+DS_long$range <- factor(DS_long$id,levels=1:3,labels=c("DS1 0-14 cm","DS2 14-21 cm","DS3 >21 cm"))
+DS_long_roll$range <- factor(DS_long_roll$id,levels=1:3,labels=c("DS1 0-14 cm","DS2 14-21 cm","DS3 >21 cm"))
+DS_long$mvg_av <- NA
+for(i in unique(DS_long$tiefe)){
+  tiefe.i <- DS_long$tiefe == i
+DS_long$mvg_av <- zoo::rollapply(DS_long$)}
+soil_agg$date_hour <- round_date(soil_agg$date,"hours")
+soil_agg$range <- factor(soil_agg$tiefe,levels=c(2,5,10,20,50,100),labels=c("DS1 0-14 cm","DS1 0-14 cm","DS1 0-14 cm","DS2 14-21 cm","DS3 >21 cm","DS3 >21 cm"))
+soil_agg_plot <- soil_agg %>%
+  group_by(range,date_hour) %>%
+  summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max,na.rm=T),DSD0_PTF= mean(DSD0_PTF,na.rm=T),date=mean(date))
+
+ggplot(subset(soil_agg_plot))+
+  #geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,col=as.factor(range)),fill=NA,alpha=0.2,linetype=2)+
+  geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range)),alpha=0.15)+
+  geom_line(aes(date,DSD0_PTF,col=as.factor(range),linetype="PTF"))+
+  
+  #geom_line(data=DS_long,aes(date,DS/D0_T_p(unit="m2/s"),col=range,linetype="COMSOL",alpha=0.2))+
+  geom_line(data=DS_long_roll,aes(date,DS_roll/D0_T_p(unit="m2/s"),col=range,linetype="COMSOL"),lwd=1)+
+  labs(y="DS/D0",col="",linetype="")+
+  #facet_grid(range~.)+
   xlim(range(DS_long$date))
+
+
 ggplot(subset(data_plot2))+
   geom_ribbon(aes(x=date_hour,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(tiefe)),alpha=0.2)+
   geom_line(aes(date_hour,DSD0_PTF,col=as.factor(tiefe)))+

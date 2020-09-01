@@ -32,8 +32,8 @@ data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
 #data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- NA
 
 data$date_hour <- round_date(data$date,"hours")
-mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
-#mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 ]))
+#mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 ]))
 
 
 
@@ -207,11 +207,14 @@ for(k in seq_along(mod_dates)){
 #ende for loop
 
 #speichern
-#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))
-#load(file=paste0(comsolpfad,"F_df_gam_3DS.RData"))
-#load(file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))
-
-#######
+#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_pos8.RData"))
+load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8.RData"))
+F_df_pos8 <- F_df
+load(file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))
+F_df<-rbind(F_df,F_df_pos8)
+colnames(F_df)
+colnames(F_df_pos8)
+F_df_pos8#######
 #DS_long
 
 #Zeitraum bis steady state abschneiden 
@@ -220,7 +223,7 @@ for(i in 1:nrow(Pumpzeiten)){
 }
 #moving average
 F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=120,mean,fill=NA)
-F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
+#F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
 
 DS_long <-tidyr::pivot_longer(F_df,starts_with("DS"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 

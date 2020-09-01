@@ -15,6 +15,7 @@ kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr")
 check.packages(packages)
+theme_set(theme_classic())
 
 load(file=paste0(klimapfad,"klima_data.RData"))
 
@@ -115,32 +116,34 @@ inj_ref3 <- egg::ggarrange(inj_3,ref_3,ncol=1)
 
 
 range2u3 <- range(data$date[data$Position %in% 7:8],na.rm = T)
-theme_set(theme_classic())
+
 all_dpths <- sort(c(unique(data$tiefe),unique(-soil_agg$tiefe)))[-1]
 
 inj_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
-  #geom_vline(xintercept = Pumpzeiten$start[-1])+
-  geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection period"),alpha=0.2)+
-  geom_rect(data=subset(Pumpzeiten,Pumpstufe==0 & (is.na(bemerkung)|bemerkung=="zurück getauscht") & Position %in% 8),aes(xmin=start,xmax=ende,ymin=calib_yrange[1],ymax=calib_yrange[2],fill="Zoom extend"),alpha=0.2)+
+  geom_rect(data=subset(Pumpzeiten,Pumpstufe==0 & (is.na(bemerkung)|bemerkung=="zurück getauscht") & Position %in% 8),aes(xmin=min(start),xmax=max(ende),ymin=-Inf,ymax=Inf,col="Zoom extend",fill="Zoom extend"),alpha=0.2)+
+  geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection period",col="injection period"),alpha=0.2)+
+  scale_fill_manual("",values=c(1,NA))+
+  scale_color_manual("",values=c(NA,1))+
+  ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
-  #annotate("text",x=Pumpzeiten$start[Pumpzeiten$Position %in% 7:8 & Pumpzeiten$Pumpstufe!= 0],y=Inf,label="injection",vjust=1,hjust=-0.1)+
   labs(col="tiefe [cm]",x="",y=expression("injection "~CO[2]*" [ppm]"),title="injection sampler",fill="")+
-  theme(axis.text.x = element_blank())+
+  theme(axis.text.x = element_blank(),
+        legend.title = element_text(color=1))+
   scale_color_discrete(limits=all_dpths)+
-  guides(colour = guide_legend(order = 2,override.aes = list(size = 1.5)), 
-           fill = guide_legend(order = 1))+
-  scale_fill_manual(values=1:2)
+  guides(colour = guide_legend(override.aes = list(size = 1.5)), 
+           fill = guide_legend())
 
-inj_2u3
+
 ref_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
-  geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection period"),alpha=0.2)+
-  geom_rect(data=subset(Pumpzeiten,Pumpstufe==0 & (is.na(bemerkung)|bemerkung=="zurück getauscht") & Position %in% 8),aes(xmin=start,xmax=ende,ymin=calib_yrange[1],ymax=calib_yrange[2],fill="Zoom extend"),alpha=0.2)+
-  #geom_vline(xintercept = Pumpzeiten$start[-1])+
+  geom_rect(data=subset(Pumpzeiten,Pumpstufe==0 & (is.na(bemerkung)|bemerkung=="zurück getauscht") & Position %in% 8),aes(xmin=min(start),xmax=max(ende),ymin=-Inf,ymax=Inf,col="Zoom extend",fill="Zoom extend"),alpha=0.2)+
+  geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection period",col="injection period"),alpha=0.2)+
+  scale_fill_manual("",values=c(1,NA))+
+  scale_color_manual("",values=c(NA,1))+
+  ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
   guides(col=F,fill=F)+labs(y=expression("reference "~CO[2]*" [ppm]"),x="",title="reference sampler")+
   theme(axis.text.x = element_blank())+
-  scale_color_discrete(limits=all_dpths)+
-  scale_fill_manual(values=1:2)
+  scale_color_discrete(limits=all_dpths)
 
 inj_ref2u3 <- egg::ggarrange(inj_2u3,ref_2u3,ncol=1)
 ##########################
@@ -180,7 +183,7 @@ VWC_plot_agg <-  ggplot(soil_agg)+
 VWC_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
   geom_line(aes(date,mean_VWC,col=as.factor(-tiefe)))+
   geom_ribbon(data=subset(data,date > range2u3[1] & date < range2u3[2]),aes(x=date,ymin=0,ymax=Precip_Intensity_mmhr/8),col="blue")+
-  scale_y_continuous(sec.axis = sec_axis(~.*8,name="P [mm / hr]"))+
+  scale_y_continuous(sec.axis = sec_axis(~.*8,name="P [mm / h]"))+
   theme(
     axis.title.y.right = element_text(color = "blue"),
     axis.text.y.right = element_text(color = "blue"),
@@ -196,7 +199,7 @@ VWC_plot_alle_plots <-  ggplot(subset(soil_long,unit=="VWC"))+
 CO2_p_VWC <- egg::ggarrange(inj,ref,VWC_plot_agg+xlim(range(data$date)),p_plot,heights = c(2,2,1,1))
 CO2_p_VWC1 <- egg::ggarrange(inj_1,ref_1,VWC_plot_agg+xlim(range1),p_plot+xlim(range1),heights = c(2,2,1,1))
 CO2_p_VWC2 <- egg::ggarrange(inj_2,ref_2,VWC_plot_agg+xlim(range2),p_plot+xlim(range2),heights = c(2,2,1,1))
-CO2_p_VWC2u3 <- ggpubr::ggarrange(inj_2u3,ref_2u3,VWC_plot_2u3,T_plot_2u3,ncol=1,heights = c(2,2,1,1),common.legend = T,legend="right",align="v")+ggsave(paste0(plotpfad,"CO2_p_VWC_t.png"),width=7,height=8)
+CO2_p_VWC2u3 <- ggpubr::ggarrange(inj_2u3,ref_2u3,VWC_plot_2u3,T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1),common.legend = T,legend="right",align="v")+ggsave(paste0(plotpfad,"CO2_p_VWC_t.png"),width=7,height=7)
 
 ########################
 #export

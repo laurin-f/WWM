@@ -11,6 +11,7 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","ggforce","units","egg")
 
 check.packages(packages)
+theme_set(theme_classic())
 
 #data_agg
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_sub.RData"))
@@ -57,7 +58,7 @@ sweep_long$tiefe <- set_units(sweep_long$z - z_box,cm)
 ######################
 #fm
 
-D0_CO2 <- D0_T_p(40) #18°C cm2/s
+D0_CO2 <- D0_T_p(20) #18°C cm2/s
 D0_CO2_m2 <- D0_CO2/10^4 #m2/s
 
 
@@ -127,14 +128,13 @@ DS_D0_label$label <- paste0("DS/D0 = ",round(DS_D0_label$COMSOL,3))
 
 ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
   #geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+
-  geom_line(aes(CO2_mod,tiefe,col="mod",alpha=ID))+
-  geom_point(aes(CO2,tiefe,col="obs"))+
-  guides(alpha=F)+scale_alpha_manual(values = rep(1,6))+
-  scale_linetype_manual("Pumpstufe",values=2:1)+
-  facet_wrap(~material)+
+  geom_line(aes(CO2_mod,tiefe,col="mod"))+
+  geom_point(aes(CO2,tiefe,fill="obs"))+
+  facet_wrap(~factor(material,levels=c("Sand","Sand & Splitt","Splitt"),labels=c("sand","mixture","grit")))+
   geom_text(data=subset(DS_D0_label,material%in% data_sub$material),aes(y= -1,x=6000,label = label),hjust="right")+
+  scale_color_manual(values=2)+
   #annotate("text",y= c(-1,-1,-1),x=c(6000,6000,6000),label=c(label1,label2,label3),hjust="right")+
-  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="")#+ggsave(paste0(plotpfad,"sandkiste/comsol_mod_obs.png"),width = 8,height=4)
+  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="",fill="")+theme_bw()+ggsave(paste0(plotpfad,"sandkiste/comsol_mod_obs.png"),width = 7,height=3)
 
 # Fine gravel 0.235 (0.008) 0.218 0.214
 # Mixture 0.185 (0.006) 0.164 0.141

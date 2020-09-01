@@ -4,6 +4,7 @@ hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 datapfad_ds<-paste0(hauptpfad,"Daten/Urdaten/DS_Labor/")
 aufbereitete_ds<-paste0(hauptpfad,"Daten/aufbereiteteDaten/DS_Labor/")
 metapfad_ds<-paste0(hauptpfad,"Daten/Metadaten/DS_Labor/")
+plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/")
 comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 #Packages laden
 library(pkg.WWM)
@@ -65,9 +66,11 @@ ggplot()+
   geom_boxplot(data=subset(results,material!="leer"),aes(material,DSD0,fill="Fluehler"),alpha=0.3)+
   geom_boxplot(data=comsol,aes(material,DS_D0_mod,fill="gradient"),alpha=0.5)#+
   #geom_point(data=thomas_ref,aes(material,DS_D0,fill="Laemmel et al."),alpha=0.5)
+
 ggplot()+
-  geom_point(data=subset(results,material!="leer"),aes(material,DSD0,col=kommentar))+
-  labs(col="Labor")+
-  ggnewscale::new_scale_color()+
-  geom_point(data=comsol,aes(material,DS_D0_mod,col=""))+labs(col="COMSOL")+scale_color_manual(values=1)
+  geom_point(data=subset(results,material!="leer"),aes(factor(material,levels=c("sand","splitt und sand","splitt"),labels=c("sand","mixture","grit")),DSD0,col="Lab",shape="Lab"))+
+  geom_point(data=comsol,aes(factor(material,levels=c("sand","splitt und sand","splitt"),labels=c("sand","mixture","grit")),DS_D0_mod,col="in situ",shape="in situ"))+labs(y="DS/D0",x="",col="",shape="")+scale_color_manual(values=1:2)+ggsave(paste0(plotpfad,"sandkiste/Labor_Vergleich.png"),width=5,height=3)
   
+mat_gr <- comsol %>% group_by(material) %>% summarise(DSD0_gradient=paste0(round(mean(DS_D0_mod),2)," (",round(sd(DS_D0_mod),3),")"))
+mat_lab <- subset(results,material!="leer") %>% group_by(material) %>% summarise(DSD0_lab=paste0(round(mean(DSD0),2)," (",round(sd(DSD0),3),")"))
+write.csv2(file=paste0(aufbereitete_ds,"MS_table.csv"),merge(mat_gr,mat_lab))

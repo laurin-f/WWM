@@ -67,4 +67,51 @@ colnames(soil_wide) <- str_replace_all(colnames(soil_wide),c("(min|max)_(VWC|T)"
 # ggplot(subset(soil_long,unit=="T"))+geom_line(aes(date,value,col=depth,linetype=plot))
 # ggplot(subset(soil_long,unit=="VWC"))+geom_line(aes(date,value,col=depth,linetype=plot))
 
+
+DS_eps <- read.table(paste0(metapfad_harth,"DS_eps_Maier.txt"),stringsAsFactors = F,header = T)
+
+DS_eps$top1 <- as.numeric(str_extract(DS_eps$Depth,"^\\d+"))
+DS_eps$top1[1] <- 0
+DS_eps$bottom1 <- as.numeric(str_extract(DS_eps$Depth,"\\d+$"))
+DS_eps$bottom1[1] <- DS_eps$top1[2]
+DS_eps$top <- c(0,rowMeans(cbind(DS_eps$top1[-1],DS_eps$bottom1[-nrow(DS_eps)])))
+
+
+soil_agg$c_PTF <- approx(DS_eps$top,DS_eps$c,soil_agg$tiefe,method = "constant",rule = 2)$y
+soil_agg$d_PTF <- approx(DS_eps$top,DS_eps$d,soil_agg$tiefe,method = "constant",rule = 2)$y
+
+#sheet 3 der .xls einlesen
+soil.xls<-readxl::read_xls(paste0(soilpfad,"Soil physical data Hartheim.xls"),sheet = 3)
+
+
+#aggregieren der Horizonte
+soil <- soil.xls %>% 
+  group_by(Horizon) %>%
+  summarise(PV_mean=mean(PV),PV_min=min(PV),PV_max=max(PV))
+
+#bulk density in g/cm3
+soil$tiefe <- c(Ah1=0 , Ah2=10 , AhC=20, C=40)
+
+
+
+
+soil_agg$PV <- approx(soil$tiefe,soil$PV_mean,soil_agg$tiefe,method = "constant",rule = 2)$y
+soil_agg$PV_min <- approx(soil$tiefe,soil$PV_min,soil_agg$tiefe,method = "constant",rule = 2)$y
+soil_agg$PV_max <- approx(soil$tiefe,soil$PV_max,soil_agg$tiefe,method = "constant",rule = 2)$y
+soil_agg$eps <- (soil_agg$PV - soil_agg$mean_VWC)/100
+soil_agg$eps_min <- (soil_agg$PV_min - soil_agg$max_VWC)/100
+soil_agg$eps_max <- (soil_agg$PV_max - soil_agg$min_VWC)/100
+soil_agg$DSD0_PTF <- soil_agg$c_PTF * soil_agg$eps^soil_agg$d_PTF
+soil_agg$DSD0_PTF_min <- soil_agg$c_PTF * soil_agg$eps_min^soil_agg$d_PTF
+soil_agg$DSD0_PTF_max <- soil_agg$c_PTF * soil_agg$eps_max^soil_agg$d_PTF
+
+#Laemmel et al 2017 ds models
+for(i in c("","_min","_max")){
+  soil_agg[,paste0("DSD0_Buckingham",i)] <- soil_agg[,paste0("eps",i)]^2
+  soil_agg[,paste0("DSD0_Millington",i)] <- soil_agg[,paste0("eps",i)]^2/(soil_agg[,paste0("PV",i)]/100)^(2/3)
+  eps_phi <- soil_agg[,paste0("eps",i)]^2/(soil_agg[,paste0("PV",i)]/100)
+  soil_agg[,paste0("DSD0_Deepoga",i)] <- 0.1*(2*eps_phi^2+0.04*eps_phi)
+}
+
+
 save(klima,soil_long,soil_agg,soil_wide,file=paste0(klimapfad,"klima_data.RData"))
