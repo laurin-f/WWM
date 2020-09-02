@@ -20,3 +20,27 @@ RMSE <- function(mod,obs,normalize=F){
   }
   return(rmse)
 }
+
+
+#' Title
+#'
+#' @param preds
+#' @param actual
+#'
+#' @return
+#' @export
+#'
+#' @examples
+R2 <- function(preds, actual,adj=F,k=NULL) {
+  rss <- sum((preds - actual) ^ 2,na.rm=T)
+  tss <- sum((actual - mean(actual,na.rm=T)) ^ 2,na.rm=T)
+  rsq <- 1 - rss / tss
+  if(adj==T){
+    if(is.null(k)){
+      stop("for adjustet R2 k (number of independent regressors) needs to be defined")
+    }
+    n <- length(actual)
+    rsq <- 1-((1-rsq)*(n-1)/(n-k-1))
+  }
+  return(rsq)
+}

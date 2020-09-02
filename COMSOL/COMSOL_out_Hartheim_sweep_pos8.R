@@ -88,6 +88,57 @@ sweep_long <- tidyr::pivot_longer(CO2_sweep,cols=-(1:2),names_patter= paste0(pas
 #tiefe umrechnen
 #sweep_long$tiefe <- set_units(sweep_long$z - z_soil_cm,cm)
 
+###################
+#matrix vergrößern
+###############
+extend_sweep <- F
+if(extend_sweep==T){
+df <- as.data.frame(sapply(sweep_long,as.numeric))
+df_wide <- df
+for(i in (unique(df$DS_1))){
+  for(j in (unique(df$DS_2))){
+    #for(k in (unique(df$DS_3))){
+    for(l in (unique(df$z))){
+      for(m in (unique(df$injection_rate))){
+        #dfi <- subset(df, DS_2 == j & DS_3 == k & z == l & injection_rate == m)
+        #dfj <- subset(df, DS_1 == i & DS_3 == k & z == l & injection_rate == m)
+        dfk <- subset(df, DS_1 == i & DS_2 == j & z == l & injection_rate == m)
+        
+        #approxi <- approx(dfi$DS_1,dfi$CO2_mol_per_m3,seq(min(dfi$DS_1),max(dfi$DS_1),len=40))
+        #approxj <- approx(dfj$DS_2,dfj$CO2_mol_per_m3,seq(min(dfj$DS_2),max(dfj$DS_2),len=40))
+        approxk <- approx(dfk$DS_3,dfk$CO2_mol_per_m3,seq(min(dfk$DS_3),max(dfk$DS_3),len=40))
+        
+        #df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_1=",approxi$x)] <- approxi$y
+        #df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_2=",approxj$x)] <- approxj$y
+        df_wide[df_wide$DS_1 == i & df_wide$DS_2 == j & df_wide$DS_3 == df_wide$DS_3[1] & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_3=",approxk$x)] <- approxk$y
+      }
+    }
+    #print(paste0("k=",k))
+    #}
+    #print(paste0("j=",j))
+  }
+  print(paste0("i=",i))
+}
+
+
+save(df_wide,file=paste0(comsolpfad,"df_wide_pos8.RData"))
+}
+load(file=paste0(comsolpfad,"df_wide_pos8.RData"))
+
+df_wide <- df_wide[!is.na(df_wide$`DS_3=1.00769230769231e-06`),!grepl("DS_3$|CO2_mol_per_m3",colnames(df_wide))]
+
+
+df_long <- tidyr::pivot_longer(df_wide, matches("DS_\\d=.*"),names_prefix = "DS_3=",names_to = "DS_3",values_to = "CO2_mol_per_m3")
+
+df_long$DS_3 <- signif(as.numeric(df_long$DS_3),4)
+df_long <- as.data.frame(df_long)
+
+for(i in c("injection_rate",paste0("DS_",1:3))){
+  df_long[,i] <- paste0(i,"=",df_long[,i])
+}
+CO2_sweep <- tidyr::pivot_wider(df_long,names_from = matches("injection|DS"),names_sep=", ",values_from=CO2_mol_per_m3) %>% as.data.frame()
+
+
 
 #########################################################
 
@@ -141,7 +192,7 @@ for(k in seq_along(mod_dates)){
     #rmse <- apply(sweep_sub,2,function(x) RMSE(x[1:4],CO2_obs$CO2_mol_per_m3[1:4]))
     
     #zu den RMSE werten die jeweiligen DS sets
-    DS_mat_ch <- str_extract_all(names(rmse),"(?<=DS_\\d=)\\d(\\.\\d+)?E-\\d",simplify = T)
+    DS_mat_ch <- str_extract_all(names(rmse),"(?<=DS_\\d=)\\d(\\.\\d+)?(E|e)-\\d+",simplify = T)
     DS_mat <- as.data.frame(apply(DS_mat_ch,2,as.numeric))
     
     colnames(DS_mat) <- str_subset(pars,"DS")
@@ -207,7 +258,7 @@ for(k in seq_along(mod_dates)){
 #ende for loop
 
 #speichern
-#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_pos8.RData"))
+#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_pos8_ext.RData"))
 load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8.RData"))
 F_df_pos8 <- F_df
 load(file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))

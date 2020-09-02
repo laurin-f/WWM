@@ -124,7 +124,7 @@ ggplot(DS_D0_long)+geom_col(aes(material,DS_D0,fill=method),position=position_do
 
 DS_D0_label <- tidyr::pivot_wider(DS_D0_long,names_from = method,values_from = DS_D0)
 
-DS_D0_label$label <- paste0("DS/D0 = ",round(DS_D0_label$COMSOL,3))
+DS_D0_label$label <- paste0("DS/D0 = ",round(DS_D0_label$COMSOL,2))
 
 ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
   #geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+

@@ -332,7 +332,7 @@ calib_plt <- ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
   geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
   geom_line(aes(date,CO2_roll_inj,col="inj"),lwd=1)+
   geom_line(aes(date,CO2_roll_ref,col="ref"))+
-  geom_line(aes(date,preds2,col="offset model"))+
+  geom_line(aes(date,preds2,col="ref corr"))+
   labs(y=expression(CO[2]*" [ppm]"),col="")+
   facet_grid(.~paste("depth = ",tiefe," cm"),scales="free")+
   #scale_color_viridis_d()

@@ -71,6 +71,6 @@ ggplot()+
   geom_point(data=subset(results,material!="leer"),aes(factor(material,levels=c("sand","splitt und sand","splitt"),labels=c("sand","mixture","grit")),DSD0,col="Lab",shape="Lab"))+
   geom_point(data=comsol,aes(factor(material,levels=c("sand","splitt und sand","splitt"),labels=c("sand","mixture","grit")),DS_D0_mod,col="in situ",shape="in situ"))+labs(y="DS/D0",x="",col="",shape="")+scale_color_manual(values=1:2)+ggsave(paste0(plotpfad,"sandkiste/Labor_Vergleich.png"),width=5,height=3)
   
-mat_gr <- comsol %>% group_by(material) %>% summarise(DSD0_gradient=paste0(round(mean(DS_D0_mod),2)," (",round(sd(DS_D0_mod),3),")"))
+mat_gr <- comsol %>% group_by(material) %>% summarise(DSD0_gradient=paste0(round(mean(DS_D0_mod),3)," (",round(sd(DS_D0_mod),3),")"))
 mat_lab <- subset(results,material!="leer") %>% group_by(material) %>% summarise(DSD0_lab=paste0(round(mean(DSD0),2)," (",round(sd(DSD0),3),")"))
 write.csv2(file=paste0(aufbereitete_ds,"MS_table.csv"),merge(mat_gr,mat_lab))

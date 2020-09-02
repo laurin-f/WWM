@@ -4,7 +4,7 @@
 \alias{RMSE}
 \title{Compute RootMeanSquareError}
 \usage{
-RMSE(mod, obs)
+RMSE(mod, obs, normalize = F)
 }
 \arguments{
 \item{mod}{modelled data}
