@@ -65,7 +65,10 @@ D0_CO2_m2 <- D0_CO2/10^4 #m2/s
 #plt_list <- list()
 tiefen <- 1:8
 
-
+best_R2 <- NULL
+best_R2id <- NULL
+best_rmseid <- NULL
+data_sub$R2 <- NA
 for(i in unique(data_sub$ID)) {
 
   CO2_obs <- subset(data_sub, ID == i)
@@ -74,6 +77,7 @@ for(i in unique(data_sub$ID)) {
   sweep_sub_id <- grep(paste0(", CO2_atm=",CO2_atm_i,", injection_rate=",injection_rate_i,"$"),colnames(CO2_sweep))
   sweep_sub <- CO2_sweep[,sweep_sub_id]
   rmse <- apply(sweep_sub[tiefen,],2,RMSE,CO2_obs$CO2_mol_per_m3[tiefen])
+  R2 <- apply(sweep_sub[tiefen,],2,R2,CO2_obs$CO2_mol_per_m3[tiefen])
   
   DS <- as.numeric(str_extract(names(rmse),"(?<=DS=)\\d(\\.\\d+)?E-\\d"))
   
@@ -83,11 +87,14 @@ for(i in unique(data_sub$ID)) {
   #best.fit.char <- names(best.fit.id)
 
   best_DS <- DS[best.fit.id]
+  best_R2 <- R2[best.fit.id]
+
 
   DS_D0 <- best_DS/D0_CO2_m2 #m2/s
 
   data_sub$DS_D0_mod[data_sub$ID == i] <- DS_D0 
   data_sub$DS_mod[data_sub$ID == i] <- best_DS 
+  data_sub$R2[data_sub$ID == i] <- best_R2 
   data_sub$CO2_mod[data_sub$ID == i] <- ppm_to_mol(sweep_sub[,best.fit.id],"mol/m^3")
 
   }# ende for schleife
@@ -104,8 +111,8 @@ ggplot(data_sub)+
   labs(x=expression(CO[2]*" [ppm]"),y="tiefe [cm]",col="")+
   ggsave(paste0(plotpfad,"comsol_mod_obs_sandsplitt.pdf"),width=9,height=4)
 
-mod_results <- data_sub[data_sub$tiefe==0,c("ID","DS_D0_mod","material","DS_D0_glm","DS_mod","DS_glm")]
-
+mod_results <- data_sub[data_sub$tiefe==0,c("ID","DS_D0_mod","material","DS_D0_glm","DS_mod","DS_glm","R2")]
+R2_mat <- mod_results[grep("Nr_(5|6|9)",mod_results$ID),c("ID","R2","material")]
 DS_D0_mat <- aggregate(list(DS_D0_COMSOL=mod_results$DS_D0_mod,DS_D0_glm= mod_results$DS_D0_glm),list(material=mod_results$material),mean)
 DS_mat <- aggregate(list(DS_COMSOL=mod_results$DS_mod, DS_glm= mod_results$DS_glm),list(material=mod_results$material),mean)
 DS_D0_mat
@@ -125,13 +132,14 @@ ggplot(DS_D0_long)+geom_col(aes(material,DS_D0,fill=method),position=position_do
 DS_D0_label <- tidyr::pivot_wider(DS_D0_long,names_from = method,values_from = DS_D0)
 
 DS_D0_label$label <- paste0("DS/D0 = ",round(DS_D0_label$COMSOL,2))
-
+best_R2
 ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
   #geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+
   geom_line(aes(CO2_mod,tiefe,col="mod"))+
   geom_point(aes(CO2,tiefe,fill="obs"))+
   facet_wrap(~factor(material,levels=c("Sand","Sand & Splitt","Splitt"),labels=c("sand","mixture","grit")))+
-  geom_text(data=subset(DS_D0_label,material%in% data_sub$material),aes(y= -1,x=6000,label = label),hjust="right")+
+  geom_text(data=R2_mat,aes(y= -1,x=6000,label = paste0("R² = ",round(R2,3))),hjust="right")+
+  #geom_text(data=subset(DS_D0_label,material%in% data_sub$material),aes(y= -1,x=6000,label = label),hjust="right")+
   scale_color_manual(values=2)+
   #annotate("text",y= c(-1,-1,-1),x=c(6000,6000,6000),label=c(label1,label2,label3),hjust="right")+
   labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="",fill="")+theme_bw()+ggsave(paste0(plotpfad,"sandkiste/comsol_mod_obs.png"),width = 7,height=3)

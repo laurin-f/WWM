@@ -32,8 +32,11 @@ RMSE <- function(mod,obs,normalize=F){
 #'
 #' @examples
 R2 <- function(preds, actual,adj=F,k=NULL) {
-  rss <- sum((preds - actual) ^ 2,na.rm=T)
-  tss <- sum((actual - mean(actual,na.rm=T)) ^ 2,na.rm=T)
+  NA_vals <- is.na(preds)|is.na(actual)
+  preds <- preds[!NA_vals]
+  actual <- actual[!NA_vals]
+  rss <- sum((preds - actual) ^ 2)
+  tss <- sum((actual - mean(actual)) ^ 2)
   rsq <- 1 - rss / tss
   if(adj==T){
     if(is.null(k)){

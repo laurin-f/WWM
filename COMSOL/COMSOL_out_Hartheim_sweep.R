@@ -25,7 +25,7 @@ load(file=paste0(klimapfad,"klima_data.RData"))
 #######################
 #einheiten anpassen für COMSOl
 #Tracersignal in COMSOL Einheit umrechnen
-offset_method <- "gam"
+offset_method <- "glm"
 ######################
 
 data$CO2_mol_per_m3 <- ppm_to_mol(data[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data$PressureActual_hPa/10,T_C = data$T_soil)
@@ -37,7 +37,7 @@ data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
 data$date_hour <- round_date(data$date,"hours")
 mod_dates <- sort(unique(data$date[day(data$date) %in% 6:15 & month(data$date) == 7 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 mod_dates <- sort(unique(data$date[day(data$date) %in% 6:15 & month(data$date) == 7 & data$Pumpstufe != 0 ]))
-mod_dates <- sort(unique(data$date[day(data$date) %in% 4:5 & month(data$date) == 7 & data$Pumpstufe != 0 ]))
+#mod_dates <- sort(unique(data$date[day(data$date) %in% 4:5 & month(data$date) == 7 & data$Pumpstufe != 0 ]))
 #mod_dates <- sort(unique(data$date[day(data$date) %in% 7:10 & month(data$date) == 6 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 #mod_dates <- sort(unique(data$date[day(data$date) %in% 7:14 & month(data$date) == 7 & data$Pumpstufe != 0 ]))
 
@@ -277,7 +277,7 @@ for(k in seq_along(mod_dates)){
 #ende for loop
 
 #speichern
-#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_ext.RData"))
+#save(F_df,file=paste0(comsolpfad,"F_df_glm_3DS_ext.RData"))
 #save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_ext2.RData"))
 #load(file=paste0(comsolpfad,"F_df_gam_3DS.RData"))
 load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8_ext.RData"))
@@ -363,11 +363,11 @@ data_plot <- data %>%
   summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max),DSD0_PTF= mean(DSD0_PTF),date=mean(date))
 
 DS_long$tiefe <- as.numeric(DS_long$id)*-7
-DS_long$range <- factor(DS_long$id,levels=1:3,labels=c("DS1 0-14 cm","DS2 14-21 cm","DS3 >21 cm"))
-DS_long_roll$range <- factor(DS_long_roll$id,levels=1:3,labels=c("DS1 0-14 cm","DS2 14-21 cm","DS3 >21 cm"))
+DS_long$range <- factor(DS_long$id,levels=1:3,labels=c("DS1 0-10 cm","DS2 10-20 cm","DS3 >20 cm"))
+DS_long_roll$range <- factor(DS_long_roll$id,levels=1:3,labels=c("DS1 0-10 cm","DS2 10-20 cm","DS3 >20 cm"))
 
 soil_agg$date_hour <- round_date(soil_agg$date,"hours")
-soil_agg$range <- factor(soil_agg$tiefe,levels=c(2,5,10,20,50,100),labels=c("DS1 0-14 cm","DS1 0-14 cm","DS1 0-14 cm","DS2 14-21 cm","DS3 >21 cm","DS3 >21 cm"))
+soil_agg$range <- factor(soil_agg$tiefe,levels=c(2,5,10,20,50,100),labels=c("DS1 0-10 cm","DS1 0-10 cm","DS1 0-10 cm","DS2 10-20 cm","DS3 >20 cm","DS3 >20 cm"))
 soil_agg_plot <- soil_agg %>%
   group_by(range,date_hour) %>%
   summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max,na.rm=T),DSD0_PTF= mean(DSD0_PTF,na.rm=T),date=mean(date))
@@ -375,15 +375,16 @@ soil_agg_plot <- soil_agg %>%
 ggplot(subset(soil_agg_plot))+
   #geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,col=as.factor(range)),fill=NA,alpha=0.2,linetype=2)+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range)),alpha=0.15)+
-  geom_line(aes(date,DSD0_PTF,col=as.factor(range),linetype="PTF"),lwd=1)+
+  geom_line(aes(date,DSD0_PTF,col=as.factor(range),linetype="f(eps)"))+
   
   #geom_line(data=DS_long,aes(date,DS/D0_T_p(unit="m2/s"),col=range,linetype="COMSOL",alpha=0.2))+
-  geom_line(data=DS_long_roll,aes(date,DS_roll/D0_T_p(unit="m2/s"),col=range,linetype="COMSOL"),lwd=1)+
+  geom_line(data=DS_long_roll,aes(date,DS_roll/D0_T_p(unit="m2/s"),col=range,linetype="in situ"))+
   labs(y="DS/D0",col="",fill="",linetype="")+
   #facet_grid(range~.)+
   #theme_bw()+
   xlim(range(DS_long$date))+
-  ggsave(file=paste0(plotpfad,"DS_plot_final.png"),width=7,height = 3)
+  scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))+
+  ggsave(file=paste0(plotpfad,"DS_plot_gam_feps.png"),width=7,height = 3.5)
 
 
 ggplot(subset(data_plot2))+

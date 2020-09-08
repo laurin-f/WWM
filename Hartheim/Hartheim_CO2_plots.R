@@ -322,12 +322,73 @@ ggplot(subset(data,date > range3[1] & date < range3[2]))+
 ggsave(paste0(plotpfad,"Einspeisung3_glm.png"),width=10,height=7)
 
 #gam
+range3 <- range(data$date[data$Position ==8],na.rm = T)
 sub3 <- subset(data,date > range3[1] & date < range3[2]& tiefe !=0)
 sub3_calib <- sub3
 sub3_calib[which(sub3_calib$Pumpstufe != 0 | is.na(sub3_calib$Pumpstufe)),grep("CO2|preds",colnames(sub3_calib))] <- NA
 calib_yrange <- range(subset(sub3_calib,tiefenstufe %in% c(3))[,c("CO2_inj","CO2_ref")],na.rm = T)
 
-calib_plt <- ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
+
+#######################
+#tagesgang
+Co2_plot <- ggplot(subset(sub3,tiefe < -21))+
+  geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
+  geom_line(aes(date,CO2_roll_ref,col=hour,linetype="inj"))+
+  #geom_line(aes(date,preds,col=as.factor(tiefe),linetype="ref offset model"))+
+  #geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds,fill=as.factor(tiefe)),alpha=0.3)+
+  #labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tiefe [cm]")+
+  #facet_wrap(~as.factor(tiefe))+
+  scale_x_datetime(date_labels="%m.%d %H:%M",date_breaks = "1 day",limits=c(range3[2]-3600*24*6,range3[2]))+ylim(c(2500,3500))+theme_bw()
+T_plot <- ggplot(sub3)+
+  geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
+  #geom_line(aes(date,CO2_roll_inj,col=hour,linetype="inj"))+
+  geom_line(aes(date,T_soil,col=as.factor(tiefe),linetype="ref offset model"))+
+  #geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds,fill=as.factor(tiefe)),alpha=0.3)+
+  #labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tiefe [cm]")+
+  #facet_wrap(~as.factor(tiefe))+
+  #xlim(c(range3[2]-3600*24*6,range3[2]))+
+  theme_bw()+scale_x_datetime(date_labels="%m.%d %H:%M",date_breaks = "1 day",minor_breaks = "1 day",limits=c(range3[2]-3600*24*6,range3[2]))
+  
+sub3_agg <- sub3 %>% group_by(hour,tiefe)%>% summarise_at(c("T_soil","CO2_roll_ref"),mean,na.rm=T)
+sub3_agg$CO2_korr <- NA
+for(i in 1:7*-3.5){
+sub3_agg$CO2_korr[sub3_agg$tiefe == i] <- sub3_agg$CO2_roll_ref[sub3_agg$tiefe == i] / max(sub3_agg$CO2_roll_ref[sub3_agg$tiefe == i])
+}
+
+sub3_2 <- sub3_agg
+
+diurnal<- data.frame(a=NA)
+for(i in 1:7*-3.5){
+diurnal[,paste0("Tmax_",i)] <- sub3_agg$hour[sub3_agg$tiefe==i][which.max(sub3_agg$T_soil[sub3_agg$tiefe==i])]
+diurnal[,paste0("Tmin_",i)] <- sub3_agg$hour[sub3_agg$tiefe==i][which.min(sub3_agg$T_soil[sub3_agg$tiefe==i])]
+diurnal[,paste0("CO2max_",i)] <- sub3_agg$hour[sub3_agg$tiefe==i][which.max(sub3_agg$CO2_roll_ref[sub3_agg$tiefe==i])]
+diurnal[,paste0("CO2min_",i)] <- sub3_agg$hour[sub3_agg$tiefe==i][which.min(sub3_agg$CO2_roll_ref[sub3_agg$tiefe==i])]
+}
+diurnal_agg<-tidyr::pivot_longer(diurnal[,-1],everything(),names_pattern = "(.*)_(.*)",names_to=c(".value","tiefe"))
+  sub3_agg %>% group_by(tiefe) %>%summarise_at(c("T_soil","CO2_roll_ref"),max)
+ggplot(sub3_agg)+
+  #geom_line(aes(date,CO2_roll_inj,col=hour,linetype="inj"))+
+  geom_line(aes(hour,T_soil/max(T_soil),col=as.factor(tiefe)))+
+  geom_line(aes(hour,CO2_korr,col=as.factor(tiefe)))
+  facet_wrap(~tiefe,scales="free")
+ggplot(subset(sub3,Pumpstufe==0))+
+  #geom_line(aes(date,CO2_roll_inj,col=hour,linetype="inj"))+
+  geom_point(aes(hour,T_soil,col=as.factor(tiefe)))+
+  facet_wrap(~tiefe,scales="free")
+egg::ggarrange(Co2_plot,T_plot)
+
+#tracer glm
+ggplot(sub3)+
+  geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
+  geom_line(aes(date,preds,col=as.factor(tiefe),linetype="ref offset model"))+
+  geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds,fill=as.factor(tiefe)),alpha=0.3)+
+  labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tiefe [cm]")+
+  xlim(c(range3[1],range3[2]-3600*24*4))+
+  ggsave(paste0(plotpfad,"Einspeisung3_glm.png"),width=7,height=4)
+
+
+ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
   #annotate("text",x = Pumpzeiten$start[c(16,19)],y=Inf,label="calibration",col="grey")+
   geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
   geom_line(aes(date,CO2_roll_inj,col="inj"),lwd=1)+
@@ -336,15 +397,28 @@ calib_plt <- ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
   labs(y=expression(CO[2]*" [ppm]"),col="")+
   facet_grid(.~paste("depth = ",tiefe," cm"),scales="free")+
   #scale_color_viridis_d()
-  scale_color_brewer(type="qual",palette = 6)+
+  #scale_color_brewer(type="qual",palette = 6)+
+  scale_color_discrete(l=55)+
+  #scale_color_manual(values=c(1:2,4))+
   ggsave(paste0(plotpfad,"Einspeisung3_gam_calib.png"),width=7,height=3)
+ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
+  #annotate("text",x = Pumpzeiten$start[c(16,19)],y=Inf,label="calibration",col="grey")+
+  geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
+  geom_line(aes(date,CO2_roll_inj,col="inj"),lwd=1)+
+  geom_line(aes(date,CO2_roll_ref,col="ref"))+
+  geom_line(aes(date,preds,col="ref corr"))+
+  labs(y=expression(CO[2]*" [ppm]"),col="")+
+  facet_grid(.~paste("depth = ",tiefe," cm"),scales="free")+
+  #scale_color_viridis_d()
+  scale_color_brewer(type="qual",palette = 6)+
+  ggsave(paste0(plotpfad,"Einspeisung3_glm_calib.png"),width=7,height=3)
   
 calib_plt$data
 ggplot(sub3)+
   geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
   #geom_line(aes(date,CO2_roll_ref,col=as.factor(tiefe),linetype="ref",alpha=0.2))+
-  geom_line(aes(date,preds2,col=as.factor(tiefe),linetype="ref offset model"))+
+  geom_line(aes(date,preds2,col=as.factor(tiefe),linetype="ref corr"))+
   geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds2,fill=as.factor(tiefe)),alpha=0.3)+
   labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tiefe [cm]")+
   xlim(c(range3[1],range3[2]-3600*24*4))+

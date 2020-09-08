@@ -80,6 +80,8 @@ DS_eps$top <- c(0,rowMeans(cbind(DS_eps$top1[-1],DS_eps$bottom1[-nrow(DS_eps)]))
 soil_agg$c_PTF <- approx(DS_eps$top,DS_eps$c,soil_agg$tiefe,method = "constant",rule = 2)$y
 soil_agg$d_PTF <- approx(DS_eps$top,DS_eps$d,soil_agg$tiefe,method = "constant",rule = 2)$y
 
+eps_test <- unique(soil_agg[,c("tiefe","c_PTF","d_PTF")])
+eps_test[order(eps_test$tiefe),]
 #sheet 3 der .xls einlesen
 soil.xls<-readxl::read_xls(paste0(soilpfad,"Soil physical data Hartheim.xls"),sheet = 3)
 

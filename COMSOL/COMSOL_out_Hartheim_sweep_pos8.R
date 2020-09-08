@@ -22,7 +22,7 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 #######################
 #einheiten anpassen für COMSOl
 #Tracersignal in COMSOL Einheit umrechnen
-offset_method <- "gam"
+offset_method <- "glm"
 ######################
 
 data$CO2_mol_per_m3 <- ppm_to_mol(data[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data$PressureActual_hPa/10,T_C = data$T_soil)
@@ -258,7 +258,8 @@ for(k in seq_along(mod_dates)){
 #ende for loop
 
 #speichern
-#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_pos8_ext.RData"))
+#save(F_df,file=paste0(comsolpfad,"F_df_glm_3DS_pos8_ext.RData"))
+
 load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8.RData"))
 F_df_pos8 <- F_df
 load(file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))
