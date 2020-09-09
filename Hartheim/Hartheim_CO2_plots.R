@@ -22,6 +22,12 @@ load(file=paste0(klimapfad,"klima_data.RData"))
 load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
+range1 <- range(data$date[data$Position ==1],na.rm = T)
+range2 <- range(data$date[data$Position ==7],na.rm = T)
+range3 <- range(data$date[data$Position ==3],na.rm = T)
+range2u3 <- range(data$date[data$Position %in% 7:8],na.rm = T)
+data$inj
+data %>% group_by(Position,Pumpstufe) %>% summarise(injectionrate=mean(Fz))#ml per min
 
 ##################################################################################
 #plots
@@ -88,10 +94,23 @@ inj_ref1 <- egg::ggarrange(inj_1,ref_1,ncol=1)
 
 range2 <- range(data$date[data$Position ==7],na.rm = T)
 inj_2 <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
-  geom_vline(xintercept = Pumpzeiten$start[-1])+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
   annotate("text",x=Pumpzeiten$start[c(11,13)],y=Inf,label="injection",vjust=1,hjust=-0.1)+
   labs(col="tiefe [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler")
+
+plt_data <- leave_NAtime_plot(y="CO2_tracer_gam",data=subset(data,date > range2u3[1] & date < range2u3[2]&Pumpstufe!=0&tiefe!=0),breaks="2 day",timestep = 60*24,plot=F)
+tracer_plot <- ggplot(plt_data)+
+  
+  #geom_vline(xintercept = Pumpzeiten$start[-1])+
+  #geom_vline(xintercept = Pumpzeiten$start[c(11:14,17,18)],col="grey")+
+  #annotate("text",x=Pumpzeiten$start[c(11,13,17)],y=Inf,label=paste("injection",1:3),vjust=1,hjust=-0.1)+
+  geom_line(aes(date,CO2_tracer_gam,col=as.factor(tiefe)))+
+  labs(col="tiefe [cm]",x="",y=expression(CO[2]*"tracer [ppm]"))+
+  facet_wrap(~paste("injection",period),scales="free_x",nrow=1)+theme_bw()
+png(paste0(plotpfad,"CO2_tracer_gam.png"),width=7,height=3.5,units="in",res=300)
+adj_grob_size(tracer_plot,plt_data,breaks="1 day",date_label="%b %d")
+dev.off()
+
 
 ref_2 <- ggplot(subset(data,date > range2[1] & date < range2[2]))+
   geom_vline(xintercept = Pumpzeiten$start[-1])+
@@ -154,8 +173,12 @@ sub3_calib[which(sub3_calib$Pumpstufe != 0 | is.na(sub3_calib$Pumpstufe)),grep("
 calib_yrange <- range(subset(sub3_calib,tiefenstufe %in% c(3))[,c("CO2_inj","CO2_ref")],na.rm = T)
 
 data$Precip_Intensity_mmhr[data$Precip_Intensity_mmhr< 0] <- NA
-p_plot <- ggplot(data)+geom_ribbon(aes(x=date,ymin=0,ymax=Precip_Intensity_mmhr),col="blue")+labs(y="Precip Intensity mm/h")
+data$Precip_Last24hrs_mm[data$Precip_Last24hrs_mm < 0] <- 0
 
+p_plot <- ggplot(data_hours)+geom_ribbon(aes(x=date_hour,ymin=0,ymax=P_mm),col="blue")+labs(y="Precip Intensity mm/h")
+data$Pre
+p_plot
+data_hours[which(data_hours$P_mm>50),]
 wind_plot <- ggplot(data)+geom_line(aes(x=date,y=WindVel_30m_ms))
 
 Ta_plot <- ggplot(data)+geom_line(aes(x=date,y=Ta_2m))
@@ -180,10 +203,13 @@ VWC_plot <-  ggplot(data)+
 VWC_plot_agg <-  ggplot(soil_agg)+
   geom_line(aes(date,mean_VWC,col=as.factor(tiefe)))+
   labs(x="",y="Soil VWC [%]",col="tiefe [cm]")
+max(subset(data,date > range2u3[1] & date < range2u3[2])$Precip_Last24hrs_mm)
+15/12
+sec_ax_fac <- 1.25
 VWC_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
+  geom_ribbon(data=subset(data,date > range2u3[1] & date < range2u3[2]),aes(x=date,ymin=0,ymax=Precip_Last24hrs_mm/sec_ax_fac),fill="blue",alpha=0.8)+
   geom_line(aes(date,mean_VWC,col=as.factor(-tiefe)))+
-  geom_ribbon(data=subset(data,date > range2u3[1] & date < range2u3[2]),aes(x=date,ymin=0,ymax=Precip_Intensity_mmhr/8),col="blue")+
-  scale_y_continuous(sec.axis = sec_axis(~.*8,name="P [mm / h]"))+
+  scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_fac,name=expression(P["24h"]*" [mm]")))+
   theme(
     axis.title.y.right = element_text(color = "blue"),
     axis.text.y.right = element_text(color = "blue"),
@@ -393,7 +419,7 @@ ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
   geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
   geom_line(aes(date,CO2_roll_inj,col="inj"),lwd=1)+
   geom_line(aes(date,CO2_roll_ref,col="ref"))+
-  geom_line(aes(date,preds2,col="ref corr"))+
+  geom_line(aes(date,preds2,col="ref adj"))+
   labs(y=expression(CO[2]*" [ppm]"),col="")+
   facet_grid(.~paste("depth = ",tiefe," cm"),scales="free")+
   #scale_color_viridis_d()
@@ -401,12 +427,13 @@ ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
   scale_color_discrete(l=55)+
   #scale_color_manual(values=c(1:2,4))+
   ggsave(paste0(plotpfad,"Einspeisung3_gam_calib.png"),width=7,height=3)
+
 ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
   #annotate("text",x = Pumpzeiten$start[c(16,19)],y=Inf,label="calibration",col="grey")+
   geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
   geom_line(aes(date,CO2_roll_inj,col="inj"),lwd=1)+
   geom_line(aes(date,CO2_roll_ref,col="ref"))+
-  geom_line(aes(date,preds,col="ref corr"))+
+  geom_line(aes(date,preds,col="ref adj"))+
   labs(y=expression(CO[2]*" [ppm]"),col="")+
   facet_grid(.~paste("depth = ",tiefe," cm"),scales="free")+
   #scale_color_viridis_d()
@@ -414,16 +441,36 @@ ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
   ggsave(paste0(plotpfad,"Einspeisung3_glm_calib.png"),width=7,height=3)
   
 calib_plt$data
-ggplot(sub3)+
+einspeisung_plot <- ggplot(sub3)+
   geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
   #geom_line(aes(date,CO2_roll_ref,col=as.factor(tiefe),linetype="ref",alpha=0.2))+
-  geom_line(aes(date,preds2,col=as.factor(tiefe),linetype="ref corr"))+
+  geom_line(aes(date,preds2,col=as.factor(tiefe),linetype="ref adj"))+
   geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds2,fill=as.factor(tiefe)),alpha=0.3)+
   labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tiefe [cm]")+
   xlim(c(range3[1],range3[2]-3600*24*4))+
   ggsave(paste0(plotpfad,"Einspeisung3_gam.png"),width=7,height=4)
 
+
+tracer_plot <- ggplot(subset(sub3,Pumpstufe!=0))+
+  geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
+  geom_line(aes(date,CO2_tracer_gam,col=as.factor(tiefe)))+
+  labs(y=expression(CO[2]*"tracer [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tiefe [cm]")+
+  guides(col=F)
+sub3$CO2_tracer_gam[sub3$CO2_tracer_gam < 0] <- 0
+
+tracer_profile <- subset(sub3,Pumpstufe!=0 & date > ymd_h("2020.07.22 15")) %>% 
+  group_by(tiefe) %>%
+  summarise_at("CO2_tracer_gam",list(min=min,max=max,tracer_mean=mean),na.rm=T)
+tiefe_plot <- ggplot(tracer_profile)+
+  
+  geom_ribbon(aes(xmin=min,xmax=max,y=tiefe),col="grey",alpha=0.3)+
+  geom_point(aes(tracer_mean,tiefe))+
+  labs(x=expression(CO[2]*"tracer [ppm]"),y="tiefe [cm]")
+
+tracer_tiefe_plot <- ggarrange(tracer_plot+labs(title="b)"),tiefe_plot+labs(title="c)"),widths=2:1)  
+ggpubr::ggarrange(einspeisung_plot+labs(title="a)"),tracer_tiefe_plot,ncol=1,heights = 4:3)
+ggpubr::ggarrange(einspeisung_plot+labs(title="a)"),tracer_tiefe_plot,ncol=1,heights = 4:3,common.legend = T,legend="right")+ggsave(paste0(plotpfad,"Einspeisung3_gam_tiefenprofil.png"),width=7,height=5)
 #tracer drift
 ggplot(subset(data,date > range3[1] & date < range3[2]))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+

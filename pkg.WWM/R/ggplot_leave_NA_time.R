@@ -8,7 +8,7 @@
 #' @param plot logical indicating whether output is a ggplot object (T) or a data.frame with the extra column \code{"period"} which can be used in facet_wrap to split time-axis
 #' @param ylab label for y-axis
 #' @param adj_grob_size logical whether grob size should be adjusted
-#' @param ... other parameters that should be parsed to \code{adj_grob_size()}
+#' @param ... other parameters that should be parsed to \code{scale_x_datetime(date_breaks = breaks, ...)}
 #'
 #' @return
 #' @export

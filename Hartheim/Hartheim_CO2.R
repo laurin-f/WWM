@@ -33,7 +33,7 @@ tiefen_offset <- read.table(paste0(metapfad_harth,"sampler_tiefen_offset.txt"),h
 #Metadata Pumpstufen flux
 flux <- read.csv(paste0(metapfad,"Tracereinspeisung/Pumpstufen_flux.txt"))
 
-
+#Pumpzeiten$Position[Pumpzeiten$Position ==8] <-7
 
 datelim <- range(c(Pumpzeiten$start,Pumpzeiten$ende),na.rm = T)
 datelim <- min(c(Pumpzeiten$start,Pumpzeiten$ende),na.rm = T)

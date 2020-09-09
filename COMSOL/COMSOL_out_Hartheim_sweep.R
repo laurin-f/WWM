@@ -35,12 +35,9 @@ data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
 #data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- NA
 
 data$date_hour <- round_date(data$date,"hours")
-mod_dates <- sort(unique(data$date[day(data$date) %in% 6:15 & month(data$date) == 7 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
-mod_dates <- sort(unique(data$date[day(data$date) %in% 6:15 & month(data$date) == 7 & data$Pumpstufe != 0 ]))
-#mod_dates <- sort(unique(data$date[day(data$date) %in% 4:5 & month(data$date) == 7 & data$Pumpstufe != 0 ]))
-#mod_dates <- sort(unique(data$date[day(data$date) %in% 7:10 & month(data$date) == 6 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
-#mod_dates <- sort(unique(data$date[day(data$date) %in% 7:14 & month(data$date) == 7 & data$Pumpstufe != 0 ]))
-
+#mod_dates <- sort(unique(data$date[day(data$date) %in% 6:15 & month(data$date) == 7 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+mod_dates <- sort(unique(data$date[data$Position == 7 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+mod_dates <- sort(unique(data$date[data$Position == 7 & data$Pumpstufe != 0 ]))
 
 
 
@@ -126,7 +123,10 @@ for(i in (unique(df$DS_1))){
 
 save(df_wide,file=paste0(comsolpfad,"df_wide.RData"))
 }
+
+
 load(file=paste0(comsolpfad,"df_wide.RData"))
+
 
 df_wide <- df_wide[!is.na(df_wide$`DS_3=1.06666666666667e-06`),!grepl("DS_3$|CO2_mol_per_m3",colnames(df_wide))]
 
@@ -141,7 +141,21 @@ for(i in c("injection_rate",paste0("DS_",1:3))){
 }
 CO2_sweep <- tidyr::pivot_wider(df_long,names_from = matches("injection|DS"),names_sep=", ",values_from=CO2_mol_per_m3) %>% as.data.frame()
 
+load(file=paste0(comsolpfad,"df_wide_pos8.RData"))
 
+df_wide <- df_wide[!is.na(df_wide$`DS_3=1.00769230769231e-06`),!grepl("DS_3$|CO2_mol_per_m3",colnames(df_wide))]
+
+
+df_long <- tidyr::pivot_longer(df_wide, matches("DS_\\d=.*"),names_prefix = "DS_3=",names_to = "DS_3",values_to = "CO2_mol_per_m3")
+
+df_long$DS_3 <- signif(as.numeric(df_long$DS_3),4)
+df_long <- as.data.frame(df_long)
+
+for(i in c("injection_rate",paste0("DS_",1:3))){
+  df_long[,i] <- paste0(i,"=",df_long[,i])
+}
+CO2_sweep_pos8 <- tidyr::pivot_wider(df_long,names_from = matches("injection|DS"),names_sep=", ",values_from=CO2_mol_per_m3) %>% as.data.frame()
+CO2_sweep <- cbind(CO2_sweep,CO2_sweep_pos8[,-(1:2)])
 # string <- str_split(df_long$DS_i,"=",simplify = T)
 # for(i in paste0("DS_",1:3)){
 # index <- which(string[,1]==DS_i)
@@ -277,7 +291,7 @@ for(k in seq_along(mod_dates)){
 #ende for loop
 
 #speichern
-#save(F_df,file=paste0(comsolpfad,"F_df_glm_3DS_ext.RData"))
+#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_pos7u8.RData"))
 #save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_ext2.RData"))
 #load(file=paste0(comsolpfad,"F_df_gam_3DS.RData"))
 load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8_ext.RData"))
@@ -297,10 +311,12 @@ for(i in 1:nrow(Pumpzeiten)){
   F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
 }
 #moving average
-F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=120,mean,fill=NA)
-F_df$DS_roll_1 <- zoo::rollapply(F_df$DS_1,width=120,mean,fill=NA)
-F_df$DS_roll_2 <- zoo::rollapply(F_df$DS_2,width=120,mean,fill=NA)
-F_df$DS_roll_3 <- zoo::rollapply(F_df$DS_3,width=120,mean,fill=NA)
+rollwidth <- 120
+rollwidth <- 3
+F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=rollwidth,mean,fill=NA)
+F_df$DS_roll_1 <- zoo::rollapply(F_df$DS_1,width=rollwidth,mean,fill=NA)
+F_df$DS_roll_2 <- zoo::rollapply(F_df$DS_2,width=rollwidth,mean,fill=NA)
+F_df$DS_roll_3 <- zoo::rollapply(F_df$DS_3,width=rollwidth,mean,fill=NA)
 #F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
 
 DS_long <-tidyr::pivot_longer(F_df[!grepl("DS_roll_\\d$",colnames(F_df))],starts_with("DS_"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
@@ -323,15 +339,15 @@ ggplot(subset(Kammer_flux))+
   xlim(ymd_hms(c("2020-07-06 13:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
   #xlim(ymd_h(c("2020.07.06 13","2020.07.07 19")))+
   labs(y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
-  theme(legend.position = "top")+
+  theme(legend.position = "top")#+
   ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS.png"),width=7,height = 4)
 #F_df_gam <- F_df
 
 #DS_plot
 ggplot(DS_long)+
   geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
-  geom_line(aes(date,DS,col=id))+
-  #geom_line(aes(date,DS_sorted,col=id))#+
+  #geom_line(aes(date,DS,col=id))+
+  geom_line(aes(date,DS_sorted,col=id))#+
   ggsave(paste0(plotpfad,"DS_zeit_gam_3DS.png"),width=8,height = 4)
 
 range(F_df$DS_1,na.rm=T)
@@ -383,7 +399,7 @@ ggplot(subset(soil_agg_plot))+
   #facet_grid(range~.)+
   #theme_bw()+
   xlim(range(DS_long$date))+
-  scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))+
+  scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))#+
   ggsave(file=paste0(plotpfad,"DS_plot_gam_feps.png"),width=7,height = 3.5)
 
 
