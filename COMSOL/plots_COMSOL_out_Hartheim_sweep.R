@@ -149,6 +149,8 @@ soil_agg_plot <- soil_agg %>%
   group_by(range,date_hour) %>%
   summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max,na.rm=T),DSD0_PTF= mean(DSD0_PTF,na.rm=T),date=mean(date))
 
+save(soil_agg_plot,DS_long_roll,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
+
 ggplot(subset(soil_agg_plot))+
   #geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,col=as.factor(range)),fill=NA,alpha=0.2,linetype=2)+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range)),alpha=0.15)+

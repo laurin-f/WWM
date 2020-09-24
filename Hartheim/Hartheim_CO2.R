@@ -259,7 +259,7 @@ data$CO2_ref_offst <- ifelse(data$tracer_pos, data$CO2_ref + data$offset, data$C
 #injektionsrate in mol /m2 /s
 A_inj <- set_units(1^2*pi,"mm^2")
 
-inj_mol_min <- ppm_to_mol(round(data$Fz,6),"cm^3/min",out_class = "units",p_kPa = data$PressureActual_hPa/10,T_C = data$Ta_2m)
+inj_mol_min <- ppm_to_mol(data$Fz,"cm^3/min",out_class = "units",p_kPa = data$PressureActual_hPa/10,T_C = data$Ta_2m)
 inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/A_inj
 data$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
 

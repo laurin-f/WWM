@@ -26,22 +26,24 @@ data2_trim <- data2[-trim2,]
 
 ggplot(data)+
   geom_line(aes(date,CH4))+
-  geom_point(data=data1_trim,aes(date,CH4,col="PrÃ¼fgas 1"))+
-  geom_point(data=data2_trim,aes(date,CH4,col="PrÃ¼fgas 2"))
+  geom_point(data=data1_trim,aes(date,CH4,col="Prüfgas 1"))+
+  geom_point(data=data2_trim,aes(date,CH4,col="Prüfgas 2"))
 
 ggplot(data)+
   geom_line(aes(date,CO2))+
-  geom_point(data=data1_trim,aes(date,CO2,col="PrÃ¼fgas 1"))+
-  geom_point(data=data2_trim,aes(date,CO2,col="PrÃ¼fgas 2"))
+  geom_point(data=data1_trim,aes(date,CO2,col="Prüfgas 1"))+
+  geom_point(data=data2_trim,aes(date,CO2,col="Prüfgas 2"))
 
 ggplot(data1)+
   geom_point(aes(date,CH4))+
-  geom_point(data=data1_trim,aes(date,CH4,col="trim"))
+  geom_point(data=data1_trim,aes(date,CH4,col="verwendete\nWerte"))+
+  labs(title="Verdünnung 1")
 ggplot(data2)+
   geom_point(aes(date,CH4))+
-  geom_point(data=data2_trim,aes(date,CH4,col="trim"))
+  geom_point(data=data2_trim,aes(date,CH4,col="verwendete\nWerte"))+
+  labs(title="Verdünnung 2")
 
-df <- data.frame(PrÃ¼fgas=1:2)
+df <- data.frame(Pruefgas=1:2)
 #mittelwert PrÃ¼fgas erste VerdÃ¼nnung
 df$CH4mean[1] <- mean(data1$CH4dry)
 #sd PrÃ¼fgas erste VerdÃ¼nnung
@@ -59,5 +61,5 @@ df$CO2mean[2] <- mean(data2$CO2dry)
 #sd PrÃ¼fgas zweite VerdÃ¼nnung
 df$CO2sd[2] <- sd(data2$CO2dry)
 
-write.csv(df,file="PrÃ¼fgase.csv",row.names = F)
+write.csv(df,file="Prüfgase.csv",row.names = F)
 write.csv(data[,c("date","CO2dry","CH4dry")],file="Zeitreihe_CO2uCH4.csv",row.names = F)
