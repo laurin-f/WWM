@@ -34,7 +34,7 @@ leave_NAtime_plot(
 
 \item{adj_grob_size}{logical whether grob size should be adjusted}
 
-\item{...}{other parameters that should be parsed to \code{adj_grob_size()}}
+\item{...}{other parameters that should be parsed to \code{scale_x_datetime(date_breaks = breaks, ...)}}
 }
 \value{
 

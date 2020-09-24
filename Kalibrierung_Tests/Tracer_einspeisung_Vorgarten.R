@@ -15,6 +15,7 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units")
 check.packages(packages)
 
+
 ####################################
 #load data
 ####################################
@@ -27,10 +28,10 @@ Pumpzeiten$ende[is.na(Pumpzeiten$ende)] <- Pumpzeiten$start[which(is.na(Pumpzeit
 datelim <- range(c(Pumpzeiten$start, Pumpzeiten$ende),na.rm = T)
 
 
-data_tracer <- read_sampler("sampler1",datelim = datelim, format = "long")
-data_ref <- read_sampler("sampler2",datelim = datelim, format = "long")
 
-
+data <- read_sampler("sampler1u2",datelim = datelim, format = "long")
+names(data)<- str_replace_all(names(data),c("smp1"="inj","smp2"="ref"))
+data <- as.data.frame(data)
 #Metadata Pumpstufen flux
 flux <- read.csv(paste0(metapfad,"Tracereinspeisung/Pumpstufen_flux.txt"))
 
@@ -43,7 +44,7 @@ tiefen_offset <- read.table(paste0(metapfad,"Vorgarten/sampler_tiefen_offset.txt
 #############################
 
 #Pumpstufe aus metadaten auf dataframe übetragen
-data_tracer$Pumpstufe <- NA
+data$Pumpstufe <- NA
 
 #intervalle die am anfang und am ende der Pumpversuche verweorfen werden
 stunden_bis_steadystate <- 9
@@ -55,18 +56,13 @@ cols2data <- c("Pumpstufe")
 
 
 #kurven glätten mit rollapply
-data_tracer$CO2_roll <- NA
-for(i in unique(data_tracer$tiefe)){
-  tiefe.i <- data_tracer$tiefe == i
-  data_tracer$CO2_roll[tiefe.i] <- zoo::rollapply(data_tracer$CO2[tiefe.i],width=10,mean,fill=NA)
+data$CO2_roll_inj <- NA
+data$CO2_roll_ref <- NA
+for(i in unique(data$tiefe)){
+  tiefe.i <- data$tiefe == i
+  data$CO2_roll_inj[tiefe.i] <- zoo::rollapply(data$CO2_inj[tiefe.i],width=10,mean,fill=NA)
+  data$CO2_roll_ref[tiefe.i] <- zoo::rollapply(data$CO2_ref[tiefe.i],width=10,mean,fill=NA)
 }
-data_ref$CO2_roll <- NA
-for(i in unique(data_ref$tiefe)){
-  tiefe.i <- data_ref$tiefe == i
-  data_ref$CO2_roll[tiefe.i] <- zoo::rollapply(data_ref$CO2[tiefe.i],width=10,mean,fill=NA)
-}
-
-data <- merge(data_tracer,data_ref,by=c("date","tiefe","tiefenstufe","variable"),suffixes = c("","_ref"),all=T)
 
 for(i in seq_along(Pumpzeiten$Pumpstufe)){
   Pumpzeiten_lim <- data$date > (Pumpzeiten$start[i] + stunden_bis_steadystate * 60 * 60) & 
@@ -89,11 +85,73 @@ for(i in na.omit(unique(data$Pumpstufe))){
   }
 }
 
+A_inj <- set_units(1^2*pi,"mm^2")
+
+inj_mol_min <- ppm_to_mol(data$Fz,"cm^3/min",out_class = "units",T_C = data$T_C)
+inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/A_inj
+data$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
+
+###########
+#offset
+data$date_int <- as.numeric(data$date)
+data$hour <- hour(data$date)
+data_PSt0 <- subset(data, Pumpstufe == 0)
+
+
+data_PSt0$offset <-  data_PSt0$CO2_inj - data_PSt0$CO2_ref
+
+data_kal <- aggregate(data_PSt0[,grep("CO2|offset",colnames(data_PSt0))] ,list(tiefe = data_PSt0$tiefe), mean, na.rm=T)
+
+data$offset <- as.numeric(as.character(factor(data$tiefe, levels=data_kal$tiefe,labels=data_kal$offset)))
+
+data$CO2_tracer_offset <- data$CO2_inj - (data$CO2_ref + data$offset)
+data$preds <- NA
+data$preds2 <- NA
+data$preds_drift <- NA
+
+  for(i in (1:7)*-3.5){
+    #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
+    fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0 ,tiefe==i))
+    fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0 ,tiefe==i))
+    
+    fm2 <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0 ,tiefe==i))
+    
+    ID <- which(data$tiefe==i)
+    
+    data$preds[ID] <- predict(fm,newdata = data[ID,])
+    data$preds_drift[ID] <- predict(fm_drift,newdata = data[ID,])
+    data$preds2[ID] <- predict(fm2,newdata = data[ID,])
+  }
+
+data$CO2_tracer_glm <- data$CO2_inj - (data$preds)
+data$CO2_tracer_gam <- data$CO2_inj - (data$preds2)
+data$CO2_tracer_drift <- data$CO2_inj - (data$CO2_ref + data$preds_drift)
+
+#ggplot(data)+geom_point(aes(date,CO2_inj,col=Pumpstufe))
+sub <- data[data$date== ymd_hms("2020-05-15 20:45:00 UTC"),]
+
+
+ggplot(sub)+
+  geom_point(aes(CO2_tracer_glm,tiefe,col="glm"))+
+  geom_point(aes(CO2_tracer_gam,tiefe,col="gam"))+
+  geom_point(aes(CO2_tracer_offset,tiefe,col="offset"))
+mod_dates <- unique(data$date[which(data$date > ymd_h("2020-05-15 18") & data$Pumpstufe == 1.5)])
+data$T_soil <- data$T_C
+
+DS_df_gam <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = T)
+DS_df_glm <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "glm",overwrite = F,plot=F,optim_method = "snopt",read_all = T)
+plot(DS_df$date,DS_df$DSD01,ylim=c(0,0.6),type="l")
+lines(DS_df$date,DS_df$DSD02,col=2)
+lines(DS_df$date,DS_df$DSD03,col=3)
+#write.csv(DS_df,file=paste0(comsolpfad,"DS_vorgarten_glm.csv"))
+#save(DS_df,file=paste0(comsolpfad,"DS_vorgarten_glm.RData"))
+#data$date[which(data$Pumpstufe == 1.5)]
 #ggplot(data)+geom_point(aes(date,Fz,col=as.factor(Pumpstufe)))
 ###################
 #Aggregate Data
 colnames(data)
-data_agg <- aggregate(list(CO2_inj=data$CO2,CO2_ref = data$CO2_ref,Fz=data$Fz,T_C= data$T_C),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe),mean,na.rm=T)
+
+data_agg <- aggregate(list(CO2_inj=data$CO2_inj,CO2_ref = data$CO2_ref,Fz=data$Fz,T_C= data$T_C),list(Pumpstufe=data$Pumpstufe,tiefe=data$tiefe,tiefenstufe = data$tiefenstufe),mean,na.rm=T)
 
 data_agg$tiefe_inj <- data_agg$tiefe + tiefen_offset[1,2]
 data_agg$tiefe_ref <- data_agg$tiefe + tiefen_offset[2,2] - 3.5
@@ -143,13 +201,7 @@ z_soil_cm <- as.numeric(set_units(z_soil,"cm"))
 meas_points_vorgarten <- data.frame(r = 3,z=(data_inter$tiefe+z_soil_cm))
 write.table(meas_points_vorgarten,file = paste0(metapfad,"COMSOL/meas_points_Vorgarten.txt"),row.names = F,col.names = F)
 
-A_inj <- set_units(1^2*pi,"mm^2")
-injection_ml_min <- unique(data_agg$Fz[data_agg$Pumpstufe  == 1.5])
 
-
-
-injection_rates <- ppm_to_mol(injection_ml_min,unit_in = "cm^3/min",out_class = "units")
-inj_mol_m2_s <- set_units(injection_rates,"mol/s")/set_units(A_inj,"m^2")
 
 #CO2_atm <- ppm_to_mol(data_agg$CO2_ref[data_agg$tiefe == 0 & data_agg$Pumpstufe == 1.5],unit_in = "ppm",out_class = "units",T_C = na.omit(unique(data_agg$T_C[data_agg$Pumpstufe == 1.5])))
 
@@ -179,10 +231,13 @@ write.table(pars_vorgarten,
 
   ##########################
   #plot zeitreihe sampler 1 und 2
+  ggplot(data)+
+  geom_point(aes(date,CO2_inj,col=Pumpstufe))
   
+
   smp1 <- ggplot(data)+
     geom_rect(data=Pumpzeiten,aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.factor(Pumpstufe)))+
-    geom_line(aes(date, CO2,col=as.factor(tiefe)))+
+    geom_line(aes(date, CO2_inj,col=as.factor(tiefe)))+
     scale_fill_manual(values = alpha("red",(Pumpzeiten$Pumpstufe)/1.5*0.3))
   
   smp2 <- ggplot(data)+
@@ -193,14 +248,23 @@ write.table(pars_vorgarten,
   
   ggplot(data)+
     geom_vline(data=Pumpzeiten[-1,],aes(xintercept=start))+
-    geom_line(aes(date,CO2_roll,linetype="injection_sampler",col=as.factor(tiefenstufe)),lwd=1)+
-    geom_line(aes(date,CO2_roll_ref,linetype="ref_sampler",col=as.factor(tiefenstufe)),lwd=1)+
-  geom_ribbon(aes(x=date,ymin=CO2_ref,ymax=CO2,fill=as.factor(tiefenstufe)),alpha=0.5)+
-    annotate("text",x=mean(c(Pumpzeiten$start[2],Pumpzeiten$ende[2])),y=8200,label="injection")+labs(col="tiefe [cm]",fill="tiefe [cm]",linetype="",y=expression(CO[2]*" [ppm]"))+ggsave(paste0(plotpfad,"vorgarten_injection.pdf"),width=10,height=7)
+    #geom_vline(xintercept = range(mod_dates),col=2)+
+    geom_point(aes(date,CO2_inj,linetype="injection_sampler",col=as.factor(tiefenstufe)),lwd=1)+
+    geom_line(aes(date,preds2,linetype="ref_sampler",col=as.factor(tiefenstufe)),lwd=1)+
+  geom_ribbon(aes(x=date,ymin=preds2,ymax=CO2_inj,fill=as.factor(tiefenstufe)),alpha=0.3)+
+    annotate("text",x=mean(c(Pumpzeiten$start[2],Pumpzeiten$ende[2])),y=8200,label="injection")+labs(col="tiefe [cm]",fill="tiefe [cm]",linetype="",y=expression(CO[2]*" [ppm]"))+ggsave(paste0(plotpfad,"Vorgarten/vorgarten_injection.pdf"),width=10,height=7)
   
+  ggplot(data)+
+    geom_vline(data=Pumpzeiten[-1,],aes(xintercept=start))+
+    geom_vline(xintercept = mod_dates,col=2)+
+    geom_line(aes(date,CO2_roll_inj,linetype="injection_sampler",col=as.factor(tiefenstufe)),lwd=1)+
+    geom_line(aes(date,CO2_roll_ref+offset,linetype="ref_sampler",col=as.factor(tiefenstufe)),lwd=1)+
+  geom_ribbon(aes(x=date,ymin=CO2_ref+offset,ymax=CO2_inj,fill=as.factor(tiefenstufe)),alpha=0.5)+
+    annotate("text",x=mean(c(Pumpzeiten$start[2],Pumpzeiten$ende[2])),y=8200,label="injection")+labs(col="tiefe [cm]",fill="tiefe [cm]",linetype="",y=expression(CO[2]*" [ppm]"))
+  ggplot(sub)+geom_point(aes(CO2_tracer_offset,tiefe))
   #########################################
   #CO2 inj gegen ref
-  ggplot(subset(data,!is.na(Pumpstufe)))+geom_point(aes(CO2_roll,CO2_roll_ref,col=as.factor(Pumpstufe)))+geom_abline(slope=1,intercept=0)
+  ggplot(subset(data,!is.na(Pumpstufe)))+geom_point(aes(CO2_roll_inj,CO2_roll_ref,col=as.factor(Pumpstufe)))+geom_abline(slope=1,intercept=0)
   #CO2 ~ tiefe ohne glm
   
   #############################################

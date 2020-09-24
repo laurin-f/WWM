@@ -24,7 +24,7 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 range1 <- range(data$date[data$Position ==1],na.rm = T)
 range2 <- range(data$date[data$Position ==7],na.rm = T)
-range3 <- range(data$date[data$Position ==3],na.rm = T)
+range3 <- range(data$date[data$Position ==8],na.rm = T)
 range2u3 <- range(data$date[data$Position %in% 7:8],na.rm = T)
 data$inj
 data %>% group_by(Position,Pumpstufe) %>% summarise(injectionrate=mean(Fz))#ml per min
