@@ -35,6 +35,39 @@ F_df_pos8 <- F_df
 # F_df_ext2<-rbind(F_df,F_df_pos8)
 load(file=paste0(comsolpfad,"F_df_gam_3DS_ext.RData"))
 F_df<-rbind(F_df,F_df_pos8)
+
+pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
+
+F_df$DS_1 [which(F_df$date>pos8_date & F_df$date < (pos8_date + 13*3600))] <- NA
+
+
+#R_soil[µmol/m²und s]=(0.14*SWC@20cm[vol%]-0.05)*0.66*exp(0.076*T_soil@3 cm)
+
+
+
+soil_wide$R_soil <- (0.14*soil_wide$mean_VWC_20-0.05)*0.66*exp(0.076*soil_wide$mean_T_2)
+#soil_wide$R_soil <- (0.14*soil_wide$mean_VWC_20+0.2)*0.66*exp(0.076*soil_wide$mean_T_2)
+
+
+data$CO2_ref_mol_m3 <- ppm_to_mol(data$CO2_ref,"ppm",out_class = "units",T_C = data$T_soil,p_kPa = data$PressureActual_hPa/10)
+
+data_wide_CO2 <- tidyr::pivot_wider(data[data$date %in% F_df$date,],date,names_from=tiefenstufe,values_from = CO2_ref_mol_m3,names_prefix = "CO2_ref_")
+F_df <- merge(F_df,data_wide_CO2)
+
+
+
+    ################
+    #flux
+    dC_dz_mol_10_17 <- rowMeans(cbind(F_df$CO2_ref_3 - F_df$CO2_ref_4,F_df$CO2_ref_4 - F_df$CO2_ref_5)/-3.5)
+#mol/m^3/cm
+    #einheit in mol / m3 /cm
+
+    #Ficks Law
+    #Fz_mumol_per_s_m2 <- F_df$DS_1[k]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
+    
+    F_df$Fz_10_17 <- F_df$DS_2   * dC_dz_mol_10_17 * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
+    
+
 sub7u8 <- subset(data, Position %in% 7:8) 
 sub7u8$tiefe_pos <- -sub7u8$tiefe 
 
@@ -53,10 +86,7 @@ for(i in 1:3){
   F_df[,paste0("DSD0_",i)] <- F_df[,paste0("DS_",i)]/F_df[,paste0("D0",i)]
 }
 
-range(F_df$Fz,na.rm=T)
-range(F_df$DSD0_roll_1,na.rm=T)
-range(F_df$DSD0_roll_2,na.rm=T)
-range(F_df$DSD0_roll_3,na.rm=T)
+
 
 
 #######
@@ -68,8 +98,13 @@ for(i in 1:nrow(Pumpzeiten)){
 }
 #moving average
 rollwidth <- 120
+rollwidth2_h <- 12
+rollwidth2 <- rollwidth2_h *60
 #rollwidth <- 3
 F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=rollwidth,mean,fill=NA)
+F_df$Fz_roll_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=rollwidth,mean,fill=NA)
+F_df$Fz_roll2 <- zoo::rollapply(F_df$Fz,width=rollwidth2,mean,fill=NA)
+F_df$Fz_roll2_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=rollwidth2,mean,fill=NA)
 F_df$DS_roll_1 <- zoo::rollapply(F_df$DS_1,width=rollwidth,mean,fill=NA)
 F_df$DS_roll_2 <- zoo::rollapply(F_df$DS_2,width=rollwidth,mean,fill=NA)
 F_df$DS_roll_3 <- zoo::rollapply(F_df$DS_3,width=rollwidth,mean,fill=NA)
@@ -77,7 +112,16 @@ F_df$DS_roll_3 <- zoo::rollapply(F_df$DS_3,width=rollwidth,mean,fill=NA)
 F_df$DSD0_roll_1 <- zoo::rollapply(F_df$DSD0_1,width=rollwidth,mean,fill=NA)
 F_df$DSD0_roll_2 <- zoo::rollapply(F_df$DSD0_2,width=rollwidth,mean,fill=NA)
 F_df$DSD0_roll_3 <- zoo::rollapply(F_df$DSD0_3,width=rollwidth,mean,fill=NA)
+F_df$DSD0_roll2_1 <- zoo::rollapply(F_df$DSD0_1,width=rollwidth2,mean,fill=NA)
+F_df$DSD0_roll2_2 <- zoo::rollapply(F_df$DSD0_2,width=rollwidth2,mean,fill=NA)
+F_df$DSD0_roll2_3 <- zoo::rollapply(F_df$DSD0_3,width=rollwidth2,mean,fill=NA)
 #F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
+
+
+range(F_df$Fz,na.rm=T)
+range(F_df$DSD0_roll_1,na.rm=T)
+range(F_df$DSD0_roll_2,na.rm=T)
+range(F_df$DSD0_roll_3,na.rm=T)
 
 DS_long <-tidyr::pivot_longer(F_df[!grepl("DS(D0)?_roll_\\d$",colnames(F_df))],matches("DS(D0)?_"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 DS_long_roll <-tidyr::pivot_longer(F_df[!grepl("DS(D0)?_(min_|max_|sorted_)?\\d$",colnames(F_df))],matches("DS(D0)?_roll"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
@@ -92,22 +136,29 @@ ggplot(subset(Kammer_flux))+
   labs(col="chamber")+
   ggnewscale::new_scale_color()+
   #geom_point(data=subset(F_df),aes(date,Fz))+
-  geom_line(data=subset(F_df),aes(date,Fz,col=""),alpha=0.2)+
-  geom_line(data=subset(F_df),aes(date,Fz_roll,col=""))+
+  geom_line(data=subset(F_df),aes(date,Fz,col="0-7 cm"),alpha=0.2)+
+  geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-17 cm"),alpha=0.2)+
+  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll,col="0-7 cm"))+
+  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll_10_17,col="10-17 cm"))+
+  geom_line(data=subset(soil_wide),aes(date,R_soil,col="R_soil"))+
   scale_color_manual("gradient method",values=1:2)+
+  geom_point(data=subset(F_df,date %in% round_date(date,paste(rollwidth2_h,"hours")) & date < pos8_date),aes(date,Fz_roll2,col="0-7 cm"))+
+  geom_line(data=subset(F_df,date < pos8_date) ,aes(date,Fz_roll2,col="0-7 cm"))+
+  geom_point(data=subset(F_df,date %in% round_date(date,paste(rollwidth2_h,"hours"))  & date < pos8_date),aes(date,Fz_roll2_10_17,col="10-17 cm"))+
+  scale_color_manual("gradient method",values=1:3)+
   #xlim(c(min(F_df$date[-1]),max(F_df$date[])+3600*5))+
   xlim(ymd_hms(c("2020-07-06 13:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
   #xlim(ymd_h(c("2020.07.06 13","2020.07.07 19")))+
   labs(y=expression(CO[2]*"flux ["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
-  theme(legend.position = "top")#+
+  theme(legend.position = "right")+
 ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS.png"),width=7,height = 4)
 #F_df_gam <- F_df
 
 #DS_plot
-ggplot(subset(DS_long_roll,id==3))+
+ggplot(subset(DS_long_roll))+
   #geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
-  geom_line(aes(date,DSD0_roll,col=id))+
-  #geom_line(aes(date,DS_sorted,col=id))#+
+  geom_line(aes(date,DSD0_roll,col=id,linetype="2 hours mov avg"))+
+  geom_line(aes(date,DSD0_roll2,col=id,linetype="12 hours mov avg"))+
   ggsave(paste0(plotpfad,"DS_zeit_gam_3DS.png"),width=8,height = 4)
 
 range(F_df$DS_1,na.rm=T)
@@ -149,7 +200,7 @@ soil_agg_plot <- soil_agg %>%
   group_by(range,date_hour) %>%
   summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max,na.rm=T),DSD0_PTF= mean(DSD0_PTF,na.rm=T),date=mean(date))
 
-save(soil_agg_plot,DS_long_roll,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
+save(F_df,soil_agg_plot,DS_long_roll,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
 
 ggplot(subset(soil_agg_plot))+
   #geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,col=as.factor(range)),fill=NA,alpha=0.2,linetype=2)+

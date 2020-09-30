@@ -133,6 +133,8 @@ DS_D0_label <- tidyr::pivot_wider(DS_D0_long,names_from = method,values_from = D
 
 DS_D0_label$label <- paste0("DS/D0 = ",round(DS_D0_label$COMSOL,2))
 best_R2
+
+save(data_sub,R2_mat,file=paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
   #geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+
   geom_line(aes(CO2_mod,tiefe,col="mod"))+

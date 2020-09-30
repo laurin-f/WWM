@@ -177,12 +177,13 @@ CO2_sweep <- cbind(CO2_sweep,CO2_sweep_pos8[,-(1:2)])
 n_best <- 10
 
 #Dataframe in den Flux und DS Werte reinkommen
-F_df <- data.frame(date=mod_dates,Fz=NA)
+F_df <- data.frame(date=mod_dates,Fz=NA,Fz_10_17=NA)
 F_df[,paste0("DS_",rep(c("","min_","max_","sorted_"),each=n_DS),1:n_DS)]<- NA
 
 plot<-F
 ######################################
 #Schleife in der obs mit mod für unterschiedliche Zeiten verglichen werden
+k <- 1
 for(k in seq_along(mod_dates)){
 
   #fortschritt angeben
@@ -276,15 +277,23 @@ for(k in seq_along(mod_dates)){
   #flux
   #Co2-gradient zwischen 0 und 7 cm
   slope_0_7cm <- glm(CO2_ref ~ tiefe, data= subset(CO2_obs,tiefe >= -7))#ppm/cm
+  slope_10_17cm <- glm(CO2_ref ~ tiefe, data= subset(CO2_obs,tiefe < -7 & tiefe >-18))#ppm/cm
   dC_dz <- -slope_0_7cm$coefficients[2] #ppm/cm
+  dC_dz_10_17 <- -slope_10_17cm$coefficients[2] #ppm/cm
   #einheit in mol / m3 /cm
   dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units",T_C = CO2_obs$T_soil[CO2_obs$tiefe == -3.5],p_kPa = unique(CO2_obs$PressureActual_hPa)/10)#mol/m^3/cm
+  dC_dz_mol_10_17 <- ppm_to_mol(dC_dz_10_17,"ppm",out_class = "units",T_C = CO2_obs$T_soil[CO2_obs$tiefe == -14],p_kPa = unique(CO2_obs$PressureActual_hPa)/10)#mol/m^3/cm
   
   #Ficks Law
-  Fz_mumol_per_s_m2 <- best_DS_sorted[1]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
+  Fz_mumol_per_s_m2 <- best_DS[1]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
+  
+  Fz_mumol_per_s_m2_10_17 <- best_DS[2]  * dC_dz_mol_10_17 * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
+  
   names(Fz_mumol_per_s_m2) <- "Fz"
+  names(Fz_mumol_per_s_m2_10_17) <- "Fz_10_17"
   #in data frame
   F_df$Fz[F_df$date == mod_dates[k]] <- Fz_mumol_per_s_m2
+  F_df$Fz_10_17[F_df$date == mod_dates[k]] <- Fz_mumol_per_s_m2_10_17
 }#ende if
 }#ende loop
 #########################################
@@ -292,7 +301,7 @@ for(k in seq_along(mod_dates)){
 
 #speichern
 #save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_pos7u8.RData"))
-#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_ext2.RData"))
+#save(F_df,file=paste0(comsolpfad,"F_df_gam_3DS_Fz2.RData"))
 #load(file=paste0(comsolpfad,"F_df_gam_3DS.RData"))
 
 #######################################################

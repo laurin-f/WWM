@@ -15,7 +15,7 @@ kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 aufbereitete_ds<-paste0(hauptpfad,"Daten/aufbereiteteDaten/DS_Labor/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr","png","cowplot","magick")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -25,20 +25,44 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 load(paste0(aufbereitete_ds,"Labor_Vergleich.RData"))
 load(paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
-
+load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 
 range1 <- range(data$date[data$Position ==1],na.rm = T)
 range2 <- range(data$date[data$Position ==7],na.rm = T)
 range3 <- range(data$date[data$Position ==8],na.rm = T)
 range2u3 <- range(data$date[data$Position %in% 7:8],na.rm = T)
-data$inj
-data %>% group_by(Position,Pumpstufe) %>% summarise(injectionrate=mean(Fz))#ml per min
 
+data %>% group_by(Position,Pumpstufe) %>% summarise(injectionrate=mean(Fz))#ml per min
+range(F_df$Fz_roll,na.rm=T)
 ##################################################################################
 #plots
 ##################################################################################
+img <- png::readPNG(paste0(plotpfad,"Sandboxplot3D.png"))
+plot_minimal <- ggplot()+theme_minimal()+labs(title="a)")
+dim(img)
+img_plot <- ggdraw()+draw_image(img,height=1,width=2,x=-0.3)#+draw_plot(plot_minimal)
 
-#############################
+
+
+mod_obs_plot <- 
+  ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
+  #geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+
+  geom_line(aes(CO2_mod,tiefe,col="mod"))+
+  geom_point(aes(CO2,tiefe,fill="obs"))+
+  facet_wrap(~factor(material,levels=c("Sand","Sand & Splitt","Splitt"),labels=c("sand","mixture","grit")))+
+  geom_text(data=R2_mat,aes(y= -1,x=6000,label = paste0("R² = ",round(R2,3))),hjust="right")+
+  #geom_text(data=subset(DS_D0_label,material%in% data_sub$material),aes(y= -1,x=6000,label = label),hjust="right")+
+  scale_color_manual(values=2)+
+  #annotate("text",y= c(-1,-1,-1),x=c(6000,6000,6000),label=c(label1,label2,label3),hjust="right")+
+  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="",fill="")+theme_bw()#+
+  #coord_cartesian(clip = "off") +geom_text(x=-500,y=3.5,size=5,label=c("b)",rep(NA,23)))#+
+  #labs(title="b)")+
+  #theme(plot.title = element_text(hjust=-0.05,vjust=-8),plot.margin = unit(c(0,1,1,1), "lines"))
+  #ggsave(paste0(plotpfad,"comsol_mod_obs.png"),width = 7,height=3)
+
+ggpubr::ggarrange(img_plot,mod_obs_plot,widths=c(1,3))+
+  ggsave(paste0(plotpfad,"comsol_mod_obs_2.png"),width = 7,height=2.7)
+    #############################
 #Figure 3 DS Labor und sandkiste
 ##############################
 ggplot()+
@@ -52,7 +76,7 @@ ggplot()+
 all_dpths <- sort(c(unique(data$tiefe),unique(-soil_agg$tiefe)))[-1]
 inj_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
   #geom_rect(data=subset(Pumpzeiten,Pumpstufe==0 & (is.na(bemerkung)|bemerkung=="zurück getauscht") & Position %in% 8),aes(xmin=min(start),xmax=max(ende),ymin=-Inf,ymax=Inf,col="Zoom extend",fill="Zoom extend"),alpha=0.2)+
-  geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection period",col="injection period"),alpha=0.2)+
+  geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection\nperiod",col="injection\nperiod"),alpha=0.2)+
   scale_fill_manual("",values=c(1,NA))+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
@@ -60,9 +84,9 @@ inj_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
   labs(col="depth [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler",fill="")+
   theme(axis.text.x = element_blank(),
         legend.title = element_text(color=1))+
-  scale_color_discrete(limits=all_dpths)+
-  guides(colour = guide_legend(override.aes = list(size = 1.5)), 
-         fill = guide_legend())
+  #scale_color_discrete(limits=all_dpths)+
+  guides(colour = guide_legend(override.aes = list(size = 1.5)))
+
 
 ref_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
   #geom_rect(data=subset(Pumpzeiten,Pumpstufe==0 & (is.na(bemerkung)|bemerkung=="zurück getauscht") & Position %in% 8),aes(xmin=min(start),xmax=max(ende),ymin=-Inf,ymax=Inf,col="Zoom extend",fill="Zoom extend"),alpha=0.2)+
@@ -72,8 +96,8 @@ ref_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
   ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
   guides(col=F,fill=F)+labs(y=expression(CO[2]*" [ppm]"),x="",title="reference sampler")+
-  theme(axis.text.x = element_blank())+
-  scale_color_discrete(limits=all_dpths)
+  theme(axis.text.x = element_blank())#+
+  #scale_color_discrete(limits=all_dpths)
 
 
 ##########################
@@ -85,8 +109,8 @@ data$Precip_Last24hrs_mm[data$Precip_Last24hrs_mm < 0] <- 0
 T_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
   geom_line(aes(date,mean_T,col=as.factor(-tiefe)))+
   guides(col=F)+
-  labs(x="date",y="Soil T [°C]",col="depth [cm]")+
-  scale_color_discrete(limits=all_dpths)
+  labs(x="date",y="Soil T [°C]",col="depth [cm]")#+
+  #scale_color_discrete(limits=all_dpths)
 
 ################
 #VWC P
@@ -102,10 +126,21 @@ VWC_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] 
   )+
   guides()+
   labs(x="",y="Soil VWC [%]",col="depth [cm]")+
-  scale_color_discrete(limits=all_dpths)
+  guides(colour = guide_legend(override.aes = list(size = 1.5)))
+  #scale_color_discrete(limits=all_dpths)
+
+leg1 <- get_legend(inj_2u3)
+legend1 <- as_ggplot(leg1)
+leg2 <- get_legend(VWC_plot_2u3)
+legend2 <- as_ggplot(leg2)
+leg <- ggpubr::ggarrange(legend1,legend2,ncol=1,align = "v")
 
 
-CO2_p_VWC2u3 <- ggpubr::ggarrange(inj_2u3,ref_2u3,VWC_plot_2u3,T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1),common.legend = T,legend="right",align="v")+ggsave(paste0(plotpfad,"CO2_p_VWC_t.png"),width=7,height=7)
+rawdata_no_leg <- egg::ggarrange(inj_2u3+theme(legend.position = "none"),ref_2u3+theme(legend.position = "none"),VWC_plot_2u3+guides(col=F),T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1))
+ggpubr::ggarrange(rawdata_no_leg,leg,widths=c(5,1))+ggsave(paste0(plotpfad,"CO2_p_VWC_t.png"),width=7,height=7)
+
+
+#CO2_p_VWC2u3 <- ggpubr::ggarrange(inj_2u3,ref_2u3,VWC_plot_2u3,T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1),common.legend = T,legend="right",align="v")+ggsave(paste0(plotpfad,"CO2_p_VWC_t.png"),width=7,height=7)
 
 ###########################################
 #Figure 5 gam calib
@@ -144,8 +179,9 @@ tracer_plot <- ggplot(plt_data)+
   #geom_vline(xintercept = Pumpzeiten$start[c(11:14,17,18)],col="grey")+
   #annotate("text",x=Pumpzeiten$start[c(11,13,17)],y=Inf,label=paste("injection",1:3),vjust=1,hjust=-0.1)+
   geom_line(aes(date,CO2_tracer_gam,col=as.factor(tiefe)))+
-  labs(col="tiefe [cm]",x="",y=expression(CO[2]*"tracer [ppm]"))+
-  facet_wrap(~paste("injection",period),scales="free_x",nrow=1)+theme_bw()
+  labs(col="depth [cm]",x="",y=expression(CO[2]*"tracer [ppm]"))+
+  facet_wrap(~factor(period,levels=1:3,labels=paste0("injection ",1:3,c("\nhigh fluctuations in topsoil","\nbetter but still no stable signal","\nclear tracer profile"))),scales="free_x",nrow=1)+theme_bw()+
+  guides(colour = guide_legend(override.aes = list(size = 1.5)))
 png(paste0(plotpfad,"CO2_tracer_gam.png"),width=7,height=3,units="in",res=300)
 adj_grob_size(tracer_plot,plt_data,breaks="1 day",date_label="%b %d")
 dev.off()
@@ -166,6 +202,7 @@ ggplot(subset(soil_agg_plot))+
 ######################################
 #Figure 8 Flux
 ######################################
+
 ggplot(subset(Kammer_flux))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=kammer),width=10000)+
   geom_point(aes(date,CO2flux,col=kammer))+
