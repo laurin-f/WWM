@@ -38,6 +38,7 @@
 #' @param plot
 #' @param offset_method
 #' @param optim_method
+#' @param modelname
 #'
 #' @return
 #' @export
@@ -51,7 +52,8 @@ run_comsol <- function(data=data,
                        plot=F,
                        offset_method = "gam",
                        #which optimization method should be used nelder or snopt
-                       optim_method = "snopt"){
+                       optim_method = "snopt",
+                       modelname = "Diffusion_freeSoil_optim_3DS"){
 
   n_DS_ch <- paste0(n_DS,"DS")
 
@@ -91,8 +93,6 @@ run_comsol <- function(data=data,
       write.table(sub_j[sub_j$tiefe == (1:7*-3.5)[i],"CO2_mol_per_m3"],paste0(metapfad_comsol,"dom",i,".csv"),col.names = F,row.names = F,sep=",")
     }
 
-    modelname <- "Diffusion_freeSoil_optim"
-    modelname <- paste0(modelname,"_",n_DS_ch)
     #command der an commandline gesendet wird um comsolbatch.exe zu starten
     if(optim_method == "nelder"){
 
@@ -144,9 +144,9 @@ run_comsol <- function(data=data,
     mod_files <- list.files(comsolpfad,pattern = paste(offset_method,optim_method,n_DS_ch,date_pattern,sep="_"))
 
     mod_date_all_chr <- sort(unique(str_extract(mod_files,date_pattern)))
-    
+
     mod_date_all_chr_pad <- ifelse(nchar(mod_date_all_chr) == 8,paste0(mod_date_all_chr,"_00"),mod_date_all_chr)
-    
+
     mod_dates_all <- ymd_hm(paste("2020",mod_date_all_chr_pad))
     mod_dates_all <-mod_dates_all[mod_dates_all %in% data$date]
   }else{
@@ -224,7 +224,7 @@ run_comsol <- function(data=data,
       plot(DS_profil_long$DS/DS_profil_long$D0,DS_profil_long$tiefe,ylim=range(obs_mod$tiefe),type="l",xlab="DS/D0",ylab="")
 
       par(mfrow=c(1,1))
-      Sys.sleep(1)
+      Sys.sleep(3)
 
       #dev.off()
     }
