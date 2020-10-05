@@ -38,7 +38,7 @@ F_df<-rbind(F_df,F_df_pos8)
 
 pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
 
-F_df$DS_1 [which(F_df$date>pos8_date & F_df$date < (pos8_date + 13*3600))] <- NA
+
 
 
 #R_soil[µmol/m²und s]=(0.14*SWC@20cm[vol%]-0.05)*0.66*exp(0.076*T_soil@3 cm)
@@ -200,7 +200,7 @@ soil_agg_plot <- soil_agg %>%
   group_by(range,date_hour) %>%
   summarise(DSD0_PTF_min = min(DSD0_PTF_min,na.rm=T),DSD0_PTF_max = max(DSD0_PTF_max,na.rm=T),DSD0_PTF= mean(DSD0_PTF,na.rm=T),date=mean(date))
 
-save(F_df,soil_agg_plot,DS_long_roll,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
+save(F_df,soil_agg_plot,soil_wide,DS_long_roll,DS_long,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
 
 ggplot(subset(soil_agg_plot))+
   #geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,col=as.factor(range)),fill=NA,alpha=0.2,linetype=2)+

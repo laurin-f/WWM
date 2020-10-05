@@ -27,6 +27,7 @@ load(paste0(aufbereitete_ds,"Labor_Vergleich.RData"))
 load(paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
 load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 
+pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
 range1 <- range(data$date[data$Position ==1],na.rm = T)
 range2 <- range(data$date[data$Position ==7],na.rm = T)
 range3 <- range(data$date[data$Position ==8],na.rm = T)
@@ -81,7 +82,7 @@ inj_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
-  labs(col="depth [cm]",x="",y=expression(CO[2]*" [ppm]"),title="injection sampler",fill="")+
+  labs(col="depth [cm]",x="",y=expression(CO[2]*" [ppm]"),title="a) injection sampler",fill="")+
   theme(axis.text.x = element_blank(),
         legend.title = element_text(color=1))+
   #scale_color_discrete(limits=all_dpths)+
@@ -95,7 +96,7 @@ ref_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
-  guides(col=F,fill=F)+labs(y=expression(CO[2]*" [ppm]"),x="",title="reference sampler")+
+  guides(col=F,fill=F)+labs(y=expression(CO[2]*" [ppm]"),x="",title="b) reference sampler")+
   theme(axis.text.x = element_blank())#+
   #scale_color_discrete(limits=all_dpths)
 
@@ -109,7 +110,7 @@ data$Precip_Last24hrs_mm[data$Precip_Last24hrs_mm < 0] <- 0
 T_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
   geom_line(aes(date,mean_T,col=as.factor(-tiefe)))+
   guides(col=F)+
-  labs(x="date",y="Soil T [°C]",col="depth [cm]")#+
+  labs(title="d)",x="date",y="Soil T [°C]",col="depth [cm]")#+
   #scale_color_discrete(limits=all_dpths)
 
 ################
@@ -125,7 +126,7 @@ VWC_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] 
     axis.text.x = element_blank()
   )+
   guides()+
-  labs(x="",y="Soil VWC [%]",col="depth [cm]")+
+  labs(title="c)",x="",y="Soil VWC [%]",col="depth [cm]")+
   guides(colour = guide_legend(override.aes = list(size = 1.5)))
   #scale_color_discrete(limits=all_dpths)
 
@@ -136,7 +137,7 @@ legend2 <- as_ggplot(leg2)
 leg <- ggpubr::ggarrange(legend1,legend2,ncol=1,align = "v")
 
 
-rawdata_no_leg <- egg::ggarrange(inj_2u3+theme(legend.position = "none"),ref_2u3+theme(legend.position = "none"),VWC_plot_2u3+guides(col=F),T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1))
+rawdata_no_leg <- egg::ggarrange(inj_2u3+theme(legend.position = "none"),ref_2u3+theme(legend.position = "none"),VWC_plot_2u3+guides(col=F),T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1),draw=F)
 ggpubr::ggarrange(rawdata_no_leg,leg,widths=c(5,1))+ggsave(paste0(plotpfad,"CO2_p_VWC_t.png"),width=7,height=7)
 
 
@@ -189,12 +190,13 @@ dev.off()
 ######################################
 #Figure 7 Ds profile over time
 ######################################
-
+F_df$DSD0_1 [which(F_df$date>pos8_date & F_df$date < (pos8_date + 20*3600))] <- NA
+DS_long_roll$DSD0_roll[which(DS_long_roll$date>pos8_date & DS_long_roll$date < (pos8_date + 20*3600) & DS_long_roll$id == 1)] <- NA
 ggplot(subset(soil_agg_plot))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range)),alpha=0.15)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(range),linetype="f(eps)"))+
-  geom_line(data=DS_long_roll,aes(date,DSD0_roll,col=range,linetype="in situ"))+
-  geom_line(data=DS_long_roll,aes(date,DS_roll/D0_T_p(unit="m2/s"),col=range,linetype="in situ"))+
+  geom_line(data=subset(DS_long_roll, date > pos8_date),aes(date,DSD0_roll,col=range,linetype="in situ"))+
+  geom_line(data=subset(DS_long_roll, date < pos8_date),aes(date,DSD0_roll2,col=range,linetype="in situ"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
   xlim(range(DS_long$date))+
   scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))+
@@ -208,10 +210,18 @@ ggplot(subset(Kammer_flux))+
   geom_point(aes(date,CO2flux,col=kammer))+
   labs(col="chamber")+
   ggnewscale::new_scale_color()+
-  geom_line(data=subset(F_df),aes(date,Fz,col=""),alpha=0.2)+
-  geom_line(data=subset(F_df),aes(date,Fz_roll,col=""))+
-  scale_color_manual("gradient method",values=1:2)+
+  geom_line(data=subset(soil_wide),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
+  scale_color_manual("transfer function\n(Maier et al., 2011)",values=grey(0.3))+
+  ggnewscale::new_scale_color()+
+  geom_line(data=subset(F_df),aes(date,Fz,col="0-7 cm"),alpha=0.2)+
+  geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-17 cm"),alpha=0.2)+
+  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll,col="0-7 cm"))+
+  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll_10_17,col="10-17 cm"))+
+  geom_line(data=subset(F_df,date < pos8_date) ,aes(date,Fz_roll2,col="0-7 cm"))+
+  geom_line(data=subset(F_df,date < pos8_date),aes(date,Fz_roll2_10_17,col="10-17 cm"))+
+    scale_color_brewer("gradient method",type="qual",palette=6)+
+  #scale_color_manual("gradient method",values=1:2)+
   xlim(ymd_hms(c("2020-07-06 13:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
   labs(y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
-  #theme(legend.position = "top")#+
+    #theme(legend.position = "top")#+
 ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS.png"),width=7,height = 3.5)
