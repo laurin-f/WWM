@@ -26,15 +26,15 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 
 data$date_hour <- round_date(data$date,"hours")
-mod_dates <- sort(unique(data$date[data$Position %in% 8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 
-mod_dates <- tail(mod_dates,10)
+DS_anisotrop <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
-DS_df <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = T,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_optim_3DS")
 
-DS_dist <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = T,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_disturbance_optim_3DS")
+DS_df <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_optim_3DS")
 
-DS_anisotrop <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = T,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_dist <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_disturbance_optim_3DS")
+
 
 colnames(DS_long)
 DS_long <- tidyr::pivot_longer(DS_df,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
@@ -46,6 +46,8 @@ ggplot(DS_long)+
 ggplot(DS_long)+
   geom_line(aes(date,DSD0,col=tiefe,linetype="isotrop"))+
   geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="anisotrop"))+ggsave(paste0(plotpfad,"DS_anisotrop.png"),width=5,height=3)
+ggplot()+
+  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="anisotrop"))#+ggsave(paste0(plotpfad,"DS_anisotrop.png"),width=5,height=3)
 
 range(DS_anisotrop$DSD03)
 range(DS_df$DSD03)

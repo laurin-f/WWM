@@ -110,8 +110,9 @@ run_comsol <- function(data=data,
     }
 
     date_chr <- format(mod_dates[j],"%m_%d_%H_%M")
-    outfile_name <- paste0(outfile,"_",offset_method,"_",optim_method,"_",n_DS_ch,"_",date_chr,".txt")
-    if(file.exists(paste0(comsolpfad,outfile_name)) & overwrite == F){
+    outfile_name <- paste0(modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt")
+    outfile_full_name <- paste0(comsolpfad,outfile_name)
+    if(file.exists(outfile_full_name) & overwrite == F){
       print(paste("file",outfile_name,"exists set overwrite = T to replace it"))
     }else{
       print(paste("starting with",mod_dates[j]))
@@ -130,8 +131,8 @@ run_comsol <- function(data=data,
         comsoloutfiles_raw <- list.files(comsolpfad,"CO2_optim.txt",full.names = T)
       }
       #im Dateiname steht jetzt die methode und das datum
-      comsoloutfiles <- str_replace(comsoloutfiles_raw,"\\.txt",paste0("_",offset_method,"_",optim_method,"_",n_DS_ch,"_",date_chr,".txt"))
-      file.rename(comsoloutfiles_raw,comsoloutfiles)
+      comsoloutfiles <- paste0(comsolpfad,modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt")
+      file.rename(comsoloutfiles_raw,outfile_full_name)
     }
   }
 
@@ -141,7 +142,7 @@ run_comsol <- function(data=data,
   #alle dateien mit der gewünschten methode und datum
   if(read_all == T){
     date_pattern <- "\\d{2}(_\\d{2}){2,3}"
-    mod_files <- list.files(comsolpfad,pattern = paste(offset_method,optim_method,n_DS_ch,date_pattern,sep="_"))
+    mod_files <- list.files(comsolpfad,pattern = paste(modelname,offset_method,optim_method,date_pattern,sep="_"))
 
     mod_date_all_chr <- sort(unique(str_extract(mod_files,date_pattern)))
 
@@ -170,7 +171,7 @@ run_comsol <- function(data=data,
     date_chr <- format(mod_dates_all[j],"%m_%d_%H_%M")
 
     if(optim_method == "snopt"){
-      CO2_optim <- read.csv(paste0(comsolpfad,"CO2_optim_",offset_method,"_",optim_method,"_",n_DS_ch,"_",date_chr,".txt"),skip=9,sep="",header=F)
+      CO2_optim <- read.csv(paste0(comsolpfad,modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt"),skip=9,sep="",header=F)
 
       colnames(CO2_optim) <- c("r","z","CO2_mod_mol_m3",paste0("DS_",1:n_DS))
       CO2_mod <- CO2_optim[,1:3]
@@ -178,7 +179,7 @@ run_comsol <- function(data=data,
     }
     if(optim_method =="nelder"){
 
-      DS_mod <- read.csv(paste0(comsolpfad,"Probe_table_",offset_method,"_",optim_method,"_",n_DS_ch,"_",date_chr,".txt"),skip=5,sep="",header=F)
+      DS_mod <- read.csv(paste0(comsolpfad,modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt"),skip=5,sep="",header=F)
       colnames_DS_raw <- readLines(paste0(comsolpfad,"Probe_table_",offset_method,"_",optim_method,"_",n_DS_ch,"_",date_chr,".txt"),n=5)
       colnames_DS <- str_extract_all(colnames_DS_raw[5],"injection_rate|DS_\\d|Probe \\d",simplify = T)
       colnames(DS_mod) <- str_replace(colnames_DS,"Probe ","CO2mod_tiefenstufe")
