@@ -36,8 +36,13 @@ F_df_pos8 <- F_df
 load(file=paste0(comsolpfad,"F_df_gam_3DS_ext.RData"))
 F_df<-rbind(F_df,F_df_pos8)
 
-pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
+load(paste0(comsolpfad,"DS_anisotrop_gam.RData"))
+F_df <- DS_anisotrop
+names(F_df) <- str_replace(names(F_df),"(\\d)$","_\\1")
 
+pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
+Versuch2_date <- ymd_h("2020.07.10 00")
+F_df$Versuch <- ifelse(F_df$date < pos8_date,ifelse(F_df$date < Versuch2_date,"1","2"),"3")
 
 
 
@@ -97,14 +102,18 @@ for(i in 1:nrow(Pumpzeiten)){
   F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
 }
 #moving average
-rollwidth <- 120
+rollwidth <- 2
 rollwidth2_h <- 12
-rollwidth2 <- rollwidth2_h *60
+rollwidth2 <- rollwidth2_h
+# rollwidth <- 120
+# rollwidth2_h <- 24
+# rollwidth2 <- rollwidth2_h *60
 #rollwidth <- 3
 F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=rollwidth,mean,fill=NA)
 F_df$Fz_roll_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=rollwidth,mean,fill=NA)
 F_df$Fz_roll2 <- zoo::rollapply(F_df$Fz,width=rollwidth2,mean,fill=NA)
 F_df$Fz_roll2_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=rollwidth2,mean,fill=NA)
+
 F_df$DS_roll_1 <- zoo::rollapply(F_df$DS_1,width=rollwidth,mean,fill=NA)
 F_df$DS_roll_2 <- zoo::rollapply(F_df$DS_2,width=rollwidth,mean,fill=NA)
 F_df$DS_roll_3 <- zoo::rollapply(F_df$DS_3,width=rollwidth,mean,fill=NA)
@@ -118,10 +127,15 @@ F_df$DSD0_roll2_3 <- zoo::rollapply(F_df$DSD0_3,width=rollwidth2,mean,fill=NA)
 #F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
 
 
-range(F_df$Fz,na.rm=T)
-range(F_df$DSD0_roll_1,na.rm=T)
-range(F_df$DSD0_roll_2,na.rm=T)
-range(F_df$DSD0_roll_3,na.rm=T)
+range(F_df$Fz_roll2[F_df$Versuch=="3"],na.rm=T)
+range(F_df$DSD0_roll2_1[F_df$Versuch=="3"],na.rm=T)
+range(F_df$DSD0_roll_2[F_df$Versuch=="3"],na.rm=T)
+range(F_df$DSD0_roll_3[F_df$Versuch=="3"],na.rm=T)
+
+range(F_df$Fz_roll2[F_df$Versuch!="1"],na.rm=T)
+range(F_df$DSD0_roll2_1[F_df$Versuch!="1"],na.rm=T)
+range(F_df$DSD0_roll2_2[F_df$Versuch!="1"],na.rm=T)
+range(F_df$DSD0_roll2_3[F_df$Versuch!="1"],na.rm=T)
 
 DS_long <-tidyr::pivot_longer(F_df[!grepl("DS(D0)?_roll_\\d$",colnames(F_df))],matches("DS(D0)?_"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 DS_long_roll <-tidyr::pivot_longer(F_df[!grepl("DS(D0)?_(min_|max_|sorted_)?\\d$",colnames(F_df))],matches("DS(D0)?_roll"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
@@ -141,11 +155,11 @@ ggplot(subset(Kammer_flux))+
   geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll,col="0-7 cm"))+
   geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll_10_17,col="10-17 cm"))+
   geom_line(data=subset(soil_wide),aes(date,R_soil,col="R_soil"))+
-  scale_color_manual("gradient method",values=1:2)+
+  scale_color_manual("gradient method",values=1:4)+
   geom_point(data=subset(F_df,date %in% round_date(date,paste(rollwidth2_h,"hours")) & date < pos8_date),aes(date,Fz_roll2,col="0-7 cm"))+
   geom_line(data=subset(F_df,date < pos8_date) ,aes(date,Fz_roll2,col="0-7 cm"))+
   geom_point(data=subset(F_df,date %in% round_date(date,paste(rollwidth2_h,"hours"))  & date < pos8_date),aes(date,Fz_roll2_10_17,col="10-17 cm"))+
-  scale_color_manual("gradient method",values=1:3)+
+  #scale_color_manual("gradient method",values=1:3)+
   #xlim(c(min(F_df$date[-1]),max(F_df$date[])+3600*5))+
   xlim(ymd_hms(c("2020-07-06 13:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
   #xlim(ymd_h(c("2020.07.06 13","2020.07.07 19")))+
@@ -159,7 +173,7 @@ ggplot(subset(DS_long_roll))+
   #geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
   geom_line(aes(date,DSD0_roll,col=id,linetype="2 hours mov avg"))+
   geom_line(aes(date,DSD0_roll2,col=id,linetype="12 hours mov avg"))+
-  ggsave(paste0(plotpfad,"DS_zeit_gam_3DS.png"),width=8,height = 4)
+  #ggsave(paste0(plotpfad,"DS_zeit_gam_3DS.png"),width=8,height = 4)
 
 range(F_df$DS_1,na.rm=T)
 range(F_df$DS_2,na.rm=T)
@@ -192,6 +206,7 @@ data_plot <- data %>%
 ranges <- c("0 to -10","-10 to -20","> -20")
 DS_long$tiefe <- as.numeric(DS_long$id)*-7
 DS_long$range <- factor(DS_long$id,levels=1:3,labels=ranges)
+DS_anisotrop_long$range <- factor(DS_anisotrop_long$tiefe,levels=1:3,labels=ranges)
 DS_long_roll$range <- factor(DS_long_roll$id,levels=1:3,labels=ranges)
 
 soil_agg$date_hour <- round_date(soil_agg$date,"hours")
@@ -203,18 +218,13 @@ soil_agg_plot <- soil_agg %>%
 save(F_df,soil_agg_plot,soil_wide,DS_long_roll,DS_long,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
 
 ggplot(subset(soil_agg_plot))+
-  #geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,col=as.factor(range)),fill=NA,alpha=0.2,linetype=2)+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range)),alpha=0.15)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(range),linetype="f(eps)"))+
-  
-  #geom_line(data=DS_long,aes(date,DS/D0_T_p(unit="m2/s"),col=range,linetype="in situ",alpha=0.2))+
   geom_line(data=DS_long_roll,aes(date,DSD0_roll,col=range,linetype="in situ"))+
-  geom_line(data=DS_long_roll,aes(date,DS_roll/D0_T_p(unit="m2/s"),col=range,linetype="in situ"))+
+  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=range,linetype="anisotrop fact 1.26"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
-  #facet_grid(range~.)+
-  #theme_bw()+
   xlim(range(DS_long$date))+
-  scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))+
+  #scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))+
 ggsave(file=paste0(plotpfad,"DS_plot_gam_feps.png"),width=7,height = 3.5)
 
 

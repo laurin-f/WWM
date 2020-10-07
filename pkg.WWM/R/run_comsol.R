@@ -132,7 +132,9 @@ run_comsol <- function(data=data,
       }
       #im Dateiname steht jetzt die methode und das datum
       comsoloutfiles <- paste0(comsolpfad,modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt")
-      file.rename(comsoloutfiles_raw,outfile_full_name)
+      if(length(comsoloutfiles_raw)==1){
+        file.rename(comsoloutfiles_raw,outfile_full_name)
+      }
     }
   }
 

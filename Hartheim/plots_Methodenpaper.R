@@ -38,6 +38,9 @@ range(F_df$Fz_roll,na.rm=T)
 ##################################################################################
 #plots
 ##################################################################################
+#############################
+#Figure 2 COMSOL und DS sandkiste
+##############################
 img <- png::readPNG(paste0(plotpfad,"Sandboxplot3D.png"))
 plot_minimal <- ggplot()+theme_minimal()+labs(title="a)")
 dim(img)
@@ -190,13 +193,15 @@ dev.off()
 ######################################
 #Figure 7 Ds profile over time
 ######################################
-F_df$DSD0_1 [which(F_df$date>pos8_date & F_df$date < (pos8_date + 20*3600))] <- NA
+F_df[which(F_df$date>pos8_date & F_df$date < (pos8_date + 20*3600)),c("DSD0_1","Fz","Fz_roll")] <- NA
 DS_long_roll$DSD0_roll[which(DS_long_roll$date>pos8_date & DS_long_roll$date < (pos8_date + 20*3600) & DS_long_roll$id == 1)] <- NA
 ggplot(subset(soil_agg_plot))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range)),alpha=0.15)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(range),linetype="f(eps)"))+
   geom_line(data=subset(DS_long_roll, date > pos8_date),aes(date,DSD0_roll,col=range,linetype="in situ"))+
-  geom_line(data=subset(DS_long_roll, date < pos8_date),aes(date,DSD0_roll2,col=range,linetype="in situ"))+
+  geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll2,col=range,linetype="in situ"))+
+  geom_line(data=subset(DS_long_roll, Versuch == "1" & id == 1),aes(date,DSD0_roll2,col=range,linetype="in situ"),alpha=0.3)+
+  geom_line(data=subset(DS_long_roll, Versuch == "1" & id != 1),aes(date,DSD0_roll2,col=range,linetype="in situ"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
   xlim(range(DS_long$date))+
   scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))+
@@ -213,15 +218,16 @@ ggplot(subset(Kammer_flux))+
   geom_line(data=subset(soil_wide),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
   scale_color_manual("transfer function\n(Maier et al., 2011)",values=grey(0.3))+
   ggnewscale::new_scale_color()+
-  geom_line(data=subset(F_df),aes(date,Fz,col="0-7 cm"),alpha=0.2)+
-  geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-17 cm"),alpha=0.2)+
-  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll,col="0-7 cm"))+
-  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll_10_17,col="10-17 cm"))+
-  geom_line(data=subset(F_df,date < pos8_date) ,aes(date,Fz_roll2,col="0-7 cm"))+
-  geom_line(data=subset(F_df,date < pos8_date),aes(date,Fz_roll2_10_17,col="10-17 cm"))+
+  geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.2)+
+  geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-20 cm"),alpha=0.2)+
+  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll,col="0-10 cm"))+
+  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll_10_17,col="10-20 cm"))+
+  geom_line(data=subset(F_df,Versuch == "2") ,aes(date,Fz_roll2,col="0-10 cm"))+
+  geom_line(data=subset(F_df,date < pos8_date),aes(date,Fz_roll2_10_17,col="10-20 cm"))+
     scale_color_brewer("gradient method",type="qual",palette=6)+
   #scale_color_manual("gradient method",values=1:2)+
-  xlim(ymd_hms(c("2020-07-06 13:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
+  xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
+  #xlim(range(DS_long$date))+
   labs(y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
     #theme(legend.position = "top")#+
 ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS.png"),width=7,height = 3.5)
