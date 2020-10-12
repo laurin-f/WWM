@@ -200,22 +200,26 @@ ggplot(subset(soil_agg_plot))+
   geom_line(aes(date,DSD0_PTF,col=as.factor(range),linetype="f(eps)"))+
   geom_line(data=subset(DS_long_roll, date > pos8_date),aes(date,DSD0_roll,col=range,linetype="in situ"))+
   geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll2,col=range,linetype="in situ"))+
-  geom_line(data=subset(DS_long_roll, Versuch == "1" & id == 1),aes(date,DSD0_roll2,col=range,linetype="in situ"),alpha=0.3)+
+  #geom_line(data=subset(DS_long_roll, Versuch == "1" & id == 1),aes(date,DSD0_roll2,col=range,linetype="in situ"),alpha=0.3)+
   geom_line(data=subset(DS_long_roll, Versuch == "1" & id != 1),aes(date,DSD0_roll2,col=range,linetype="in situ"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
-  xlim(range(DS_long$date))+
+  #xlim(range(DS_long$date))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(DS_long$date))+
   scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))+
   ggsave(file=paste0(plotpfad,"DS_plot_gam_feps.png"),width=7,height = 3.5)
 ######################################
 #Figure 8 Flux
 ######################################
+ggplot(subset(F_df,Versuch!="1"))+geom_line(aes(date,Fz_roll2_10_17 / Fz_roll2))
+F_2u3 <- subset(F_df,Versuch!="1")
+mean(F_2u3$Fz_roll2_10_17 / F_2u3$Fz_roll2,na.rm=T)
 
 ggplot(subset(Kammer_flux))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=kammer),width=10000)+
   geom_point(aes(date,CO2flux,col=kammer))+
   labs(col="chamber")+
   ggnewscale::new_scale_color()+
-  geom_line(data=subset(soil_wide),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
+  geom_line(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
   scale_color_manual("transfer function\n(Maier et al., 2011)",values=grey(0.3))+
   ggnewscale::new_scale_color()+
   geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.2)+
@@ -226,7 +230,8 @@ ggplot(subset(Kammer_flux))+
   geom_line(data=subset(F_df,date < pos8_date),aes(date,Fz_roll2_10_17,col="10-20 cm"))+
     scale_color_brewer("gradient method",type="qual",palette=6)+
   #scale_color_manual("gradient method",values=1:2)+
-  xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
+  #xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
   #xlim(range(DS_long$date))+
   labs(y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
     #theme(legend.position = "top")#+

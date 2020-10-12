@@ -97,45 +97,60 @@ for(i in 1:3){
 #######
 #DS_long
 
+
+#moving average
+
+rollwidth <- 2*3600
+rollwidth2_h <- 12
+rollwidth2 <- rollwidth2_h*3600
+# rollwidth <- 120
+# rollwidth2_h <- 24
+# rollwidth2 <- rollwidth2_h *60
+
+# dates <- data.frame(date=seq(min(F_df$date),max(F_df$date),by=10*60))
+# F_df <- merge(F_df,dates,all=T)
+
+x <- F_df$date[1]
+a <- 1:10
+
+w <- sapply(F_df$date, function(x) ifelse((x - rollwidth/2) %in% F_df$date & (x + rollwidth/2) %in% F_df$date ,sum(F_df$date >= x - rollwidth/2 & F_df$date <= x+ rollwidth/2),0))
+w2 <- sapply(F_df$date, function(x) ifelse((x - rollwidth2/2) %in% F_df$date & (x + rollwidth2/2) %in% F_df$date ,sum(F_df$date >= x - rollwidth2/2 & F_df$date <= x+ rollwidth2/2),0))
+
+F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=w,mean,na.rm=F,fill=NA)
+F_df$Fz_roll_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=w,mean,na.rm=F,fill=NA)
+F_df$Fz_roll2 <- zoo::rollapply(F_df$Fz,width=w2,mean,na.rm=F,fill=NA)
+F_df$Fz_roll2_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=w2,mean,na.rm=F,fill=NA)
+
+F_df$DS_roll_1 <- zoo::rollapply(F_df$DS_1,width=w,mean,na.rm=F,fill=NA)
+F_df$DS_roll_2 <- zoo::rollapply(F_df$DS_2,width=w,mean,na.rm=F,fill=NA)
+F_df$DS_roll_3 <- zoo::rollapply(F_df$DS_3,width=w,mean,na.rm=F,fill=NA)
+
+F_df$DSD0_roll_1 <- zoo::rollapply(F_df$DSD0_1,width=w,mean,na.rm=F,fill=NA)
+F_df$DSD0_roll_2 <- zoo::rollapply(F_df$DSD0_2,width=w,mean,na.rm=F,fill=NA)
+F_df$DSD0_roll_3 <- zoo::rollapply(F_df$DSD0_3,width=w,mean,na.rm=F,fill=NA)
+F_df$DSD0_roll2_1 <- zoo::rollapply(F_df$DSD0_1,width=w2,mean,na.rm=F,fill=NA)
+F_df$DSD0_roll2_2 <- zoo::rollapply(F_df$DSD0_2,width=w2,mean,na.rm=F,fill=NA)
+F_df$DSD0_roll2_3 <- zoo::rollapply(F_df$DSD0_3,width=w2,mean,na.rm=F,fill=NA)
+#F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
+
 #Zeitraum bis steady state abschneiden 
 for(i in 1:nrow(Pumpzeiten)){
   F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
 }
-#moving average
-rollwidth <- 2
-rollwidth2_h <- 12
-rollwidth2 <- rollwidth2_h
-# rollwidth <- 120
-# rollwidth2_h <- 24
-# rollwidth2 <- rollwidth2_h *60
-#rollwidth <- 3
-F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=rollwidth,mean,fill=NA)
-F_df$Fz_roll_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=rollwidth,mean,fill=NA)
-F_df$Fz_roll2 <- zoo::rollapply(F_df$Fz,width=rollwidth2,mean,fill=NA)
-F_df$Fz_roll2_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=rollwidth2,mean,fill=NA)
-
-F_df$DS_roll_1 <- zoo::rollapply(F_df$DS_1,width=rollwidth,mean,fill=NA)
-F_df$DS_roll_2 <- zoo::rollapply(F_df$DS_2,width=rollwidth,mean,fill=NA)
-F_df$DS_roll_3 <- zoo::rollapply(F_df$DS_3,width=rollwidth,mean,fill=NA)
-
-F_df$DSD0_roll_1 <- zoo::rollapply(F_df$DSD0_1,width=rollwidth,mean,fill=NA)
-F_df$DSD0_roll_2 <- zoo::rollapply(F_df$DSD0_2,width=rollwidth,mean,fill=NA)
-F_df$DSD0_roll_3 <- zoo::rollapply(F_df$DSD0_3,width=rollwidth,mean,fill=NA)
-F_df$DSD0_roll2_1 <- zoo::rollapply(F_df$DSD0_1,width=rollwidth2,mean,fill=NA)
-F_df$DSD0_roll2_2 <- zoo::rollapply(F_df$DSD0_2,width=rollwidth2,mean,fill=NA)
-F_df$DSD0_roll2_3 <- zoo::rollapply(F_df$DSD0_3,width=rollwidth2,mean,fill=NA)
-#F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
-
-
-range(F_df$Fz_roll2[F_df$Versuch=="3"],na.rm=T)
-range(F_df$DSD0_roll2_1[F_df$Versuch=="3"],na.rm=T)
-range(F_df$DSD0_roll_2[F_df$Versuch=="3"],na.rm=T)
-range(F_df$DSD0_roll_3[F_df$Versuch=="3"],na.rm=T)
-
-range(F_df$Fz_roll2[F_df$Versuch!="1"],na.rm=T)
-range(F_df$DSD0_roll2_1[F_df$Versuch!="1"],na.rm=T)
-range(F_df$DSD0_roll2_2[F_df$Versuch!="1"],na.rm=T)
-range(F_df$DSD0_roll2_3[F_df$Versuch!="1"],na.rm=T)
+for(i in 1:nrow(Pumpzeiten)){
+  DS_anisotrop_long[DS_anisotrop_long$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & DS_anisotrop_long$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),"DSD0"]<-NA
+}
+# na_rows <- apply(F_df,1,function(x) all(is.na(x[-1])))
+# F_df <- F_df[-na_rows,]
+# range(F_df$Fz_roll2[F_df$Versuch=="3"],na.rm=T)
+# range(F_df$DSD0_roll2_1[F_df$Versuch=="3"],na.rm=T)
+# range(F_df$DSD0_roll_2[F_df$Versuch=="3"],na.rm=T)
+# range(F_df$DSD0_roll_3[F_df$Versuch=="3"],na.rm=T)
+# 
+ range(F_df$Fz_roll2[F_df$Versuch!="1"],na.rm=T)
+ range(F_df$DSD0_roll2_1[F_df$Versuch!="1"],na.rm=T)
+ range(F_df$DSD0_roll2_2[F_df$Versuch!="1"],na.rm=T)
+ range(F_df$DSD0_roll2_3[F_df$Versuch!="1"],na.rm=T)
 
 DS_long <-tidyr::pivot_longer(F_df[!grepl("DS(D0)?_roll_\\d$",colnames(F_df))],matches("DS(D0)?_"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 DS_long_roll <-tidyr::pivot_longer(F_df[!grepl("DS(D0)?_(min_|max_|sorted_)?\\d$",colnames(F_df))],matches("DS(D0)?_roll"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
@@ -168,18 +183,14 @@ ggplot(subset(Kammer_flux))+
 ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS.png"),width=7,height = 4)
 #F_df_gam <- F_df
 
+
 #DS_plot
 ggplot(subset(DS_long_roll))+
   #geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
   geom_line(aes(date,DSD0_roll,col=id,linetype="2 hours mov avg"))+
-  geom_line(aes(date,DSD0_roll2,col=id,linetype="12 hours mov avg"))+
+  geom_line(aes(date,DSD0_roll2,col=id,linetype="12 hours mov avg"))
   #ggsave(paste0(plotpfad,"DS_zeit_gam_3DS.png"),width=8,height = 4)
 
-range(F_df$DS_1,na.rm=T)
-range(F_df$DS_2,na.rm=T)
-range(F_df$DS_3,na.rm=T)
-#mal anschauen
-paste(names(best_DS),best_DS)
 
 
 data$date_hour <- round_date(data$date,"hours")
