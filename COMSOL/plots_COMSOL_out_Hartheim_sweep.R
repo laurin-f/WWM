@@ -51,6 +51,9 @@ F_df$Versuch <- ifelse(F_df$date < pos8_date,ifelse(F_df$date < Versuch2_date,"1
 
 
 soil_wide$R_soil <- (0.14*soil_wide$mean_VWC_20-0.05)*0.66*exp(0.076*soil_wide$mean_T_2)
+soil_wide$R_min <- (0.14*soil_wide$VWC_min_20-0.05)*0.66*exp(0.076*soil_wide$T_min_2)
+soil_wide$R_max <- (0.14*soil_wide$VWC_max_20-0.05)*0.66*exp(0.076*soil_wide$T_max_2)
+
 #soil_wide$R_soil <- (0.14*soil_wide$mean_VWC_20+0.2)*0.66*exp(0.076*soil_wide$mean_T_2)
 
 
@@ -92,7 +95,13 @@ for(i in 1:3){
 }
 
 
-
+#Zeitraum bis steady state abschneiden 
+for(i in 1:nrow(Pumpzeiten)){
+  F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
+}
+for(i in 1:nrow(Pumpzeiten)){
+  DS_anisotrop_long[DS_anisotrop_long$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & DS_anisotrop_long$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),"DSD0"]<-NA
+}
 
 #######
 #DS_long
@@ -133,13 +142,7 @@ F_df$DSD0_roll2_2 <- zoo::rollapply(F_df$DSD0_2,width=w2,mean,na.rm=F,fill=NA)
 F_df$DSD0_roll2_3 <- zoo::rollapply(F_df$DSD0_3,width=w2,mean,na.rm=F,fill=NA)
 #F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=3,mean,fill=NA)
 
-#Zeitraum bis steady state abschneiden 
-for(i in 1:nrow(Pumpzeiten)){
-  F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
-}
-for(i in 1:nrow(Pumpzeiten)){
-  DS_anisotrop_long[DS_anisotrop_long$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & DS_anisotrop_long$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),"DSD0"]<-NA
-}
+
 # na_rows <- apply(F_df,1,function(x) all(is.na(x[-1])))
 # F_df <- F_df[-na_rows,]
 # range(F_df$Fz_roll2[F_df$Versuch=="3"],na.rm=T)
@@ -185,11 +188,11 @@ ggsave(paste0(plotpfad,"Flux_Kammer_Comsol_gam_3DS.png"),width=7,height = 4)
 
 
 #DS_plot
-ggplot(subset(DS_long_roll))+
-  #geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
-  geom_line(aes(date,DSD0_roll,col=id,linetype="2 hours mov avg"))+
-  geom_line(aes(date,DSD0_roll2,col=id,linetype="12 hours mov avg"))
-  #ggsave(paste0(plotpfad,"DS_zeit_gam_3DS.png"),width=8,height = 4)
+# ggplot(subset(DS_long_roll))+
+#   #geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
+#   geom_line(aes(date,DSD0_roll,col=id,linetype="2 hours mov avg"))+
+#   geom_line(aes(date,DSD0_roll2,col=id,linetype="12 hours mov avg"))
+#   #ggsave(paste0(plotpfad,"DS_zeit_gam_3DS.png"),width=8,height = 4)
 
 
 

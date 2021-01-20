@@ -338,3 +338,12 @@ F_z_PTF+ggsave(paste0(plotpfad,"Vergleich_Flux_PTF_Kammer.png"),width=9,height=5
     facet_wrap(~tiefe,scales="free")
 
 
+sub <-  subset(data,tiefe == -3.5 & date > min(range2u3))
+sub2 <- subset(data,tiefe == -3.5& date > min(range2u3) & Pumpstufe != 0)
+range(sub$preds2,na.rm = T)
+range(sub2$CO2_tracer_gam,na.rm = T)
+ggplot(subset(data,tiefe == -3.5 & date > min(range2u3)))+
+  geom_line(aes(date,preds2,col=as.factor(tiefe)))
+  
+  #geom_line(aes(date,CO2_inj,col="inj"))
+ggplot(subset(data,tiefe == -3.5& date > min(range2u3) & Pumpstufe != 0))+geom_line(aes(date,CO2_tracer_gam,col=as.factor(tiefe)))
