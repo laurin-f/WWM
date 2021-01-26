@@ -1,3 +1,5 @@
+
+test <- NA
 library(pkg.WWM)
 check.packages(c("ggplot2","lubridate","stringr","dplyr"))
 datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten/Arduino/"
