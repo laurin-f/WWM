@@ -4,7 +4,7 @@ datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten
 csv <- read.csv(paste0(datapfad,"CO2_LOG_20_01_1.TXT"),sep=";",stringsAsFactors = F,na.strings = c("NA","ovf","0.00"))
 
 csv$date <- ymd_hms(paste(csv$date))
-
+test<-NA
 cols <- apply(csv,2, function(x) any(!is.na(x)))
 
 csv <- csv[,cols]
