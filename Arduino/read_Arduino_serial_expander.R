@@ -1,12 +1,12 @@
 
-test <- NA
+
 library(pkg.WWM)
 check.packages(c("ggplot2","lubridate","stringr","dplyr"))
 datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten/Arduino/"
 csv <- read.csv(paste0(datapfad,"CO2_LOG_25_01_2.TXT"),sep=";",stringsAsFactors = F,na.strings = c("NA","ovf","0.00"))
 csv <- csv[!is.na(csv$date),]
 csv$date <- ymd_hms(paste(csv$date))
-test<-NA
+
 cols <- apply(csv,2, function(x) any(!is.na(x)))
 
 csv <- csv[,cols]

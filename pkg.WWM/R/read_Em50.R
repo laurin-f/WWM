@@ -128,7 +128,7 @@ update_Em50_data.db<-function(table.name="Em50",
     #die Liste mit den zusammengefügten Dateien der Logger zu einem gesamt Datensatz joinen
     data_wide<-Reduce(dplyr::full_join,data_rbind)
     #und nach Datum sortieren
-    data_wide<-data_wide[order(data_wide$date),]
+    data_wide<-data_wide[order(data_wide$date_int),]
 
     #verbindung mit der Datenbank aufnehmen
     con<-odbc::dbConnect(RSQLite::SQLite(),paste0(sqlpfad,"Em50_data.db"))
