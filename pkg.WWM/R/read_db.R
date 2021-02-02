@@ -115,7 +115,7 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
       #datum kleiner 2010 entfernen
       date2010 <- as.integer(ymd_h("2010.01.01 00"))
       data <- data[data$date_int > date2010,]
-      
+
       #mit db verbinden
       con<-odbc::dbConnect(RSQLite::SQLite(),paste0(sqlpath,"GGA.db"))
       #falls tabelle in db nicht vorhanden wird sie hier erstellt
@@ -155,10 +155,16 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
 #' @importFrom rquery natural_join
 #' @examples update_dynament.db("dynament_test")
 update_dynament.db<-function(table.name="dynament_test",
-                             path=dynpfad,
                              sqlpath=sqlpfad,
                              metapath=metapfad_dyn){
 
+  if(table.name == "sampler3"){
+    file_pattern <- "\\d{8}\\.TXT"
+    path <- arduinopfad
+  }else{
+    file_pattern <- ".csv"
+    path <- dynpfad
+  }
   #namen der bereits in der db existierenden files laden
   if(file.exists(paste0(path,"db_log_",table.name,".txt"))){
     files.old<-read.csv(paste0(path,"db_log_",table.name,".txt"),stringsAsFactors = F)
@@ -167,7 +173,8 @@ update_dynament.db<-function(table.name="dynament_test",
   }
 
   #alle csv-Dateien aus dem dynament Ordner auflisten
-  dyn.files<-list.files(path,".csv",full.names = F)
+  dyn.files<-list.files(path,file_pattern,full.names = F)
+
 
   #neue files auswählen
   files.new<-dyn.files[!dyn.files %in% files.old$x]
@@ -177,6 +184,18 @@ update_dynament.db<-function(table.name="dynament_test",
   if(length(files.new)>0){
     print(paste("loading",length(files.new),"files"))
     #neue files laden
+    if(table.name == "sampler3"){
+      dyn.list <- lapply(paste0(path,files.new),read.csv,sep=";",stringsAsFactors = F,na.strings = c("NA","ovf","0.00","-250.00"))
+
+
+      dyn.list.sub <- dyn.list
+
+      dyn <- do.call(rbind,dyn.list)
+
+
+      dyn$date <- as.numeric(lubridate::ymd_hms(dyn$date))
+      colnames(dyn) <- stringr::str_replace(colnames(dyn),"date","date_int")
+    }else{
     dyn.list<-lapply(paste0(path,files.new), read.csv,skip=1,stringsAsFactors=F)
 
     #spaltennamen der neuen files
@@ -306,6 +325,8 @@ update_dynament.db<-function(table.name="dynament_test",
     #CO2 von mV in ppm umrechnen
     dyn[,CO2_cols] <- (dyn[,CO2_cols]-0.4)/1.6*5000
     }
+
+    }#ende if sampler 3
 
     #are there date duplicates
     date_duplicate <- duplicated(dyn$date_int)

@@ -22,14 +22,15 @@ read_sampler <- function(table.name="sampler1u2",format="long", ...){
   }
   if(format=="long"){
 
-    data_long <- reshape2::melt(data_wide,id=which(!grepl("CO2",colnames(data_wide))),value.name="CO2")
-    data_long$tiefenstufe <- as.numeric(str_extract(data_long$variable,"(?<=tiefe)\\d"))
-    data_long$tiefe <- data_long$tiefenstufe * -3.5
+    # data_long <- reshape2::melt(data_wide,id=which(!grepl("CO2",colnames(data_wide))),value.name="CO2")
     if(table.name == "sampler1u2"){
-     data_long$sampler <- str_extract(data_long$variable, "smp\\d")
-     data_long <- data_long[-grep("variable",colnames(data_long))]
-     data_long <- tidyr::pivot_wider(data_long,names_from = sampler, values_from = CO2, names_prefix = "CO2_")
+      data_long <- tidyr::pivot_longer(data_wide,contains("tiefe"),names_pattern="(CO2|temp)_tiefe(\\d)_(smp\\d)",names_to = c(".value","tiefe","sampler"))
+      data_long <- tidyr::pivot_wider(data_long,names_from = sampler, values_from = CO2, names_prefix = "CO2_")
+    }else{
+    data_long <- tidyr::pivot_longer(data_wide,contains("tiefe"),names_pattern="(CO2|temp)_tiefe(\\d)",names_to = c(".value","tiefe"))
     }
+    data_long$tiefenstufe <- as.numeric(data_long$tiefe)
+    data_long$tiefe <- data_long$tiefenstufe * -3.5
 
     return(data_long)
   }else{

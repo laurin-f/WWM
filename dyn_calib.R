@@ -1,8 +1,25 @@
-dyn_calib <- function(datelim) {
+
+#Packages laden
+library(pkg.WWM)
+packages<-c("lubridate","stringr","ggplot2")
+check.packages(packages)
+
+hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
+metapfad<- paste0(hauptpfad,"Daten/Metadaten/Dynament/")
+
+###################################################
+#Daten laden
+
+#Zeitrahmen festlegen
+datelim<-c("2020-01-24 13:00:00","2020-01-28 10:00:00")
+
+
+dyn_calib <- function(datelim,
+                      sensor_ids) {
+
   #db funktion
   dynament_raw<-read_db("dynament.db","dynament_test",datelim,korrektur_dyn=F)
-  dynament_korr<-read_db("dynament.db","dynament_test",datelim,korrektur_dyn=T)
-  colnames(dynament_korr)<-str_replace(colnames(dynament_korr),"Dyn","korr")
+
   GGA<-read_db("GGA.db","micro",datelim,"CO2,CO2dry")
 
   GGA$CO2[GGA$CO2 < 0] <- NA
@@ -13,19 +30,6 @@ dyn_calib <- function(datelim) {
   #GGA und dynament mergen
   data_dyn<-merge(dynament_raw,dynament_korr,all=T)
 
-  #metadata
-  sampler_meta <- readxl::read_xlsx(paste0(metapfad,"Sensor_liste.xlsx"))
-  sampler_meta$sensor <- str_pad(sampler_meta$Nummer,2,"left","0")
-
-  sampler1 <- sampler_meta$sensor[which(sampler_meta$Samplerid == 1)]
-  sampler2 <- sampler_meta$sensor[which(sampler_meta$Samplerid == 2)]
-
-  cols_sampler1 <- grep(paste(sampler1,collapse = "|"),colnames(data_dyn))
-  cols_sampler2 <- grep(paste(sampler2,collapse = "|"),colnames(data_dyn))
-
-  data_sampler1 <- data_dyn[,c(1,cols_sampler1)]
-  data_sampler2 <- data_dyn[,c(1,cols_sampler2)]
-  #Zeitversart korriegieren da dynament-logger und gga nicht synchronisiert waren
 
   ####################################
   #Kalibrierpunkte identifizieren

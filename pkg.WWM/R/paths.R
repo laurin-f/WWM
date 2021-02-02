@@ -8,6 +8,7 @@ dynpfad<-paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 datapfad_schaui<-paste0(hauptpfad,"Daten/Urdaten/Schauinsland/")
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
+arduinopfad<-paste0(hauptpfad,"Daten/Urdaten/Arduino/")
 
 #aufbereitete Daten
 sqlpfad<-paste0(hauptpfad,"Daten/aufbereiteteDaten/SQLite/")
