@@ -20,6 +20,12 @@ read_sampler <- function(table.name="sampler1u2",format="long", ...){
   if(nrow(data_wide) == 0){
     stop("no data in datelim")
   }
+  if(table.name == "sampler3"){
+    temp_cols <- grep("temp",colnames(data_wide))
+
+    data_roll <- sapply(data_wide[,temp_cols],zoo::rollapply,5,mean,fill=NA)
+    data_wide[,temp_cols][which(abs(data_roll-data_wide[,temp_cols]) > 2,arr.ind = T)] <- NA
+  }
   if(format=="long"){
 
     # data_long <- reshape2::melt(data_wide,id=which(!grepl("CO2",colnames(data_wide))),value.name="CO2")
