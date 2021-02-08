@@ -58,7 +58,25 @@ update_dynament.db<-function(table.name="dynament_test",
       dyn[dyn > 7000] <- NA
       dyn$date <- as.numeric(lubridate::ymd_hms(dyn$date))
       colnames(dyn) <- stringr::str_replace(colnames(dyn),"date","date_int")
+
+      load(paste0(metapath,"korrektur_fm.RData"))#,envir = .GlobalEnv)
+      names(fm) <- stringr::str_replace(names(fm),"_sampler3","")
+      same.names <- names(fm)[names(fm) %in% colnames(dyn)]
+
+      #Korrekturfaktoren anwenden
+      dyn[same.names] <-
+        sapply(same.names,function(x){
+          if(is.numeric(fm[[x]])){
+            dyn[,x] + fm[[x]]
+          }else{
+            varname <- names(fm[[x]]$coefficients[2])
+            new_df <- dyn[x]
+            names(new_df) <- varname
+            predict(fm[[x]],newdata=new_df)
+            }
+          })
     }else{
+      #if table.name != "sampler3"
       dyn.list<-lapply(paste0(path,files.new), read.csv,skip=1,stringsAsFactors=F)
 
       #spaltennamen der neuen files

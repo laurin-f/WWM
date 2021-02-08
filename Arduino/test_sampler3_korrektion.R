@@ -15,6 +15,7 @@ test_long <- tidyr::pivot_longer(test,contains("tiefe"),names_pattern = "(CO2|te
 test_long$date <- ymd_hms(test_long$date)
 test_long$tiefe <- as.numeric(test_long$tiefe)*-3.5
 test_long[test_long < (-100)] <- NA
+
 ggplot()+
       geom_line(data=data,aes(date,CO2,col=as.factor(tiefe),linetype="db"))+
       geom_line(data=test_long,aes(date,CO2,col=as.factor(tiefe),linetype="test"))
