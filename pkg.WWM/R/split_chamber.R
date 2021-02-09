@@ -83,13 +83,17 @@ split_chamber<-function(data,
   ###################################################################
   #adjust openings
   #adj openings bedeutet opening wird so umgeschrieben das immer closing und opening im Wechsel vorkommen
+if(length(opening) > 0 & length(closing) > 0){
   if(adj_openings == T){
     #solange der erste wert bei opening kleiner ist als bei closing
     #wird solange der erste opening-wert gelöscht bis dies nicht mehr der fall ist
+    if(!any(opening > closing)){
+      opening <- nrow(data.agg)
+    }
     while(opening[1] <= closing[1]){
       opening <- opening[-1]
     }
-
+    if(length(closing) > 1){
     #alle weiteren Werte von closing werden iterativ getestet
     for(i in 2:length(closing)){
       #wenn opening[i-1] na ist wird an dieser stelle closing[i] -1 eingesetzt
@@ -114,6 +118,8 @@ split_chamber<-function(data,
         }#ende if
       }#ende while
     }#ende for
+    }#ende if
+
   }#ende adj_openings
 
   #differenz der längen opening und closing
@@ -150,6 +156,9 @@ split_chamber<-function(data,
   #index von closing und opening des nicht aggregierten data.frames
   closingID <- which(data$hourminute %in% closing.time)
   openingID <- which(data$hourminute %in% opening.time)
+  if(length(openingID) == 0){
+    openingID <- nrow(data)
+  }
 
   #zeit und messid an data anfügen
   data$zeit<-NA
@@ -194,7 +203,8 @@ split_chamber<-function(data,
 
   legend("topleft",c("opening","closing",unique(data$messid)),col = c(2:3,unique(messid_cols)),pch=20, bty = "n")
 
-  plot(before,xlab="")
+  before_afters <- c(closing_before,closing_after,opening_before,opening_after)
+  plot(before,xlab="",ylim = c(min(before_afters)-10,2*max(before_afters)))
   abline(h=closing_before,col=3,lty=2)
   abline(h=closing_after,col=3)
   abline(h=opening_before,col=2,lty=2)
@@ -205,7 +215,23 @@ split_chamber<-function(data,
 
   legend("bottomleft",c("before","after","closing","opening"),col = c(1,4,3,2),pch=c(1,3,NA,NA),lty=c(NA,NA,1,1), bty = "n")
   par(mfrow = c(1,1))
-
+}else{#ende if length opening/closing > 1
+  print("no openings and closings found")
+  par(mfrow = c(2,1),mar=c(1,3,1,1))
+  plot(data.agg$date, data.agg[,gas], pch=20,xlab="")
+  
+  before_afters <- c(closing_before,closing_after,opening_before,opening_after)
+  plot(before,xlab="",ylim = c(min(before_afters)-10,2*max(before_afters)))
+  abline(h=closing_before,col=3,lty=2)
+  abline(h=closing_after,col=3)
+  abline(h=opening_before,col=2,lty=2)
+  abline(h=opening_after,col=2)
+  points(after,pch=3,col=4)
+  
+  legend("bottomleft",c("before","after","closing","opening"),col = c(1,4,3,2),pch=c(1,3,NA,NA),lty=c(NA,NA,1,1), bty = "n")
+  par(mfrow = c(1,1))
+  
+  }
   return(data)
 }
 
@@ -274,7 +300,7 @@ calc_flux <- function(data,
   #für jeden werte von group wird eine regression zwische gas und zeit durchgeführt
   fm_list <- lapply(1:nrow(gr_id), function(x) glm(formula,data = data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),]))
   #mittelwerte des Datums der unterschiedlichen gruppen
-  
+
   ###################
   date_means <- sapply(1:nrow(gr_id), function(x) mean(data[which(data[,group] == gr_id[x,1] & data$messid == gr_id[x,2]),"date"]))
 
@@ -307,11 +333,11 @@ calc_flux <- function(data,
   m<- m_mol_per_m3 / 10^6 #mol/cm3 = mol/ml
   #berechnung Flux in unterschiedlichen Einheiten
   flux <- data.frame(ppm_per_min)
-  
+
   if(length(Vol) > 1){
     Vol <- as.numeric(as.character(factor(gr_id[,1],levels=names(Vol),labels=Vol)))
   }
-  
+
   flux$ml_per_min<-ppm_per_min /10^6 * Vol #cm3 / min
   flux$g_per_min <- flux$ml_per_min * ro[,gas] #g / min
   flux$mol_per_min <- flux$ml_per_min * m #mol / min
@@ -338,7 +364,7 @@ calc_flux <- function(data,
   if(aggregate == T){
   flux <- aggregate(flux,list("group" = gr_id[,1]),mean)
   flux$date <- with_tz(flux$date, "UTC")
-  
+
   if(group != "messid"){
     flux <- flux[,!grepl("messid",colnames(flux))]
   }
