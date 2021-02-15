@@ -4,6 +4,7 @@
 #' @param datelim time intervall
 #' @param Pumpstufen verwendete Pumpstufen bei den unterschiedlichen Versuchen
 #' @param group name of the column that should be used for grouping results
+#' @param return_data if T then the function returns a list with the flux as first element and the processed input data as second element 
 #' @param ... #other parameters parsed to calc_flux
 #'
 #' @return
@@ -32,6 +33,7 @@ injectionrate <- function(datelim,
                           difftime_th = 10,
                           all_spikes_NA = F,
                           data = NULL,
+                          return_data=F,
                           ...){
 
   ########################
@@ -72,8 +74,16 @@ injectionrate <- function(datelim,
                          adj_openings = T)
 
   #Pumpstufen den messid's zuordnen
-  split$Pumpstufe <- as.numeric(as.character(factor(split$messid,levels = unique(split$messid),labels=Pumpstufen)))
-
+  if(length(Pumpstufen) == 1){
+    split$Pumpstufe <- NA
+    split$Pumpstufe[!is.na(split$messid)] <- Pumpstufen
+  }else{
+    split$Pumpstufe <- 
+      as.character(factor(split$messid,
+                                     levels = unique(split$messid),
+                                     labels=Pumpstufen))
+    split$Pumpstufe <- as(split$Pumpstufe,class(Pumpstufen))
+  }
 
 
   #Fluss mit calc_flux bestimmen
@@ -85,5 +95,9 @@ injectionrate <- function(datelim,
                     ...)
 
   #
-  return(flux)
+  if(return_data == T){
+    return(flux)
+  }else{
+    return(flux[[1]])
+  }
 }

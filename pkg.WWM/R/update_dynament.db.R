@@ -3,9 +3,6 @@
 #' @title update the dynament database
 #' @description all files that are not listed in the db_log file are formated and imported into the dynament database
 #' @param table.name name of the table in the databese that shall be updated
-#' @param path the path that the db_log file and the data are in
-#' @param sqlpfad the path to the database
-#' @param metapath the path to the metadata for correcting the sensor output of a specific sensor id
 #' @return nothing returned
 #' @export
 #' @import stringr
@@ -13,8 +10,7 @@
 #' @import RSQLite
 #' @importFrom rquery natural_join
 #' @examples update_dynament.db("dynament_test")
-update_dynament.db<-function(table.name="dynament_test",
-                             metapath=metapfad_dyn){
+update_dynament.db<-function(table.name="dynament_test"){
 
   if(table.name == "sampler3"){
     file_pattern <- ".TXT"
@@ -59,7 +55,7 @@ update_dynament.db<-function(table.name="dynament_test",
       dyn$date <- as.numeric(lubridate::ymd_hms(dyn$date))
       colnames(dyn) <- stringr::str_replace(colnames(dyn),"date","date_int")
 
-      load(paste0(metapath,"korrektur_fm.RData"))#,envir = .GlobalEnv)
+      load(paste0(metapfad_dyn,"korrektur_fm.RData"))#,envir = .GlobalEnv)
       names(fm) <- stringr::str_replace(names(fm),"_sampler3","")
       same.names <- names(fm)[names(fm) %in% colnames(dyn)]
 
@@ -151,7 +147,7 @@ update_dynament.db<-function(table.name="dynament_test",
 
       if(!is.na(str_extract(table.name,"sampler"))){
 
-        load(paste0(metapath,"korrektur_fm.RData"))#,envir = .GlobalEnv)
+        load(paste0(metapfad_dyn,"korrektur_fm.RData"))#,envir = .GlobalEnv)
         for(i in seq_along(dyn.list.sub)){
           data<-dyn.list.sub[[i]]
 

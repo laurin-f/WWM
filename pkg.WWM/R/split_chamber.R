@@ -87,8 +87,8 @@ if(length(opening) > 0 & length(closing) > 0){
   if(adj_openings == T){
     #solange der erste wert bei opening kleiner ist als bei closing
     #wird solange der erste opening-wert gelöscht bis dies nicht mehr der fall ist
-    if(!any(opening > closing)){
-      opening <- nrow(data.agg)
+    if(max(opening) < max(closing)){
+      opening <- c(opening,nrow(data.agg))
     }
     while(opening[1] <= closing[1]){
       opening <- opening[-1]
@@ -211,7 +211,7 @@ if(length(opening) > 0 & length(closing) > 0){
   abline(h=opening_after,col=2)
   abline(v=closing,col=3)
   abline(v=opening,col=2)
-  points(after,pch=3,col=4)
+  lines(after,pch=3,col=4)
 
   legend("bottomleft",c("before","after","closing","opening"),col = c(1,4,3,2),pch=c(1,3,NA,NA),lty=c(NA,NA,1,1), bty = "n")
   par(mfrow = c(1,1))
@@ -372,7 +372,7 @@ calc_flux <- function(data,
   }else{
     flux[,group] <- gr_id[,1]
   }
-  return(list(flux,data))
+  return(list(flux=flux,data=data))
 }
 
 
