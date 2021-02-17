@@ -3,11 +3,12 @@ detach("package:pkg.WWM", unload = TRUE)
 library(pkg.WWM)
 check.packages(c("ggplot2","lubridate","stringr","dplyr"))
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
-arduinopfad<-paste0(hauptpfad,"Daten/Urdaten/Arduino/")
+arduinopfad <- paste0(hauptpfad,"Daten/Urdaten/Arduino/")
 datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten/Arduino/"
+plotpfad_prod <- paste0(hauptpfad,"Dokumentation/Berichte/plots/produktionseimer/")
 
 
-datelim <- ymd_h(c("2021-02-15-11"))
+datelim <- ymd_h(c("2021-02-11-11"))
 data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
 #gga <- read_db(db.name="GGA.db",table.name = "micro",datelim=datelim)
 
@@ -27,9 +28,11 @@ data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
 # ggplot()+
 #       geom_line(data=dyn,aes(date,CO2_tiefe6,col="tiefe 6"))+
 #       geom_line(data=dyn,aes(date,CO2_tiefe7,col="tiefe 7"))+xlim(ymd_h(c("2021.02.11 0","2021.02.15 15")))
-range(data$date)
+
 ggplot()+
-      geom_line(data=data,aes(date,CO2,col=as.factor(tiefe)))#+ylim(c(2500,3500))
+      geom_line(data=data,aes(date,CO2,col=as.factor(tiefe)))+
+  ggsave(paste0(plotpfad_prod,"CO2_zeitreihe_ges.png"),width=11,height=7)
+  geom_vline(xintercept = ymd_h("2021.02.15 04"))
 
 
 range(data$CO2,na.rm = T)

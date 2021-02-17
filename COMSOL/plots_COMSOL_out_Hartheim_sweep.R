@@ -63,7 +63,8 @@ data_wide_CO2 <- tidyr::pivot_wider(data[data$date %in% F_df$date,],date,names_f
 F_df <- merge(F_df,data_wide_CO2)
 
 
-
+##################################################################
+#anstatt glm geht es viel schneller jeweils den mittelwert von 3 
     ################
     #flux
     dC_dz_mol_10_17 <- rowMeans(cbind(F_df$CO2_ref_3 - F_df$CO2_ref_4,F_df$CO2_ref_4 - F_df$CO2_ref_5)/-3.5)

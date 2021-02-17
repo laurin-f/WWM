@@ -53,8 +53,10 @@ run_comsol <- function(data=data,
                        offset_method = "gam",
                        #which optimization method should be used nelder or snopt
                        optim_method = "snopt",
+                       z_soil_cm = 150,
                        modelname = "Diffusion_freeSoil_optim_3DS"){
 
+  data <- as.data.frame(data)
   n_DS_ch <- paste0(n_DS,"DS")
 
   #CO2 in tracer in mol pro m3
@@ -73,7 +75,6 @@ run_comsol <- function(data=data,
   data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
 
   #model coordinates
-  z_soil_cm <-  150
   data$z <- z_soil_cm +data$tiefe
   data$r <- 0
 
@@ -86,7 +87,7 @@ run_comsol <- function(data=data,
   #
   for(j in seq_along(data_sub)){
     sub_j <- data_sub[[j]]
-    injection_rate <- unique(na.omit(sub_j$inj_mol_m2_s))
+    injection_rate <- sub_j$inj_mol_m2_s[sub_j$tiefe == -24.5]
 
     #schreibe messungen in files die in COMSOL als Objective verwendet werden
     for(i in 1:7){
@@ -155,11 +156,7 @@ run_comsol <- function(data=data,
   }else{
     mod_dates_all <- mod_dates
   }
-  if(any(grepl("DSD0_PTF",names(data)))){
-    selected_cols <- c("tiefe","date","z","r","CO2_mol_per_m3","inj_mol_m2_s","DSD0_PTF_max","DSD0_PTF","DSD0_PTF_min","T_soil","PressureActual_hPa","CO2_ref","CO2_inj","D0")
-  }else{
-    selected_cols <- c("tiefe","date","z","r","CO2_mol_per_m3","inj_mol_m2_s","T_soil","PressureActual_hPa","CO2_ref","CO2_inj","D0")
-  }
+
 
     data_list <- lapply(mod_dates_all,function(x) data[data$date==x, ])
     names(data_list) <- as.character(mod_dates_all)
@@ -194,6 +191,7 @@ run_comsol <- function(data=data,
     obs_j <- data_list[[as.character(mod_dates_all)[j]]]
     obs_mod <- merge(obs_j,CO2_mod)
 
+    if(n_DS > 1){
     if(n_DS == 4){
       schicht_grenzen <- seq(0,by=-7,length.out = n_DS)
       tiefen <- seq(-3.5,by=-7,length.out = n_DS)
@@ -215,8 +213,10 @@ run_comsol <- function(data=data,
       # DS_profil$DSD0_PTF[i] <- mean(obs_mod$DSD0_PTF[tiefenID])
       DS_profil$D0[i] <- mean(unlist(obs_mod[tiefenID,c("D0")]))
     }
+    }
 
     if(plot == T){
+      if(n_DS > 1){
       DS_profil_long <- tidyr::pivot_longer(DS_profil,!matches("DS|D0"),values_to = "tiefe")
       #DS_profil_long <- reshape2::melt(DS_profil,id=grep("DS|D0",colnames(DS_profil)),value.name="tiefe")
       par(mfrow=c(1,2))
@@ -227,6 +227,10 @@ run_comsol <- function(data=data,
       plot(DS_profil_long$DS/DS_profil_long$D0,DS_profil_long$tiefe,ylim=range(obs_mod$tiefe),type="l",xlab="DS/D0",ylab="")
 
       par(mfrow=c(1,1))
+      }else{
+        plot(obs_mod$CO2_mol_per_m3,obs_mod$tiefe,xlab=expression(CO[2]~"[mol m"^{-3}*"]"),ylab="depth [cm]",main=paste(date_chr,"DSD0 =",round(best_DS/mean(obs_mod$D0,na.rm=T),2)))
+      lines(obs_mod$CO2_mod_mol_m3,obs_mod$tiefe,col=2)
+      }
       Sys.sleep(3)
 
       #dev.off()
@@ -240,14 +244,20 @@ run_comsol <- function(data=data,
     #DS = -FZ * dz / dC
 
     dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units",p_kPa = unique(obs_j$PressureActual_hPa)/10,T_C = obs_j$T_soil[obs_j$tiefe == -3.5])#mol/m^3/cm
-
+    if(n_DS > 1){
     Fz_mumol_per_s_m2 <- best_DS$DS_1  * dC_dz_mol * 100 * 10^6#m2/s * mol*10^6/m3/cm*100 = mumol/s/m2
 
-    F_Comsol$Fz[F_Comsol$date == mod_dates_all[[j]]] <- Fz_mumol_per_s_m2
     for(k in 1:n_DS){
       F_Comsol[F_Comsol$date == mod_dates_all[[j]],paste0("DSD0",k)] <- DS_profil$DS[k]/DS_profil$D0[k]
       F_Comsol[F_Comsol$date == mod_dates_all[[j]],paste0("DS",k)] <- DS_profil$DS[k]
     }
+    }else{
+      Fz_mumol_per_s_m2 <- best_DS  * dC_dz_mol * 100 * 10^6#m2/s * mol*10^6/m3/cm*100 = mumol/s/m2
+      F_Comsol[F_Comsol$date == mod_dates_all[[j]],"DSD0"] <- best_DS/mean(obs_mod$D0,na.rm=T)
+      F_Comsol[F_Comsol$date == mod_dates_all[[j]],"DS"] <- best_DS
+    }
+    F_Comsol$Fz[F_Comsol$date == mod_dates_all[[j]]] <- Fz_mumol_per_s_m2
+    
   }
   return(F_Comsol)
 }

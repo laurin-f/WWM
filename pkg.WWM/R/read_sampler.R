@@ -38,8 +38,8 @@ read_sampler <- function(table.name="sampler1u2",format="long", ...){
     data_long$tiefenstufe <- as.numeric(data_long$tiefe)
     data_long$tiefe <- data_long$tiefenstufe * -3.5
 
-    return(data_long)
+    return(as.data.frame(data_long))
   }else{
-    return(data_wide)
+    return(as.data.frame(data_wide))
   }
 }
