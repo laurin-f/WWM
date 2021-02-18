@@ -9,6 +9,7 @@ arduinopfad<-paste0(hauptpfad,"Daten/Urdaten/Arduino/")
 datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten/Arduino/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_prod<- paste0(hauptpfad,"Daten/Metadaten/Produktionseimer/")
+aufbereitetpfad_prod<- paste0(hauptpfad,"Daten/aufbereiteteDaten/Produktionseimer/")
 plotpfad_prod <- paste0(hauptpfad,"Dokumentation/Berichte/plots/produktionseimer/")
 
 #Pumpzeiten
@@ -26,7 +27,7 @@ datelim <- min(Pumpzeiten$start,na.rm = T)
 data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
 data$date <- round_date(data$date,unit = "minute")
 #intervalle die am anfang und am ende der Pumpversuche verweorfen werden
-sec_bis_steadystate <- rep(12,nrow(Pumpzeiten))*3600
+sec_bis_steadystate <- rep(10,nrow(Pumpzeiten))*3600
 sec_cut_off <- rep(0,nrow(Pumpzeiten))*3600
 
 ###############################################################
@@ -91,57 +92,25 @@ inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/grundflaeche
 data[,paste0("prod_",i,"_mumol_m2_s")] <- change_unit(inj_mol_mm2_s,unit_out = "micromol/m^2/s")
 }
 ########################################
-#subsets
+#save Data
 
-
-#########################################
-#calc DS with COMSOL
-tracer_prod <- subset(data,tracer==1)
-prod_123 <- subset(data,treat=="1_1_1"& date < min(tracer_prod$date))
-prod_mean <- prod_123 %>% 
-  group_by(tiefe) %>% 
-  summarise(CO2 = mean(CO2,na.rm=T))
-tracer_mean <- tracer_prod %>% 
-  group_by(tiefe) %>% 
-  summarise_at(vars(matches("CO2|inj_mol|date|temp|prod")), mean,na.rm=T)
-
-tracer_mean$tracer <- tracer_mean$CO2 - prod_mean$CO2
-tracer_mean$CO2_ref <- prod_mean$CO2
-# ggplot()+
-#   geom_line(data=prod_mean,aes(CO2,tiefe,col="prod"))+
-#   geom_line(data=tracer_mean,aes(CO2,tiefe,col="tracer"))+
-#   geom_line(data=tracer_mean,aes(tracer,tiefe,col="tracer"))
-
-#################################################
-#runcomsol
-colnames(tracer_mean) <- str_replace_all(colnames(tracer_mean),c("^temp$"="T_soil","^tracer$"="CO2_tracer_gam"))
-
-comsol_out <- run_comsol(data=tracer_mean,mod_dates = mean(tracer_prod$date),n_DS=1,modelname = "Diffusion_Sandbox_optim",z_soil_cm = 40,read_all = F,plot=T,overwrite = F)
-DS <- comsol_out$DS
-Fz <- comsol_out$Fz
-
-###################################################
-#
-dz <- set_units(3.5/100,"m")
-tracer_mean$CO2_ref_mol <- ppm_to_mol(tracer_mean$CO2_ref,"ppm",out_class = "units",T_C = tracer_mean$T_soil)
-tracer_mean$dC <- set_units(NA,"mol/m^3")
-tracer_mean$dC[-nrow(tracer_mean)] <- tracer_mean$CO2_ref_mol[-nrow(tracer_mean)] - tracer_mean$CO2_ref_mol[-1]
-
-tracer_mean$Fz_mumol_per_s_m2 <- set_units(DS,"m^2/s")  * set_units(tracer_mean$dC,"micromol/m^3")/dz#m2/s * mol*10^6/m3/cm*100 = mumol/s/m2
-
+save(data,file=paste0(aufbereitetpfad_prod,"data_prod_eimer.RData"))
+load(file=paste0(aufbereitetpfad_prod,"Comsol_out.RData"))
+DSD0
 
 
 ##############################
 #data_agg
 
-ggplot(data)+geom_line(aes(date,CO2,col=as.factor(tiefe)))+facet_wrap(~ID,scales="free_x")
+ggplot(subset(data,!is.na(ID)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))+facet_wrap(~ID,scales="free_x")
 
-data_agg <- subset(data,!is.na(treat) & ID %in% c(1,4,5,6) & tracer == 0)%>%
+data_agg <- subset(data,!is.na(treat) & !ID %in% c(2:3) & tracer == 0)%>%
   group_by(treat,ID,tiefe)%>%
   summarise_at(vars(matches("CO2|inj_mol|date|temp|prod_\\d_mumol")), mean,na.rm=T)
 
 #######################################################
 #calc Fz production
+dz <- set_units(3.5/100,"m")
 data_agg$Fz <- set_units(NA,"micromol/m^2/s")
 data_agg$P <- 0
 for(i in unique(data_agg$ID)){
@@ -150,12 +119,14 @@ for(i in unique(data_agg$ID)){
   dC <- set_units(rep(NA,nrow(sub_i)),"mol/m^3")
   dC[-nrow(sub_i)] <- CO2_mol[-nrow(sub_i)] - CO2_mol[-1]
   
-  sub_i$Fz <- (set_units(DS,"m^2/s")  * set_units(dC,"micromol/m^3")/dz) #m2/s * mol*10^6/m3/cm*100 = mumol/s/m2
-  sub_i$P <- c(NA,diff(sub_i$Fz))
+  DS_i <- set_units(DSD0*D0_T_p(sub_i$temp,unit = "m^2/s"),"m^2/s")
+  sub_i$Fz <- DS_i  * set_units(dC,"micromol/m^3")/dz #m2/s * mol*10^6/m3/cm*100 = mumol/s/m2
+  sub_i$P <- as.numeric(c(sub_i$Fz[1],diff(sub_i$Fz)))
   data_agg[data_agg$ID == i,] <- sub_i
 }
 
 
+data_agg$Fz_30_30cm <- 0
 data_agg$Fz_20_30cm <- data_agg$prod_3_mumol_m2_s 
 data_agg$Fz_10_20cm <- data_agg$prod_3_mumol_m2_s +  data_agg$prod_2_mumol_m2_s
 data_agg$Fz_0_10cm <- data_agg$prod_3_mumol_m2_s +  data_agg$prod_2_mumol_m2_s + data_agg$prod_1_mumol_m2_s
@@ -167,29 +138,41 @@ prod_df <- subset(data_agg,tiefe == -24.5) %>%
   select(matches("Fz_|ID|treat|P_")) %>% 
   tidyr::pivot_longer(matches("(Fz|P)_"),names_pattern="(Fz|P)_(\\d+)_(\\d+)cm",names_to=c(".value","von","bis")) %>% 
   tidyr::pivot_longer(c("von","bis"),values_to="tiefe")
-  
-  
 
-data_agg$prod_tiefe <- ifelse(data_agg$tiefe < -20,-22,ifelse(data_agg$tiefe < -11,-15,-5)) 
+
+
+data_agg$prod_tiefe <- ifelse(data_agg$tiefe < -20,-21,ifelse(data_agg$tiefe < -11,-14,-7)) 
 data_agg2 <- data_agg %>% group_by(prod_tiefe,ID,treat) %>% 
   summarise(Fz=mean(Fz,na.rm=T),P=sum(P,na.rm=T))
+data_tot <- data_agg %>% group_by(ID,treat) %>% 
+  summarise(P=sum(P,na.rm=T))
 
 
+prod_tot <- prod_df %>% 
+  filter(name=="von") %>% 
+  group_by(treat,ID) %>% 
+  summarise(P=sum(P,na.rm=T))
+  
 
+# ggplot()+
+#   geom_point(data=prod_tot,aes(treat,P,col="theory"))+
+#   geom_point(data=data_tot,aes(treat,P,col="meas"))
 
 ggplot(data_agg)+geom_line(aes(CO2,tiefe,col=as.factor(ID)),orientation = "y")+facet_wrap(~treat)
 
 ggplot(data_agg)+
-  geom_point(aes(P,tiefe+1,col="measurement"),pch=1)+
+  geom_vline(xintercept = 0)+
+  geom_point(aes(P,tiefe+1.75,col="measurement"),pch=1)+
   geom_point(data=data_agg2,aes(P,(prod_tiefe),col="meas_mean"))+
   geom_point(data=subset(prod_df,name=="bis"),aes(P,-as.numeric(tiefe),col="theoretical \nprofile"),orientation = "y")+
-  facet_wrap(~paste("treatment:",treat))#+
+  facet_wrap(~paste("treatment:",treat))+
   guides(col = guide_legend(override.aes = list(shape=c(16,1,NA),linetype=c(rep("blank",2),"solid"))))+
   #labels(x=expression("Fz ["*"mu"*"mol m"^{-3}*s^{-1}))+
-  labs(x=expression("Fz ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefe [cm]",col="")
-dev.new()
+  labs(x=expression("P ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefe [cm]",col="")
+#dev.new()
 ggplot(data_agg)+
-  geom_point(aes(as.numeric(Fz),tiefe+1,col="measurement"),pch=1)+
+  #geom_vline(xintercept = 0)+
+  geom_point(aes(as.numeric(Fz),tiefe+1.75,col="measurement"),pch=1)+
   geom_point(data=data_agg2,aes(as.numeric(Fz),(prod_tiefe),col="meas_mean"))+
   geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col="theoretical \nprofile"),orientation = "y")+
   facet_wrap(~paste("treatment:",treat))+

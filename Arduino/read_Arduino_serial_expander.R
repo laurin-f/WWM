@@ -31,8 +31,7 @@ data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
 
 ggplot()+
       geom_line(data=data,aes(date,CO2,col=as.factor(tiefe)))+
-  ggsave(paste0(plotpfad_prod,"CO2_zeitreihe_ges.png"),width=11,height=7)
-  geom_vline(xintercept = ymd_h("2021.02.15 04"))
+      geom_vline(xintercept = ymd_h("2021.02.17 09"))
 
 
 range(data$CO2,na.rm = T)

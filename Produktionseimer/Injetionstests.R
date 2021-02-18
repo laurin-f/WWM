@@ -23,6 +23,7 @@ datelim_ls[[4]] <- ymd_h(c("2021.02.14 08","2021.02.14 10"))
 datelim_ls[[5]] <- ymd_h(c("2021.02.15 08","2021.02.15 10"))
 datelim_ls[[6]] <- ymd_h(c("2021.02.15 17","2021.02.15 19"))
 datelim_ls[[7]] <- ymd_h(c("2021.02.16 15","2021.02.16 17"))
+datelim_ls[[8]] <- ymd_h(c("2021.02.17 10","2021.02.17 11"))
 
 Pumpstufen_ls <- list()
 Pumpstufen_ls[[1]] <- c(paste0("Tiefe=",c(1,1,1,2,2,2,3,3),"PSt=1.5"),"tracer")
@@ -32,6 +33,7 @@ Pumpstufen_ls[[4]] <- c(paste0("Tiefe=",3:1,"PSt=1.5"))
 Pumpstufen_ls[[5]] <- c(paste0("Tiefe=",3:2,"PSt=1.5"))
 Pumpstufen_ls[[6]] <- c(paste0("Tiefe=",3,"PSt=1.5"))
 Pumpstufen_ls[[7]] <- c(paste0("Tiefe3undTiefe2PSt=1.5"))
+Pumpstufen_ls[[8]] <- c(paste0("Tiefe2undTiefe1PSt=1.5"))
 
 injection_ls_file <- paste0(metapfad_prod,"injection_list.RData")
 injection_file <- paste0(metapfad_prod,"injection_rates.txt")
@@ -55,10 +57,12 @@ injections_list <- c(list_old,list_new)
 save(injections_list,file = injection_ls_file)
 
 injections <- do.call(rbind,injections_list)
-
+list_new
 
 ##########################
 write.csv(injections,file=injection_file,row.names = F)
 
-ggplot(injections)+geom_line(aes(date,ml_per_min,col=Pumpstufe))
+ggplot(injections)+
+  geom_line(aes(date,ml_per_min,col=Pumpstufe))+
+  geom_point(aes(date,ml_per_min,col=Pumpstufe))
 
