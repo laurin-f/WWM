@@ -20,6 +20,7 @@ injectionrate(
   difftime_th = 10,
   all_spikes_NA = F,
   data = NULL,
+  return_data = F,
   ...
 )
 }
@@ -29,6 +30,8 @@ injectionrate(
 \item{Pumpstufen}{verwendete Pumpstufen bei den unterschiedlichen Versuchen}
 
 \item{group}{name of the column that should be used for grouping results}
+
+\item{return_data}{if T then the function returns a list with the flux as first element and the processed input data as second element}
 
 \item{...}{#other parameters parsed to calc_flux}
 }

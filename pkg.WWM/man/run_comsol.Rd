@@ -11,12 +11,14 @@ run_comsol(
   read_all = T,
   n_DS = 3,
   plot = F,
-  offset_method = "glm",
-  optim_method = "snopt"
+  offset_method = "gam",
+  optim_method = "snopt",
+  z_soil_cm = 150,
+  modelname = "Diffusion_freeSoil_optim_3DS"
 )
 }
 \arguments{
-\item{optim_method}{}
+\item{modelname}{}
 }
 \value{
 

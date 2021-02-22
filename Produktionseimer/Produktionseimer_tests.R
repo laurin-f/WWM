@@ -10,6 +10,7 @@ datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_prod<- paste0(hauptpfad,"Daten/Metadaten/Produktionseimer/")
 aufbereitetpfad_prod<- paste0(hauptpfad,"Daten/aufbereiteteDaten/Produktionseimer/")
+comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 plotpfad_prod <- paste0(hauptpfad,"Dokumentation/Berichte/plots/produktionseimer/")
 
 #Pumpzeiten
@@ -45,15 +46,15 @@ for(i in 1:nrow(Pumpzeiten)){
 data[,cols2data] <- sapply(data[,cols2data],as.numeric)
 
 data$treat <- apply(data[,cols2data[-(1:2)]],1,paste,sep="_",collapse="_")
-
+# 
 ggplot()+
   geom_line(data=data,aes(date,CO2,col=as.factor(-tiefe)))+
-  
+
   geom_rect(data=subset(Pumpzeiten,tracer==1),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="tracer"),alpha=0.2)+
   geom_vline(data=Pumpzeiten,aes(xintercept=start),alpha=0.3)+
   geom_text(data=Pumpzeiten,aes(start,max(data$CO2,na.rm=T),label=paste(prod_1,prod_2,prod_3,sep="_")),hjust = 0,vjust=0)+
   labs(y=expression(CO[2]~"[ppm]"),col="tiefe [cm]")+
-  ggsave(paste0(plotpfad_prod,"CO2_zeitreihe_ges.png"),width=11,height=7)
+   ggsave(paste0(plotpfad_prod,"CO2_zeitreihe_ges.png"),width=11,height=7)
 ############################
 #Fz mit zeitlichem drift bestimmen
 
@@ -67,7 +68,7 @@ if(nrow(flux) > 1){
   data[id,"inj_ml_min"] <- flux$tracer_ml_per_min
 }
 for(i in 1:3){
-flux_i <- injection_rates[grep(paste0("(T|t)iefe.?",i),injection_rates$Pumpstufe),]
+flux_i <- injection_rates[grep(paste0("(T|t)iefe.{0,2}",i),injection_rates$Pumpstufe),]
 id <- which(data[,paste0("prod_",i)] == 1)
 if(nrow(flux_i) > 1){
   data[id,paste0("prod_",i,"_ml_min")] <- approx(x=(flux_i$date),y=flux_i$ml_per_min,xout=(data$date[id]),rule=2)$y
@@ -75,7 +76,8 @@ if(nrow(flux_i) > 1){
   data[id,paste0("prod_",i,"_ml_min")] <- flux_i$ml_per_min
 }
 }
-
+test <- c("test1","test_1","test_-1")
+grep("test.{0,1}1",test)
 ########################
 #
 #injektionsrate in mol /m2 /s
@@ -101,8 +103,12 @@ DSD0
 
 ##############################
 #data_agg
-
-ggplot(subset(data,!is.na(ID)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))+facet_wrap(~ID,scales="free_x")
+# colnames(data)
+# ggplot(data)+
+#   geom_line(aes(date,prod_1_ml_min,col="prod_1"))+
+#   geom_line(aes(date,prod_2_ml_min,col="prod_2"))+
+#   geom_line(aes(date,prod_3_ml_min,col="prod_3"))
+ggplot(subset(data,!is.na(ID)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))+facet_wrap(~ID,scales="free")
 
 data_agg <- subset(data,!is.na(treat) & !ID %in% c(2:3) & tracer == 0)%>%
   group_by(treat,ID,tiefe)%>%
@@ -139,7 +145,33 @@ prod_df <- subset(data_agg,tiefe == -24.5) %>%
   tidyr::pivot_longer(matches("(Fz|P)_"),names_pattern="(Fz|P)_(\\d+)_(\\d+)cm",names_to=c(".value","von","bis")) %>% 
   tidyr::pivot_longer(c("von","bis"),values_to="tiefe")
 
+input_pars_9 <-data_agg %>% ungroup()  %>% filter(ID == 9) %>% select(matches("prod_\\d_mumol")) %>% summarise_all(mean)
+#prod pro fläche nicht auf Fgrundfläche sondern auf 
+l <- set_units(1,"mm")
+r1u2 <- 50+0:2*40
+r3 <- 20+0:2*40
+r <- set_units(matrix(c(r1u2,r1u2,r3),3,3),"mm")
+G <- pi * (r+l/2)^2 - pi * (r-l/2)^2
+M <- l * 2 * pi * (r+l/2) + l * 2 * pi * (r-l/2)
+A <- colSums(2 * G + M)#mm^2
+names(A) <- paste0("prod_",1:3,"_mm2")
 
+names(input_pars_9) <- paste0("prod_",1:3)
+input_pars_9/10^6
+
+comsol_exe(model="Produktionseimer",input_pars=input_pars_9/10^6,outfile_new="CO2_flux_prod_9.txt")
+comsol <- read.csv(paste0(comsolpfad,"CO2_flux_prod_9.txt"),skip=9,sep="",header=F)
+colnames(comsol) <- c("r","z","flux","c")
+comsol$tiefe <- comsol$z - 40
+comsol$flux_mumol <- comsol$flux * 10^6
+ggplot(comsol)+
+  geom_line(aes(flux_mumol,tiefe),orientation = "y")+
+  geom_point(data=subset(data_agg,ID==9),aes(as.numeric(Fz),tiefe))
+ggplot(comsol)+
+  geom_line(aes(ppm_to_mol(c,unit_in = "mol/m^3"),tiefe),orientation = "y")+
+  geom_point(data=subset(data_agg,ID==9),aes(CO2,tiefe))
+
+ggplot(df)+geom_line(aes(c,z),orientation = "y")
 
 data_agg$prod_tiefe <- ifelse(data_agg$tiefe < -20,-21,ifelse(data_agg$tiefe < -11,-14,-7)) 
 data_agg2 <- data_agg %>% group_by(prod_tiefe,ID,treat) %>% 
@@ -174,7 +206,7 @@ ggplot(data_agg)+
   #geom_vline(xintercept = 0)+
   geom_point(aes(as.numeric(Fz),tiefe+1.75,col="measurement"),pch=1)+
   geom_point(data=data_agg2,aes(as.numeric(Fz),(prod_tiefe),col="meas_mean"))+
-  geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col="theoretical \nprofile"),orientation = "y")+
+  geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col="theoretical \nprofile",linetype=as.factor(ID)),orientation = "y")+
   facet_wrap(~paste("treatment:",treat))+
   guides(col = guide_legend(override.aes = list(shape=c(16,1,NA),linetype=c(rep("blank",2),"solid"))))+
   #labels(x=expression("Fz ["*"mu"*"mol m"^{-3}*s^{-1}))+

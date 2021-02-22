@@ -4,7 +4,7 @@
 \alias{change_unit}
 \title{Function to change units of a vector}
 \usage{
-change_unit(x, unit_in, unit_out, class_out = "numeric")
+change_unit(x, unit_in = NULL, unit_out, class_out = "numeric")
 }
 \arguments{
 \item{x}{vector}

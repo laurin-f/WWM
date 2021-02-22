@@ -16,7 +16,8 @@ meas_depths_sb <- (40-(0:7*3.5))
 meas_points_sb <- data.frame(R=0,Z=meas_depths_sb)
 write.table(meas_points_sb,file = paste0(metapfad,"COMSOL/meas_points_produktionseimer.txt"),row.names = F,col.names = F)
 
-meas_points_2 <- data.frame(R=3.5,Z=meas_depths_sb)
+meas_depths_2 <- seq(0,40,0.5)
+meas_points_2 <- data.frame(R=3.5,Z=meas_depths_2)
 write.table(meas_points_2,file = paste0(metapfad,"COMSOL/meas_points_produktionseimer_r3.txt"),row.names = F,col.names = F)
 
 
