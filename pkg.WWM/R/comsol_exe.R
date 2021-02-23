@@ -9,23 +9,28 @@
 #' @export
 #'
 #' @examples comsol_exe(model="Produktionseimer",input_pars=input_pars_9,outfile="CO2_flux_prod_9.txt")
-comsol_exe <- function(modelname,input_pars,outfile_new=NULL,outfile_raw="CO2_flux_prod.txt") {
+comsol_exe <- function(modelname,input_pars,outfile_new=NULL,outfile_raw="CO2_flux_prod.txt",overwrite=F) {
 
+  outfile_new_full <- paste0(comsolpfad,outfile_new)
+  if(overwrite == F & !is.null(outfile_new) & file.exists(outfile_new_full)){
+    print(paste(outfile_new,"already exists set overwrite = T to replace it"))
+  }else{
   par_file <- paste0(comsolpfad,"input_pars.txt")
   if(!is.data.frame(input_pars)){
     input_pars <- t(input_pars)
   }
   write.table(input_pars,file=par_file,row.names = F,quote = F,sep = " ")
-  cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph  -job b1 ",input_pars_cmd)
+
   cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph  -job b1 -paramfile ",par_file)
   #commandline befehl ausführen
   shell(cmd,translate=T,intern=F)
   outfile_raw_full <- paste0(comsolpfad,outfile_raw)
   if(!is.null(outfile_new)){
   if(file.exists(outfile_raw_full)){
-    file.rename(outfile_raw_full,paste0(comsolpfad,outfile_new))
+    file.rename(outfile_raw_full,outfile_new_full)
   }else{
     print("no outfile found")
+  }
   }
   }
 

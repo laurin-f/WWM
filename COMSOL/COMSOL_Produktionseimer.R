@@ -16,20 +16,9 @@ meas_depths_sb <- (40-(0:7*3.5))
 meas_points_sb <- data.frame(R=0,Z=meas_depths_sb)
 write.table(meas_points_sb,file = paste0(metapfad,"COMSOL/meas_points_produktionseimer.txt"),row.names = F,col.names = F)
 
-meas_depths_2 <- seq(0,40,0.5)
-meas_points_2 <- data.frame(R=3.5,Z=meas_depths_2)
-write.table(meas_points_2,file = paste0(metapfad,"COMSOL/meas_points_produktionseimer_r3.txt"),row.names = F,col.names = F)
 
 
-l <- set_units(1,"mm")
-r1u2 <- 50+0:2*40
-r3 <- 20+0:2*40
-r <- set_units(matrix(c(r1u2,r1u2,r3),3,3),"mm")
-G <- pi * (r+l/2)^2 - pi * (r-l/2)^2
-M <- l * 2 * pi * (r+l/2) + l * 2 * pi * (r-l/2)
-A <- colSums(2 * G + M)#mm^2
-names(A) <- paste0("prod_",1:3,"_mm2")
-prod_df
+
 #prod_mol #mol/m2/s
 #########################################
 #calc DS with COMSOL
@@ -59,3 +48,6 @@ DSD0 <- comsol_out$DSD0
 
 
 save(DS,DSD0,file=paste0(aufbereitetpfad_prod,"Comsol_out.RData"))
+
+
+

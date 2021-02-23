@@ -8,7 +8,7 @@ datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten
 plotpfad_prod <- paste0(hauptpfad,"Dokumentation/Berichte/plots/produktionseimer/")
 
 
-datelim <- ymd_h(c("2021-02-11-11"))
+datelim <- ymd_h(c("2021-02-22-11"))
 data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
 #gga <- read_db(db.name="GGA.db",table.name = "micro",datelim=datelim)
 
