@@ -30,6 +30,7 @@ datelim_ls[[11]] <- ymd_h(c("2021.02.19 23","2021.02.20 01"))
 datelim_ls[[12]] <- ymd_h(c("2021.02.21 08","2021.02.21 09"))
 datelim_ls[[13]] <- ymd_h(c("2021.02.22 07","2021.02.22 09"))
 datelim_ls[[14]] <- ymd_h(c("2021.02.23 08","2021.02.23 09"))
+datelim_ls[[15]] <- ymd_h(c("2021.02.24 10","2021.02.24 12"))
 
 Pumpstufen_ls <- list()
 Pumpstufen_ls[[1]] <- c(paste0("Tiefe=",c(1,1,1,2,2,2,3,3),"PSt=1.5"),"tracer")
@@ -46,6 +47,7 @@ Pumpstufen_ls[[11]] <- c(paste0("Tiefe",c("1u2",3),"PSt=3"))
 Pumpstufen_ls[[12]] <- c(paste0("Tiefe",c(2,3,1),"PSt=3"))
 Pumpstufen_ls[[13]] <- c(paste0("Tiefe",c(1,2,3),"PSt=3"))
 Pumpstufen_ls[[14]] <- c(paste0("Tiefe",c("1u3",2),"PSt=3"))
+Pumpstufen_ls[[15]] <- c(paste0("Tiefe",c("3","test","test2","test3",2),"PSt=3"))
 
 injection_ls_file <- paste0(metapfad_prod,"injection_list.RData")
 injection_file <- paste0(metapfad_prod,"injection_rates.txt")
@@ -66,10 +68,13 @@ list_new <- mapply(injectionrate,datelim = datelim_ls[new_meas],Pumpstufen = Pum
 
 injections_list <- c(list_old,list_new)
 }
+list_new
+
+
+######################
 save(injections_list,file = injection_ls_file)
 
 injections <- do.call(rbind,injections_list)
-list_new
 
 ##########################
 write.csv(injections,file=injection_file,row.names = F)

@@ -69,8 +69,7 @@ if(nrow(flux_i) > 1){
   data[id,paste0("prod_",i,"_ml_min")] <- flux_i$ml_per_min
 }
 }
-test <- c("test1","test_1","test_-1")
-grep("test.{0,1}1",test)
+
 ########################
 #
 #injektionsrate in mol /m2 /s
@@ -91,7 +90,6 @@ data[,paste0("prod_",i,"_mumol_m2_s")] <- change_unit(inj_mol_mm2_s,unit_out = "
 
 save(data,file=paste0(aufbereitetpfad_prod,"data_prod_eimer.RData"))
 load(file=paste0(aufbereitetpfad_prod,"Comsol_out.RData"))
-DSD0
 
 
 ##############################
@@ -173,10 +171,10 @@ ggplot()+
 
 ###############
 #produktion timeline
-# ggplot(data)+
-#   geom_line(aes(date,prod_1_ml_min,col="prod_1"))+
-#   geom_line(aes(date,prod_2_ml_min,col="prod_2"))+
-#   geom_line(aes(date,prod_3_ml_min,col="prod_3"))
+ggplot(data)+
+  geom_line(aes(date,prod_1_ml_min,col="prod_1"))+
+  geom_line(aes(date,prod_2_ml_min,col="prod_2"))+
+  geom_line(aes(date,prod_3_ml_min,col="prod_3"))
 
 ########################
 #timelines einzelmessungen
@@ -196,11 +194,11 @@ ggplot(data_agg)+geom_line(aes(CO2,tiefe,col=as.factor(ID)),orientation = "y")+f
 #Flux tiefenprofile
 ggplot(data_agg)+
   #geom_vline(xintercept = 0)+
-  geom_point(aes(as.numeric(Fz),tiefe+1.75,col="measurement"),pch=1)+
-  geom_point(data=data_agg2,aes(as.numeric(Fz),(prod_tiefe),col="meas_mean"))+
-  geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col="theoretical \nprofile",linetype=as.factor(ID)),orientation = "y")+
+  geom_point(aes(as.numeric(Fz),tiefe+1.75,col=as.factor(ID)),pch=1)+
+  geom_point(data=data_agg2,aes(as.numeric(Fz),(prod_tiefe),col=as.factor(ID)))+
+  geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col=as.factor(ID)),orientation = "y")+
   facet_wrap(~paste("treatment:",treat))+
-  guides(col = guide_legend(override.aes = list(shape=c(16,1,NA),linetype=c(rep("blank",2),"solid"))))+
+  #guides(col = guide_legend(override.aes = list(shape=c(16,1,NA),linetype=c(rep("blank",2),"solid"))))+
   #labels(x=expression("Fz ["*"mu"*"mol m"^{-3}*s^{-1}))+
   labs(x=expression("Fz ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefe [cm]",col="")+
   ggsave(paste0(plotpfad_prod,"Produktionsprofile.png"),width=9,height=7)
