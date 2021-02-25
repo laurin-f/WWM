@@ -18,7 +18,7 @@ meas_points_2 <- data.frame(R=4,Z=meas_depths_2)
 write.table(meas_points_2,file = paste0(metapfad,"COMSOL/meas_points_produktionseimer_r3.txt"),row.names = F,col.names = F)
 
 
-grundflaeche <- set_units(15^2*pi,"cm^2")
+grundflaeche <- set_units((15)^2*pi,"cm^2")
 #prod pro fläche nicht auf Fgrundfläche sondern auf 
 l <- set_units(1,"mm")
 r1u2 <- 50+0:2*40
@@ -31,7 +31,7 @@ A <- change_unit(A,unit_in = "mm^2",unit_out = "m^2")
 names(A) <- paste0("prod_",1:3,"_m2")
 
 
-data_agg[,paste0("prod_",1:3,"_mol_m2_s")] <- data_agg[,paste0("prod_",1:3,"_mumol_m2_s")] / 10^6 * change_unit(grundflaeche,unit_out = "m^2") / rep(A,each=nrow(data_agg))
+data_agg[,paste0("prod_",1:3,"_mol_m2_s")] <- data_agg[,paste0("prod_",1:3,"_mumol_m2_s")] / 10^6 * change_unit(rep(grundflaeche,each=nrow(data_agg)),unit_out = "m^2") / rep(A,each=nrow(data_agg))
 
 
 
@@ -44,10 +44,14 @@ input_pars_i <-data_agg %>%
 
 names(input_pars_i) <- paste0("prod_",1:3)
 input_pars_i$DS_accurel <- DS
+#input_pars_i$CO2_atm <- 0.026
 
 
 file_i <- paste0("CO2_flux_prod_",i,".txt")
-comsol_exe(model="Produktionseimer",input_pars=input_pars_i,outfile_new = file_i,overwrite = F)
+comsol_exe(model="Produktionseimer",input_pars=input_pars_i,outfile_new = file_i,
+##################################
+           overwrite = F)
+##################################
 comsol_ls[[i]] <- read.csv(paste0(comsolpfad,file_i),skip=9,sep="",header=F)
 colnames(comsol_ls[[i]]) <- c("r","z","c","flux")
 comsol_ls[[i]]$ID <- i
@@ -60,6 +64,21 @@ comsol <- do.call(rbind,comsol_ls)
 comsol$tiefe <- comsol$z - 40
 comsol$flux_mumol <- comsol$flux * 10^6
 comsol$treat <- as.character(factor(comsol$ID,levels=data_agg$ID,labels = data_agg$treat))
+
+prod_df$tiefe[prod_df$tiefe == "30"] <- "40"
+
+ggplot()+
+  geom_line(data=subset(comsol),aes(flux_mumol,tiefe,col=as.factor(ID),linetype="comsol"),orientation = "y")+
+  geom_point(data=subset(data_agg2),aes(as.numeric(Fz),prod_tiefe,col=as.factor(ID)))+
+  geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col=as.factor(ID),linetype="theory"),orientation = "y")+
+  facet_wrap(~treat)+
+  ggsave(paste0(plotpfad_prod,"Flux_profil_comsol.png"),width=9,height=7)
+
+ggplot()+
+  geom_line(data=subset(comsol),aes(ppm_to_mol(c,unit_in = "mol/m^3"),tiefe,col=as.factor(ID)),orientation = "y")+
+  geom_point(data=subset(data_agg),aes(CO2,tiefe,col=as.factor(ID)))+
+  facet_wrap(~treat,scales="free")#+
+  #ggsave(paste0(plotpfad_prod,"CO2_profil_comsol.png"),width=9,height=7)
 
 ggplot()+
   geom_line(data=subset(comsol),aes(flux_mumol,tiefe,col=as.factor(ID)),orientation = "y")+

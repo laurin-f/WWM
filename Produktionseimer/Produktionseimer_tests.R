@@ -74,16 +74,18 @@ if(nrow(flux_i) > 1){
 #
 #injektionsrate in mol /m2 /s
 A_inj <- set_units(1^2*pi,"mm^2")
-grundflaeche <- set_units(15^2*pi,"cm^2")
+
+#grundflaeche <- set_units((15:13)^2*pi,"cm^2")
+grundflaeche <- set_units((15)^2*pi,"cm^2")
 
 inj_mol_min <- ppm_to_mol(data$inj_ml_min,"cm^3/min",out_class = "units",T_C = data$temp)
 inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/A_inj
 data$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
 
 for(i in 1:3){
-inj_mol_min <- ppm_to_mol(data[,paste0("prod_",i,"_ml_min")],"cm^3/min",out_class = "units",T_C = data$temp)
-inj_mol_mm2_s <- set_units(inj_mol_min,"mol/s")/grundflaeche
-data[,paste0("prod_",i,"_mumol_m2_s")] <- change_unit(inj_mol_mm2_s,unit_out = "micromol/m^2/s")
+prod_mol_min <- ppm_to_mol(data[,paste0("prod_",i,"_ml_min")],"cm^3/min",out_class = "units",T_C = data$temp)
+prod_mol_mm2_s <- set_units(prod_mol_min,"mol/s")/grundflaeche#[i]
+data[,paste0("prod_",i,"_mumol_m2_s")] <- change_unit(prod_mol_mm2_s,unit_out = "micromol/m^2/s")
 }
 ########################################
 #save Data
@@ -104,7 +106,10 @@ data_agg <- subset(data,!is.na(treat) & !ID %in% c(2:3) & tracer == 0)%>%
 #######################################################
 #calc Fz production
 dz <- set_units(3.5/100,"m")
+
+data_agg$CO2_mol_per_m3 <- ppm_to_mol(data_agg$CO2,"ppm",T_C = data_agg$temp)
 data_agg$Fz <- set_units(NA,"micromol/m^2/s")
+data_agg$Fz_glm <- set_units(NA,"micromol/m^2/s")
 data_agg$P <- 0
 for(i in unique(data_agg$ID)){
   sub_i <- subset(data_agg,ID == i)
@@ -151,7 +156,7 @@ prod_tot <- prod_df %>%
   
 ######################
 
-save(data_agg,file=paste0(aufbereitetpfad_prod,"data_agg.RData"))
+save(data_agg,prod_df,file=paste0(aufbereitetpfad_prod,"data_agg.RData"))
 
 ###############################################
 #       PLOTS                                 #
@@ -171,10 +176,10 @@ ggplot()+
 
 ###############
 #produktion timeline
-ggplot(data)+
-  geom_line(aes(date,prod_1_ml_min,col="prod_1"))+
-  geom_line(aes(date,prod_2_ml_min,col="prod_2"))+
-  geom_line(aes(date,prod_3_ml_min,col="prod_3"))
+# ggplot(data)+
+#   geom_line(aes(date,prod_1_ml_min,col="prod_1"))+
+#   geom_line(aes(date,prod_2_ml_min,col="prod_2"))+
+#   geom_line(aes(date,prod_3_ml_min,col="prod_3"))
 
 ########################
 #timelines einzelmessungen
@@ -200,7 +205,7 @@ ggplot(data_agg)+
   facet_wrap(~paste("treatment:",treat))+
   #guides(col = guide_legend(override.aes = list(shape=c(16,1,NA),linetype=c(rep("blank",2),"solid"))))+
   #labels(x=expression("Fz ["*"mu"*"mol m"^{-3}*s^{-1}))+
-  labs(x=expression("Fz ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefe [cm]",col="")+
+  labs(x=expression("Fz ["~mu*"mol m"^{-2}*s^{-1}*"]"),y="tiefe [cm]",col="")+
   ggsave(paste0(plotpfad_prod,"Produktionsprofile.png"),width=9,height=7)
 
 ########################

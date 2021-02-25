@@ -30,8 +30,8 @@ data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
 #       geom_line(data=dyn,aes(date,CO2_tiefe7,col="tiefe 7"))+xlim(ymd_h(c("2021.02.11 0","2021.02.15 15")))
 
 ggplot()+
-      geom_line(data=data,aes(date,CO2,col=as.factor(tiefe)))#  +
-      geom_vline(xintercept = ymd_h("2021.02.17 09"))
+      geom_line(data=data,aes(date,CO2,col=as.factor(tiefe)))  +
+      geom_vline(xintercept = ymd_h("2021.02.24 09"))
 
 
 range(data$CO2,na.rm = T)
