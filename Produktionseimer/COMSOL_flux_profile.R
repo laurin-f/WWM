@@ -36,6 +36,8 @@ data_agg[,paste0("prod_",1:3,"_mol_m2_s")] <- data_agg[,paste0("prod_",1:3,"_mum
 
 
 comsol_ls <- vector("list",length(unique(data_agg$ID)))
+i<-16
+##################################
 for(i in unique(data_agg$ID)){
 input_pars_i <-data_agg %>% 
   ungroup()  %>%
@@ -65,13 +67,23 @@ comsol$tiefe <- comsol$z - 40
 comsol$flux_mumol <- comsol$flux * 10^6
 comsol$treat <- as.character(factor(comsol$ID,levels=data_agg$ID,labels = data_agg$treat))
 
+save(comsol,file=paste0(aufbereitetpfad_prod,"comsol.RData"))
+
+
+
+#######################################
+#       PLOTS                         #
+#######################################
+
 prod_df$tiefe[prod_df$tiefe == "30"] <- "40"
 
 ggplot()+
-  geom_line(data=subset(comsol),aes(flux_mumol,tiefe,col=as.factor(ID),linetype="comsol"),orientation = "y")+
+  geom_line(data=subset(comsol),aes(flux_mumol,tiefe,col=as.factor(ID),linetype="3D COMSOL"),orientation = "y")+
   geom_point(data=subset(data_agg2),aes(as.numeric(Fz),prod_tiefe,col=as.factor(ID)))+
-  geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col=as.factor(ID),linetype="theory"),orientation = "y")+
+  geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col=as.factor(ID),linetype="1D"),orientation = "y")+
   facet_wrap(~treat)+
+  scale_linetype_manual(values=2:1)+
+  labs(x=expression(F[CO2]*" ["~mu*"mol m"^{-2}*s^{-1}*"]"),y="depth [cm]",col="Meas ID",linetype="")+
   ggsave(paste0(plotpfad_prod,"Flux_profil_comsol.png"),width=9,height=7)
 
 ggplot()+

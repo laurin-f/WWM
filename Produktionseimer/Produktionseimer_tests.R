@@ -176,10 +176,10 @@ ggplot()+
 
 ###############
 #produktion timeline
-# ggplot(data)+
-#   geom_line(aes(date,prod_1_ml_min,col="prod_1"))+
-#   geom_line(aes(date,prod_2_ml_min,col="prod_2"))+
-#   geom_line(aes(date,prod_3_ml_min,col="prod_3"))
+ggplot(data)+
+  geom_line(aes(date,prod_1_ml_min,col="prod_1"))+
+  geom_line(aes(date,prod_2_ml_min,col="prod_2"))+
+  geom_line(aes(date,prod_3_ml_min,col="prod_3"))
 
 ########################
 #timelines einzelmessungen
@@ -205,8 +205,8 @@ ggplot(data_agg)+
   facet_wrap(~paste("treatment:",treat))+
   #guides(col = guide_legend(override.aes = list(shape=c(16,1,NA),linetype=c(rep("blank",2),"solid"))))+
   #labels(x=expression("Fz ["*"mu"*"mol m"^{-3}*s^{-1}))+
-  labs(x=expression("Fz ["~mu*"mol m"^{-2}*s^{-1}*"]"),y="tiefe [cm]",col="")+
-  ggsave(paste0(plotpfad_prod,"Produktionsprofile.png"),width=9,height=7)
+  labs(x=expression(F[CO2]~"["~mu*"mol m"^{-2}*s^{-1}*"]"),y="tiefe [cm]",col="")+
+  ggsave(paste0(plotpfad_prod,"Flux_profile_1D.png"),width=9,height=7)
 
 ########################
 #Prod Tiefenprofile

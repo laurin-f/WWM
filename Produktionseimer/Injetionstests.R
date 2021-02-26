@@ -33,6 +33,7 @@ datelim_ls[[14]] <- ymd_h(c("2021.02.23 08","2021.02.23 09"))
 datelim_ls[[15]] <- ymd_h(c("2021.02.24 10","2021.02.24 12"))
 datelim_ls[[16]] <- ymd_h(c("2021.02.25 07","2021.02.25 08"))
 datelim_ls[[17]] <- ymd_h(c("2021.02.25 09","2021.02.25 10"))
+datelim_ls[[18]] <- ymd_h(c("2021.02.26 09","2021.02.26 10"))
 
 Pumpstufen_ls <- list()
 Pumpstufen_ls[[1]] <- c(paste0("Tiefe=",c(1,1,1,2,2,2,3,3),"PSt=1.5"),"tracer")
@@ -51,7 +52,8 @@ Pumpstufen_ls[[13]] <- c(paste0("Tiefe",c(1,2,3),"PSt=3"))
 Pumpstufen_ls[[14]] <- c(paste0("Tiefe",c("1u3",2),"PSt=3"))
 Pumpstufen_ls[[15]] <- c(paste0("Tiefe",c("3","test","test2","test3",2),"PSt=3"))
 Pumpstufen_ls[[16]] <- c(paste0("Tiefe",c(3),"PSt=3"))
-Pumpstufen_ls[[17]] <- c(paste0("Tiefe",c(3,2),"PSt=3"))
+Pumpstufen_ls[[17]] <- c(paste0("Tiefe",c(3,1),"PSt=3"))
+Pumpstufen_ls[[18]] <- c(paste0("Tiefe",c(1,3),"PSt=3"))
 
 injection_ls_file <- paste0(metapfad_prod,"injection_list.RData")
 injection_file <- paste0(metapfad_prod,"injection_rates.txt")
@@ -62,6 +64,7 @@ if(file.exists(injection_ls_file)){
 }else{
   list_old <- NULL
 }
+
 #injectionrate should be > 0.26 ml/min
 grundflaeche <- 15^2*pi
 

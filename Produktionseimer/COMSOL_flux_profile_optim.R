@@ -13,6 +13,7 @@ aufbereitetpfad_prod<- paste0(hauptpfad,"Daten/aufbereiteteDaten/Produktionseime
 plotpfad_prod <- paste0(hauptpfad,"Dokumentation/Berichte/plots/produktionseimer/")
 
 load(file=paste0(aufbereitetpfad_prod,"data_agg.RData"))
+load(file=paste0(aufbereitetpfad_prod,"comsol.RData"))
 
 
 meas_depths_2 <- seq(0,40,0.5)
@@ -46,7 +47,7 @@ for(i in unique(data_agg$ID)){
   file_i <- paste0("CO2_flux_prod_optim",i,".txt")
   comsol_exe(model="Produktionseimer_optim",outfile_new = file_i,outfile_raw = "CO2_flux_prod_optim.txt",job="b2"
 ####################################             
-             ,overwrite = T)
+             ,overwrite = F)
 ####################################
   comsol_opt_ls[[i]] <- read.csv(paste0(comsolpfad,file_i),skip=9,sep="",header=F)
   colnames(comsol_opt_ls[[i]]) <- c("r","z","c","flux",paste0("prod_",1:3),"CO2_atm")
@@ -74,15 +75,26 @@ prod_meas <- data_agg %>%
   summarise_at(vars(matches("prod")),mean) %>% 
   tidyr::pivot_longer(matches("prod"),names_pattern = "prod_(\\d)",names_to="tiefenstufe",values_to="prod")
 
+prod_comsol_2 <- prod_comsol %>% rename(prod = prod_comsol) %>% mutate(method = "mod")
+prod_meas_2 <- prod_meas %>% mutate(method = "inj") 
+
 prod <- merge(prod_comsol,prod_meas)
+prod_long <- rbind(prod_meas_2,prod_comsol_2)
+
 prod$tiefenstufe <- as.numeric(prod$tiefenstufe)
 
 prod_df$tiefe[prod_df$tiefe == "30"] <- "40"
 
-############################
+
+###############################################
+#                PLOTS                        #
+###############################################
+
+###############################################
 #flux
 ggplot()+
-  geom_line(data=subset(comsol_opt),aes(flux_mumol,tiefe,col=as.factor(ID),linetype="comsol"),orientation = "y")+
+  geom_line(data=subset(comsol),aes(flux_mumol,tiefe,col=as.factor(ID),linetype="comsol"),orientation = "y")+
+  geom_line(data=subset(comsol_opt),aes(flux_mumol,tiefe,col=as.factor(ID),linetype="comsol_opt"),orientation = "y")+
   geom_point(data=subset(data_agg2),aes(as.numeric(Fz),prod_tiefe,col=as.factor(ID)))+
   geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col=as.factor(ID),linetype="theory"),orientation = "y")+
   facet_wrap(~treat)+
@@ -95,6 +107,7 @@ ggplot()+
   geom_line(data=subset(comsol),aes(ppm_to_mol(c,unit_in = "mol/m^3"),tiefe,col=as.factor(ID),linetype="comsol"),orientation = "y")+
   geom_point(data=subset(data_agg),aes(CO2,tiefe,col=as.factor(ID)))+
   facet_wrap(~treat,scales = "free")+
+  labs(x=expression(CO[2]~"[ppm]"),y="depth [cm]")+
   ggsave(paste0(plotpfad_prod,"CO2_profil_comsol_optim.png"),width=9,height=7)
 
 
@@ -113,7 +126,7 @@ ggplot(prod)+
   labs(x=expression("P ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefenstufe",col="")+
   ggsave(paste0(plotpfad_prod,"Produktion_comsol.png"),width=9,height=7)
 
-prod$ID
+
 ggplot(prod)+
   geom_col(aes(x=prod_comsol,y=as.factor(ID),fill=as.factor(tiefenstufe),col="mod"),alpha=0.5,orientation="y",width = 0.4)+
   geom_col(aes(x=prod,y=as.factor(ID+0.5),fill=as.factor(tiefenstufe),col="meas"),alpha=0.5,orientation="y",width = 0.4)+
@@ -126,7 +139,30 @@ ggplot(prod)+
   #ylim(c("3","2","1"))+
   facet_wrap(~treat,scales="free_y")+
   labs(x=expression("P ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefenstufe",col="")#+
-  #ggsave(paste0(plotpfad_prod,"Produktion_comsol.png"),width=9,height=7)
+
+
+ggplot(subset(prod_long))+
+  geom_col(aes(x=method,y=prod,fill=as.factor(tiefenstufe),col=method),orientation="x",width = 0.4)+
+  scale_color_manual(values=c(1,NA))+
+  facet_wrap(~ ID,scales = "free")+
+  labs(y=expression("P ["~mu*"mol m"^{-2}*s^{-1}*"]"),y="",col="")#+
+
+ggplot(subset(prod_long,ID %in% c(1,4,5,6,7,13,16)))+
+  geom_col(aes(x=method,y=prod,fill=as.factor(tiefenstufe),col=method),orientation="x",width = 0.4)+
+  scale_color_manual(values=c(1,NA))+
+  facet_grid(. ~ treat)+
+  labs(y=expression(P[CO2]*" ["~mu*"mol m"^{-2}*s^{-1}*"]"),x="",fill="depth level",col="method")+
+  guides(col=guide_legend(override.aes = list(fill=NA)))+
+  ggsave(paste0(plotpfad_prod,"Produktion_comsol.png"),width=9,height=4) 
+
+ggplot(subset(prod_long,!ID %in% c(1,4,5,6,7,13,14,16)))+
+  geom_col(aes(x=method,y=prod,fill=as.factor(tiefenstufe),col=method),orientation="x",width = 0.4)+
+  scale_color_manual(values=c(1,NA))+
+  facet_grid(. ~ treat)+
+  labs(y=expression(P[CO2]*" ["~mu*"mol m"^{-2}*s^{-1}*"]"),x="",fill="depth level",col="method")+
+  guides(col=guide_legend(override.aes = list(fill=NA)))+
+  ggsave(paste0(plotpfad_prod,"Produktion_comsol_replicates.png"),width=9,height=4) 
+
 
 
 ggplot(prod)+
@@ -139,3 +175,15 @@ ggplot(prod)+
 
 data_agg2$tiefenstufe <- data_agg2$prod_tiefe / -7
 ggplot(prod)+geom_point(aes(prod_comsol,prod))
+
+prod_agg <- prod %>% group_by(ID) %>% summarise_at(vars(matches("prod")),mean)
+ggplot(prod)+
+  geom_point(aes(prod_comsol,prod,col=as.factor(tiefenstufe)))+geom_abline(slope=1)+
+  ggnewscale::new_scale_color()+
+  geom_point(data=prod_agg,aes(prod_comsol,prod,col="sum"))+
+  scale_color_manual(values=1)+
+  #r2 label
+  ggsave(paste0(plotpfad_prod,"prod_mod_obs.png"),width=9,height=7)
+
+R2(prod$prod,prod$prod_comsol)
+R2(prod_agg$prod,prod_agg$prod_comsol)
