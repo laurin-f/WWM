@@ -11,8 +11,11 @@ metapfad_prod<- paste0(hauptpfad,"Daten/Metadaten/Produktionseimer/")
 metapfad_comsol<- paste0(hauptpfad,"Daten/Metadaten/COMSOL/")
 aufbereitetpfad_prod<- paste0(hauptpfad,"Daten/aufbereiteteDaten/Produktionseimer/")
 plotpfad_prod <- paste0(hauptpfad,"Dokumentation/Berichte/plots/produktionseimer/")
+comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 
-load(file=paste0(aufbereitetpfad_prod,"data_agg.RData"))
+#cal <- "_new_cal"
+cal <- ""
+load(file=paste0(aufbereitetpfad_prod,"data_agg",cal,".RData"))
 load(file=paste0(aufbereitetpfad_prod,"comsol.RData"))
 
 
@@ -44,8 +47,11 @@ for(i in unique(data_agg$ID)){
     write.table(sub_i[sub_i$tiefe == (1:7*-3.5)[j],"CO2_mol_per_m3"],paste0(metapfad_comsol,"dom",j,".csv"),col.names = F,row.names = F,sep=",")
   }
   
-  file_i <- paste0("CO2_flux_prod_optim",i,".txt")
-  comsol_exe(model="Produktionseimer_optim",outfile_new = file_i,outfile_raw = "CO2_flux_prod_optim.txt",job="b2"
+  DSD0 <- 0.26
+  DS <- DSD0 * D0_T_p(T_C=mean(sub_i$temp,na.rm = T),unit = "m^2/s")
+  file_i <- paste0("CO2_flux_prod_optim_DSD0=",DSD0,"_ID=",i,cal,".txt")
+  names(DS) <- "DS"
+  comsol_exe(model="Produktionseimer_optim",input_pars = DS,outfile_new = file_i,outfile_raw = "CO2_flux_prod_optim.txt",job="b2"
 ####################################             
              ,overwrite = F)
 ####################################
@@ -54,15 +60,13 @@ for(i in unique(data_agg$ID)){
   comsol_opt_ls[[i]]$ID <- i
 }
 
-
-
 comsol_opt <- do.call(rbind,comsol_opt_ls)
 
 comsol_opt$tiefe <- comsol_opt$z - 40
 comsol_opt$flux_mumol <- comsol_opt$flux * 10^6
 comsol_opt$treat <- as.character(factor(comsol_opt$ID,levels=data_agg$ID,labels = data_agg$treat))
 comsol_opt[,paste0("prod_mumol_",1:3)] <- comsol_opt[,paste0("prod_",1:3)] * 10^6 / change_unit(rep(grundflaeche,each=nrow(data_agg)),unit_out = "m^2") * rep(A,each=nrow(comsol_opt))
-
+  
 prod_comsol <- comsol_opt %>% 
   group_by(ID,treat) %>% 
   select(matches("prod_mumol")) %>% 
@@ -98,7 +102,7 @@ ggplot()+
   geom_point(data=subset(data_agg2),aes(as.numeric(Fz),prod_tiefe,col=as.factor(ID)))+
   geom_line(data=prod_df,aes(Fz,-as.numeric(tiefe),col=as.factor(ID),linetype="theory"),orientation = "y")+
   facet_wrap(~treat)+
-  ggsave(paste0(plotpfad_prod,"Flux_profil_comsol_optim.png"),width=9,height=7)
+  ggsave(paste0(plotpfad_prod,"Flux_profil_comsol_optim",cal,".png"),width=9,height=7)
 
 ##############################
 #CO2
@@ -108,37 +112,11 @@ ggplot()+
   geom_point(data=subset(data_agg),aes(CO2,tiefe,col=as.factor(ID)))+
   facet_wrap(~treat,scales = "free")+
   labs(x=expression(CO[2]~"[ppm]"),y="depth [cm]")+
-  ggsave(paste0(plotpfad_prod,"CO2_profil_comsol_optim.png"),width=9,height=7)
+  ggsave(paste0(plotpfad_prod,"CO2_profil_comsol_optim",cal,".png"),width=9,height=7)
 
 
 ###################
 #prod
-ggplot(prod)+
-  geom_col(aes(x=prod_comsol,y=as.character(tiefenstufe),fill=as.factor(ID),col="mod"),alpha=0.2,orientation="y",position="dodge")+
-  geom_col(aes(x=prod,y=as.character(tiefenstufe),fill=as.factor(ID),col="meas"),alpha=0.3,orientation="y",position="dodge")+
-  scale_color_manual(values=c(1,2))+
-  # ggnewscale::new_scale_color()+
-  # geom_point(aes(x=prod_comsol,y=tiefenstufe,col=as.factor(ID)),shape="|",size=3,position=ggstance::position_dodgev(height=0.75))+
-  # scale_color_manual(values=rep(2,length(unique(prod$ID))))+
-  #scale_color_manual(values=c(1,NA))+
-  ylim(c("3","2","1"))+
-  facet_wrap(~treat)+
-  labs(x=expression("P ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefenstufe",col="")+
-  ggsave(paste0(plotpfad_prod,"Produktion_comsol.png"),width=9,height=7)
-
-
-ggplot(prod)+
-  geom_col(aes(x=prod_comsol,y=as.factor(ID),fill=as.factor(tiefenstufe),col="mod"),alpha=0.5,orientation="y",width = 0.4)+
-  geom_col(aes(x=prod,y=as.factor(ID+0.5),fill=as.factor(tiefenstufe),col="meas"),alpha=0.5,orientation="y",width = 0.4)+
-  #geom_col(aes(x=prod,y=as.character(tiefenstufe),fill=as.factor(ID),col="meas"),alpha=0.3,orientation="y",position="dodge")+
-  scale_color_manual(values=c(1,2))+
-  # ggnewscale::new_scale_color()+
-  # geom_point(aes(x=prod_comsol,y=tiefenstufe,col=as.factor(ID)),shape="|",size=3,position=ggstance::position_dodgev(height=0.75))+
-  # scale_color_manual(values=rep(2,length(unique(prod$ID))))+
-  #scale_color_manual(values=c(1,NA))+
-  #ylim(c("3","2","1"))+
-  facet_wrap(~treat,scales="free_y")+
-  labs(x=expression("P ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefenstufe",col="")#+
 
 
 ggplot(subset(prod_long))+
@@ -147,43 +125,51 @@ ggplot(subset(prod_long))+
   facet_wrap(~ ID,scales = "free")+
   labs(y=expression("P ["~mu*"mol m"^{-2}*s^{-1}*"]"),y="",col="")#+
 
-ggplot(subset(prod_long,ID %in% c(1,4,5,6,7,13,16)))+
+prod_barplt <- ggplot(subset(prod_long,ID %in% c(1,4,5,6,7,13,16)))+
   geom_col(aes(x=method,y=prod,fill=as.factor(tiefenstufe),col=method),orientation="x",width = 0.4)+
   scale_color_manual(values=c(1,NA))+
   facet_grid(. ~ treat)+
   labs(y=expression(P[CO2]*" ["~mu*"mol m"^{-2}*s^{-1}*"]"),x="",fill="depth level",col="method")+
   guides(col=guide_legend(override.aes = list(fill=NA)))+
-  ggsave(paste0(plotpfad_prod,"Produktion_comsol.png"),width=9,height=4) 
+  ggsave(paste0(plotpfad_prod,"Produktion_comsol",cal,".png"),width=9,height=4) 
 
-ggplot(subset(prod_long,!ID %in% c(1,4,5,6,7,13,14,16)))+
+ggplot(subset(prod_long,!ID %in% c(1,4,5,6,7,13,14,16,17)))+
   geom_col(aes(x=method,y=prod,fill=as.factor(tiefenstufe),col=method),orientation="x",width = 0.4)+
   scale_color_manual(values=c(1,NA))+
   facet_grid(. ~ treat)+
   labs(y=expression(P[CO2]*" ["~mu*"mol m"^{-2}*s^{-1}*"]"),x="",fill="depth level",col="method")+
   guides(col=guide_legend(override.aes = list(fill=NA)))+
-  ggsave(paste0(plotpfad_prod,"Produktion_comsol_replicates.png"),width=9,height=4) 
+  ggsave(paste0(plotpfad_prod,"Produktion_comsol_replicates",cal,".png"),width=9,height=4) 
 
 
 
-ggplot(prod)+
-  geom_line(aes(prod_comsol,tiefenstufe,col=as.factor(ID),linetype="comsol"),orientation="y")+
- geom_line(aes(prod,tiefenstufe,col=as.factor(ID),linetype="theory"),orientation = "y")+
-# geom_line(data=data_agg2,aes(P,tiefenstufe,col=as.factor(ID),linetype="agg2"),orientation = "y")+
-# geom_line(data=data_agg,aes(P,tiefe/-7,col=as.factor(ID),linetype="agg"),orientation = "y")+
-  facet_wrap(~treat)+
-  labs(x=expression("P ["~mu*"mol m"^{-3}*s^{-1}*"]"),y="tiefenstufe",col="")
 
-data_agg2$tiefenstufe <- data_agg2$prod_tiefe / -7
-ggplot(prod)+geom_point(aes(prod_comsol,prod))
 
-prod_agg <- prod %>% group_by(ID) %>% summarise_at(vars(matches("prod")),mean)
-ggplot(prod)+
-  geom_point(aes(prod_comsol,prod,col=as.factor(tiefenstufe)))+geom_abline(slope=1)+
+
+prod_agg <- prod %>% group_by(ID) %>% summarise_at(vars(matches("prod")),sum)
+R2_depths <- prod %>% group_by(tiefenstufe) %>% summarise(R2=R2(prod,prod_comsol))
+R2_tiefen <- R2(prod$prod,prod$prod_comsol)
+R2_ges <- R2(prod_agg$prod,prod_agg$prod_comsol)
+
+mod_obs <- ggplot(prod)+
+  geom_point(data=prod_agg,aes(prod_comsol,prod,col=""))+
+  scale_color_manual(expression(P[CO2]~"total"),values=1)+
   ggnewscale::new_scale_color()+
-  geom_point(data=prod_agg,aes(prod_comsol,prod,col="sum"))+
-  scale_color_manual(values=1)+
+  geom_point(aes(prod_comsol,prod,col=as.factor(tiefenstufe)))+geom_abline(slope=1)+
+  guides(col=F)+
+  annotate("text",x=0,y=3,label=paste("R² depths",round(R2_tiefen,2),"\nR² total",round(R2_ges,2)),hjust=0)+
+  labs(y=expression(P[CO2]*"inj ["~mu*"mol m"^{-2}*s^{-1}*"]"),x=expression(P[CO2]*"mod ["~mu*"mol m"^{-2}*s^{-1}*"]"))+
   #r2 label
-  ggsave(paste0(plotpfad_prod,"prod_mod_obs.png"),width=9,height=7)
+  ggsave(paste0(plotpfad_prod,"prod_mod_obs",cal,".png"),width=9,height=7)
 
-R2(prod$prod,prod$prod_comsol)
-R2(prod_agg$prod,prod_agg$prod_comsol)
+
+leg1 <- ggpubr::get_legend(mod_obs)
+legend1 <- ggpubr::as_ggplot(leg1)
+leg2 <- ggpubr::get_legend(prod_barplt)
+legend2 <- ggpubr::as_ggplot(leg2)
+leg <- ggpubr::ggarrange(legend2,legend1,ncol=1,heights = c(1,1),align = "v")
+
+prod_mod_obs_no_leg <- egg::ggarrange(prod_barplt+theme(legend.position = "none"),mod_obs+theme(legend.position = "none"),widths = c(5,1),draw=F)
+ggpubr::ggarrange(prod_mod_obs_no_leg,leg,widths=c(10,1))+ggsave(paste0(plotpfad_prod,"prod_barplt_mod_obs",cal,".png"),width=11,height=4)
+
+#ggpubr::ggarrange(prod_barplt,mod_obs,widths=c(3,1),common.legend = T,legend = "right")+ggsave(paste0(plotpfad_prod,"prod_barplt_mod_obs",cal,".png"),width=11,height=4)

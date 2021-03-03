@@ -9,6 +9,7 @@ datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_prod<- paste0(hauptpfad,"Daten/Metadaten/Produktionseimer/")
 aufbereitetpfad_prod<- paste0(hauptpfad,"Daten/aufbereiteteDaten/Produktionseimer/")
+comsolpfad<- paste0(hauptpfad,"Daten/aufbereiteteDaten/COMSOL/")
 
 load(file=paste0(aufbereitetpfad_prod,"data_agg.RData"))
 

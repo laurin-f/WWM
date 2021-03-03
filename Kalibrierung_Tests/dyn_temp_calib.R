@@ -4,7 +4,8 @@ packages<-c("lubridate","stringr","ggplot2")
 check.packages(packages)
 
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
-metapfad<- paste0(hauptpfad,"Daten/Metadaten/Dynament/")
+metapfad_dyn<- paste0(hauptpfad,"Daten/Metadaten/Dynament/")
+codepfad<- paste0(hauptpfad,"Programme/Eigenentwicklung/RData/")
 
 ###################################################
 #Daten laden
@@ -18,7 +19,7 @@ sampler <- "sampler3"
 
 #db funktion
 
-data<-read_sampler(sampler,"wide",datelim)
+data<-read_sampler("sampler3_raw","wide",datelim,korrektur_dyn=F)
 
 data$temp_mean <- apply(data[,grep("temp",colnames(data))],1,mean,na.rm=F) #%>% 
 
@@ -33,11 +34,11 @@ ggplot(data_long)+geom_point(aes(temp,temp_mean,col=tiefe))
 
 tiefen <- 1:7
 #listen für regression und Koeffizienten anlegen
-fm<-vector("list",length(tiefen))
+offset<-vector("list",length(tiefen))
 
 for (i in tiefen) {
   sub <- subset(data_long,tiefe == tiefen[i])
-  fm[[i]] <- mean(sub$temp_mean - sub$temp,na.rm=T)
+  offset[[i]] <- mean(sub$temp_mean - sub$temp,na.rm=T)
   #fm[[i]] <- glm(temp_mean~temp,data = subset(data_long,tiefe == tiefen[i]))
   #Werte vorhersagen
   korrs<-data_long$temp[data_long$tiefe==tiefen[i]] + offset[[i]]
@@ -49,16 +50,17 @@ for (i in tiefen) {
 ggplot(data_long)+
   geom_point(aes(date,temp,col=tiefe))+
   geom_line(aes(date,temp_korr,col=tiefe))
-names(fm)<-paste0("temp_tiefe",tiefen,"_",sampler)
+names(offset)<-paste0("temp_tiefe",tiefen,"_",sampler)
 
 #falls es schon korrekturfaktoren gibt diese
 if(file.exists(paste0(metapfad,"korrektur_fm.RData"))){
-  fm_neu<-fm
-  load(paste0(metapfad,"korrektur_fm.RData"),envir = .GlobalEnv)
-  fm[names(fm_neu)] <- fm_neu
+  load(paste0(metapfad_dyn,"korrektur_fm.RData"),envir = .GlobalEnv)
+  fm[names(offset)] <- offset
 }
 names(fm)
 
 #korrektur fms speichern
-#save(fm,file=paste0(metapfad,"korrektur_fm.RData"))
+#save(fm,file=paste0(metapfad_dyn,"korrektur_fm.RData"))
+#save(fm,file=paste0(codepfad,"korrektur_fm_backup.RData"))
+
 

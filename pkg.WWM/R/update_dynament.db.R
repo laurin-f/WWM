@@ -12,7 +12,7 @@
 #' @examples update_dynament.db("dynament_test")
 update_dynament.db<-function(table.name="dynament_test"){
 
-  if(table.name == "sampler3"){
+  if(grepl("sampler3",table.name)){
     file_pattern <- ".TXT"
     path <- arduinopfad
   }else{
@@ -38,7 +38,7 @@ update_dynament.db<-function(table.name="dynament_test"){
   if(length(files.new)>0){
     print(paste("loading",length(files.new),"files"))
     #neue files laden
-    if(table.name == "sampler3"){
+    if(grepl("sampler3",table.name)){
       dyn.list <- lapply(paste0(path,files.new),read.csv,sep=";",stringsAsFactors = F,na.strings = c("NA","ovf","0.00","-0.00","-250.00"))
 
 
@@ -55,6 +55,7 @@ update_dynament.db<-function(table.name="dynament_test"){
       dyn$date <- as.numeric(lubridate::ymd_hms(dyn$date))
       colnames(dyn) <- stringr::str_replace(colnames(dyn),"date","date_int")
 
+      if(!grepl("raw",table.name)){
       load(paste0(metapfad_dyn,"korrektur_fm.RData"))#,envir = .GlobalEnv)
       names(fm) <- stringr::str_replace(names(fm),"_sampler3","")
       same.names <- names(fm)[names(fm) %in% colnames(dyn)]
@@ -71,6 +72,7 @@ update_dynament.db<-function(table.name="dynament_test"){
             predict(fm[[x]],newdata=new_df)
             }
           })
+      }
     }else{
       #if table.name != "sampler3"
       dyn.list<-lapply(paste0(path,files.new), read.csv,skip=1,stringsAsFactors=F)

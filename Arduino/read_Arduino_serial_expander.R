@@ -8,8 +8,9 @@ datapfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten
 plotpfad_prod <- paste0(hauptpfad,"Dokumentation/Berichte/plots/produktionseimer/")
 
 
-datelim <- ymd_h(c("2021-02-22-11"))
+datelim <- ymd_h(c("2021-03-02-11"))
 data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
+data_raw <- read_sampler(table.name = "sampler3_raw","long",datelim=datelim)
 #gga <- read_db(db.name="GGA.db",table.name = "micro",datelim=datelim)
 
 # files.new <- list.files(arduinopfad,".TXT",full.names = T)
@@ -30,7 +31,10 @@ data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
 #       geom_line(data=dyn,aes(date,CO2_tiefe7,col="tiefe 7"))+xlim(ymd_h(c("2021.02.11 0","2021.02.15 15")))
 
 ggplot()+
-      geom_line(data=data,aes(date,CO2,col=as.factor(tiefe)))  +
+      geom_line(data=data_raw,aes(date,CO2,col=as.factor(tiefe))) # +ylim(c(300,900))
+
+ggplot()+
+      geom_line(data=data,aes(date,CO2,col=as.factor(tiefe)))+ylim(c(300,900))  #+
       geom_vline(xintercept = ymd_h("2021.02.24 09"))
 
 

@@ -68,9 +68,12 @@ read_db <- function(db.name="dynament.db", #name der db
   data<-data[,na.cols]
 
   #wenn bei dynament.db die tabelle dynament_test ausgewählt ist können die korrektur_faktoren angewandt werden
-  if(db.name=="dynament.db" & table.name == "dynament_test" & korrektur_dyn==T){
+  if(db.name=="dynament.db" & table.name %in% c("dynament_test","sampler3_raw") & korrektur_dyn==T){
     #RData mit Korrekturfaktoren laden
     load(paste0(metapath,"korrektur_fm.RData"))
+    if(table.name == "sampler3_raw"){
+    names(fm) <- stringr::str_replace(names(fm),"_sampler3","")
+    }
     #Vektor mit namen die sowohl bei den Korekturfaktoren als auch im Data.frame vorkommen
     same.names <- names(fm)[names(fm) %in% colnames(data)]
     #Sensor nummern für die noch kein Korrekturfaktor vorliegt
@@ -81,7 +84,18 @@ read_db <- function(db.name="dynament.db", #name der db
 
     #Kalibrierfunktion anwenden
     data[same.names] <-
-      sapply(same.names,function(x) predict(fm[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
+      sapply(same.names,function(x){
+        if(is.numeric(fm[[x]])){
+          data[,x] + fm[[x]]
+        }else{
+          varname <- names(fm[[x]]$coefficients[2])
+          new_df <- data[x]
+          names(new_df) <- varname
+          predict(fm[[x]],newdata=new_df)
+        }
+      })
+    # data[same.names] <-
+    #   sapply(same.names,function(x) predict(fm[[x]],newdata=data.frame(CO2_Dyn=data[[x]])))
   }#ende if korrektur
   return(data)
 }#ende function

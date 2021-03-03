@@ -20,7 +20,7 @@ read_sampler <- function(table.name="sampler1u2",format="long", ...){
   if(nrow(data_wide) == 0){
     stop("no data in datelim")
   }
-  if(table.name == "sampler3"){
+  if(grepl("sampler3",table.name)){
     temp_cols <- grep("temp",colnames(data_wide))
 
     data_roll <- sapply(data_wide[,temp_cols],zoo::rollapply,5,mean,fill=NA)

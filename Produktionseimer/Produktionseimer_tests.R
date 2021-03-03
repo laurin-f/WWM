@@ -24,8 +24,11 @@ Pumpzeiten$ende[is.na(Pumpzeiten$ende)] <- Pumpzeiten$start[which(is.na(Pumpzeit
 injection_rates <- read.csv(paste0(metapfad_prod,"injection_rates.txt"))
 injection_rates$date <- ymd_hms(injection_rates$date)
 
-datelim <- min(Pumpzeiten$start,na.rm = T)
-data <- read_sampler(table.name = "sampler3","long",datelim=datelim)
+datelim <- c(min(Pumpzeiten$start,na.rm = T),max(Pumpzeiten$ende))
+
+data <- read_sampler(table.name = "sampler3","long",datelim=datelim,korrektur_dyn=T)
+
+
 data$date <- round_date(data$date,unit = "minute")
 #intervalle die am anfang und am ende der Pumpversuche verweorfen werden
 sec_bis_steadystate <- rep(10,nrow(Pumpzeiten))*3600
@@ -93,6 +96,7 @@ data[,paste0("prod_",i,"_mumol_m2_s")] <- change_unit(prod_mol_mm2_s,unit_out = 
 save(data,file=paste0(aufbereitetpfad_prod,"data_prod_eimer.RData"))
 load(file=paste0(aufbereitetpfad_prod,"Comsol_out.RData"))
 
+DSD0 <- 0.26
 
 ##############################
 #data_agg
@@ -156,7 +160,8 @@ prod_tot <- prod_df %>%
   
 ######################
 
-save(data_agg,prod_df,file=paste0(aufbereitetpfad_prod,"data_agg.RData"))
+#save(data_agg,data_agg2,prod_df,file=paste0(aufbereitetpfad_prod,"data_agg_new_cal.RData"))
+#save(data_agg,data_agg2,prod_df,file=paste0(aufbereitetpfad_prod,"data_agg.RData"))
 
 ###############################################
 #       PLOTS                                 #
@@ -183,7 +188,9 @@ ggplot(data)+
 
 ########################
 #timelines einzelmessungen
-ggplot(subset(data,!is.na(ID)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))+facet_wrap(~ID,scales="free")
+
+ggplot(subset(data,!is.na(ID)))+geom_line(aes(date,CO2,col=as.factor(tiefe)))+facet_wrap(~ID,scales="free")+
+  ggsave(paste0(plotpfad_prod,"CO2_einzelmessungen_new_cal.png"),width=11,height=7)
 
 ###############
 #total Produktion
@@ -206,7 +213,7 @@ ggplot(data_agg)+
   #guides(col = guide_legend(override.aes = list(shape=c(16,1,NA),linetype=c(rep("blank",2),"solid"))))+
   #labels(x=expression("Fz ["*"mu"*"mol m"^{-3}*s^{-1}))+
   labs(x=expression(F[CO2]~"["~mu*"mol m"^{-2}*s^{-1}*"]"),y="tiefe [cm]",col="")+
-  ggsave(paste0(plotpfad_prod,"Flux_profile_1D.png"),width=9,height=7)
+  ggsave(paste0(plotpfad_prod,"Flux_profile_1D_new_korr_fac.png"),width=9,height=7)
 
 ########################
 #Prod Tiefenprofile
