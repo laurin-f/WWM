@@ -156,7 +156,7 @@ respi_long$source <- str_remove(respi_long$source,"CO2_")
 #############################
 #Datensatz speichern
 data_agg$CO2_mol_per_m3 <- ppm_to_mol(data_agg$CO2)
-save(data_agg,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
+#save(data_agg,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 ##################
 #plots
 
@@ -194,7 +194,7 @@ ggplot(subset(plt_data,period %in% period_x))+
   scale_fill_manual(values = alpha("red",sort(Pumpzeiten_x$Pumpstufe)/5*0.3))+
   geom_vline(data= flux, aes(xintercept =  date),col=2)
 
-
+colnames(data)
 #roll
 ggplot(subset(plt_data,period %in% period_x))+
   geom_rect(data=subset(Pumpzeiten, period == period_x),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf, fill=as.character(Pumpstufe)))+
@@ -212,7 +212,7 @@ adj_grob_size(plt2,plt_data,"1 day",date_labels= "%b %d")
 
 #CO2_rollapply ~ Zeit 
 leave_NAtime_plot(y="CO2_rollapply",col="PSt_Nr",data=data,group="CO2",geom="point",breaks="1 day",date_labels= "%b %d")
-
+unique(data_agg[order(data_agg$Versuch),c("Versuch","ID","material")])
 #CO2 ~ tiefe ohne glm
 ggplot(subset(data,!is.na(Pumpstufe)))+
   geom_point(aes(CO2_rollapply,tiefe,col=PSt_Nr))+labs(col="Pumpstufe Versuch-Nr")
@@ -236,6 +236,18 @@ ggplot()+
 
 col<-scales::hue_pal()
 col(3)[1:2]
+ggplot(subset(respi_wide,Versuch%in%5:6))+
+  geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_respi,y=tiefe,fill="CO2resp"),alpha=0.3)+
+  geom_ribbon(aes(xmin=CO2_respi,xmax=CO2_ges,y=tiefe,fill="CO2total"),alpha=0.3)+
+  geom_line(aes(x=CO2_tracer_calc,y=tiefe,col="CO2tracer"))+
+  labs(fill="", x="", y="depth [cm]")+
+  #scale_fill_manual(values=col(3)[c(1,3)])+
+  xlim(c(min(respi_wide$CO2_atm),max(respi_wide$CO2_ges)))+facet_wrap(~material)
+
+ggplot(respi_wide)+geom_point(aes(CO2_tracer,CO2_tracer_calc))
+R2(respi_wide$CO2_tracer,respi_wide$CO2_tracer_calc)
+RMSE(respi_wide$CO2_tracer,respi_wide$CO2_tracer_calc)
+
 ref<-ggplot(subset(respi_wide,Versuch==5))+
   geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_respi,y=tiefe,fill="reference"))+
   geom_ribbon(aes(xmin=CO2_respi,xmax=CO2_ges,y=tiefe,fill="injection"))+

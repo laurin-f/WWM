@@ -1,3 +1,14 @@
+Hi Martin,
+
+ich habe nochmal weiter in die Detailed comments geschaut. Und weitere Kritik am Vergleich mit Bodenfeuchtemessungen die 20m entfernt sind. Ich bin selber nicht ganz zufrieden mit den Messergebnissen aus Hartheim da ich keine einzige Kammermessung während der Injektionszeiträume habe nur davor und danach und davon leider keine bei der einzigen injektion die ein stabiles tracerprofil geliefert hat.
+
+Was hälst du davon ich Versuche nochmal in meinem Vorgarten ein paar tests dann kann ich mehrere Kammermessungen während der injektion machen die Methansache mal testen (Methan muss a nicht ins Paper aber würde sich dann anbieten). Die Wege wären auf jeden Fall kurz. Ich könnte außerdem mal die SWC Profilsonden testen.
+
+LG
+
+Laurin
+
+
 #pfade definieren
 detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
@@ -24,8 +35,10 @@ load(file=paste0(klimapfad,"klima_data.RData"))
 load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 load(paste0(aufbereitete_ds,"Labor_Vergleich.RData"))
+#aus "plots_COMSOL_out_Hartheim_sweep.R"
 load(paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
 load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
+load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 
 pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
 range1 <- range(data$date[data$Position ==1],na.rm = T)
@@ -54,7 +67,7 @@ dim(img)
 img_plot <- ggdraw()+draw_image(img,height=1,width=2,x=-0.3)#+draw_plot(plot_minimal)
 
 
-
+colnames(data_sub)
 mod_obs_plot <- 
   ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
   #geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+
@@ -201,13 +214,16 @@ dev.off()
 #Figure 7 Ds profile over time
 ######################################
 
-ggplot(subset(soil_agg_plot))+
-  geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range)),alpha=0.15)+
-  geom_line(aes(date,DSD0_PTF,col=as.factor(range),linetype="f(eps)"))+
-  geom_line(data=subset(DS_long_roll, date > pos8_date),aes(date,DSD0_roll,col=range,linetype="in situ"))+
-  geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll2,col=range,linetype="in situ"))+
+DS_long_roll$range2 <- factor(DS_long_roll$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
+soil_agg_plot$range2 <- factor(soil_agg_plot$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
+
+DS_plot <- ggplot(subset(soil_agg_plot))+
+  geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range2)),alpha=0.15)+
+  geom_line(aes(date,DSD0_PTF,col=as.factor(range2),linetype="f(eps)"))+
+  geom_line(data=subset(DS_long_roll, date > pos8_date),aes(date,DSD0_roll,col=range2,linetype="in situ"))+
+  geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
   #geom_line(data=subset(DS_long_roll, Versuch == "1" & id == 1),aes(date,DSD0_roll2,col=range,linetype="in situ"),alpha=0.3)+
-  geom_line(data=subset(DS_long_roll, Versuch == "1" & id != 1),aes(date,DSD0_roll2,col=range,linetype="in situ"))+
+  geom_line(data=subset(DS_long_roll, Versuch == "1" & id != 1),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
   #xlim(range(DS_long$date))+
   scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(DS_long$date))+
@@ -218,6 +234,42 @@ ggplot(subset(soil_agg_plot))+
 ######################################
 #ggplot(subset(F_df,Versuch!="1"))+geom_line(aes(date,Fz_roll2_10_17 / Fz_roll2))
 
+Kammer_flux_agg <- Kammer_flux %>% group_by(day) %>% summarise(CO2flux = mean(CO2flux),CO2flux_max=max(CO2flux_max),CO2flux_min=min(CO2flux_min),date=mean(date))
+
+mindate <- ymd_h("2020-07-06 16")
+flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
+  geom_linerange(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=""))+
+  geom_point(aes(date,CO2flux,col=""))+
+  labs(col="chamber")+
+  scale_color_manual(values=c(1))+
+  ggnewscale::new_scale_color()+
+  geom_line(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
+  geom_ribbon(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(x=date,ymin=R_min,ymax=R_max,fill=""),alpha=0.15)+
+  scale_color_manual("transfer function\n(Maier et al., 2011)",values=grey(0.3))+
+  scale_fill_manual("transfer function\n(Maier et al., 2011)",values=grey(0.3))+
+  ggnewscale::new_scale_color()+
+  #geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.2)+
+  #geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-20 cm"),alpha=0.2)+
+  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll,col="0-10 cm"))+
+  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll_10_17,col="10-20 cm"))+
+  geom_line(data=subset(F_df,Versuch %in% 1:3 & date > mindate),aes(date,Fz_roll_ab20,col="below 20 cm"))+
+  geom_line(data=subset(F_df,Versuch %in% 2) ,aes(date,Fz_roll2,col="0-10 cm"))+
+  geom_line(data=subset(F_df,Versuch %in% 1:2),aes(date,Fz_roll2_10_17,col="10-20 cm"))+
+    #scale_color_brewer("gradient method",type="qual",palette=6)+
+  guides(col=F)+
+  #scale_color_manual("gradient method",values=1:2)+
+  #xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
+  #xlim(range(DS_long$date))+
+  labs(y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
+  geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)
+
+
+flux_plot
+Fig5u6 <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),flux_plot,ncol=1,draw=F)
+jpeg(file=paste0(plotpfad,"Fig5u6.jpg"),width=7,height = 5,units="in",res=300)
+Fig5u6
+dev.off()
 
 ggplot(subset(Kammer_flux,date < ymd_h("2020.07.17 00")))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=kammer),width=10000)+
