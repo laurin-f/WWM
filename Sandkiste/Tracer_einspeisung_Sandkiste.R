@@ -156,9 +156,15 @@ respi_long$source <- str_remove(respi_long$source,"CO2_")
 #############################
 #Datensatz speichern
 data_agg$CO2_mol_per_m3 <- ppm_to_mol(data_agg$CO2)
-#save(data_agg,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
-##################
-#plots
+
+#save(data_agg,respi_wide,file=paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
+
+
+
+
+######################
+# Plots              #
+######################
 
 #CO2 ~ Zeit mit Pumpstufen als rect
 # ggplot(data)+
@@ -236,12 +242,17 @@ ggplot()+
 
 col<-scales::hue_pal()
 col(3)[1:2]
+lims <- c("CO2resp","CO2tracer","CO2total")
 ggplot(subset(respi_wide,Versuch%in%5:6))+
-  geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_respi,y=tiefe,fill="CO2resp"),alpha=0.3)+
-  geom_ribbon(aes(xmin=CO2_respi,xmax=CO2_ges,y=tiefe,fill="CO2total"),alpha=0.3)+
-  geom_line(aes(x=CO2_tracer_calc,y=tiefe,col="CO2tracer"))+
-  labs(fill="", x="", y="depth [cm]")+
-  #scale_fill_manual(values=col(3)[c(1,3)])+
+  geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_respi,y=tiefe,fill="CO2resp"),alpha=0.2)+
+  geom_point(aes(x=CO2_respi,y=tiefe,col="CO2resp"))+
+  geom_ribbon(aes(xmin=CO2_respi,xmax=CO2_ges,y=tiefe,fill="CO2tracer"),alpha=0.3)+
+  geom_point(aes(x=CO2_ges,y=tiefe,col="CO2total"))+
+#  geom_line(aes(x=CO2_tracer_calc,y=tiefe,col="CO2tracer"))+
+  labs(fill="", x="", y="depth [cm]",col="")+
+  guides(col=guide_legend(override.aes = list(shape=c(19,NA,19),fill=c(NA,col(3)[2],NA))))+
+  scale_fill_manual(limits=c(lims),values=col(3)[c(1,2,3)])+
+  scale_color_manual(limits=c(lims),values=col(3)[c(1,2,3)])+
   xlim(c(min(respi_wide$CO2_atm),max(respi_wide$CO2_ges)))+facet_wrap(~material)
 
 ggplot(respi_wide)+geom_point(aes(CO2_tracer,CO2_tracer_calc))

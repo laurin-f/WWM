@@ -164,6 +164,7 @@ ggplot(subset(prod_long,!ID %in% c(1,4,5,6,7,13,14,16,17)))+
 
 prod_agg <- prod %>% group_by(ID) %>% summarise_at(vars(matches("prod")),sum)
 R2_depths <- prod %>% group_by(tiefenstufe) %>% summarise(R2=R2(prod,prod_comsol))
+
 R2_tiefen <- R2(prod$prod,prod$prod_comsol)
 R2_ges <- R2(prod_agg$prod,prod_agg$prod_comsol)
 
@@ -175,9 +176,10 @@ mod_obs <- ggplot(prod)+
   #guides(col=F)+
   scale_color_manual(values=c(cols,1))+
   annotate("text",x=0,y=3,label=paste("R² depths",round(R2_tiefen,2),"\nR² total",round(R2_ges,2)),hjust=0)+
-  labs(y=expression(P[CO2]*"inj ["~mu*"mol m"^{-2}*s^{-1}*"]"),x=expression(P[CO2]*"mod ["~mu*"mol m"^{-2}*s^{-1}*"]"),col="depth")+
+  labs(y=expression("inj ["~mu*"mol m"^{-2}*s^{-1}*"]"),x=expression("mod ["~mu*"mol m"^{-2}*s^{-1}*"]"),col="depth")+
   theme_classic()+
-  ggsave(paste0(plotpfad_prod,"prod_mod_obs",cal,".png"),width=4,height=3)
+  theme(legend.position = "left")+
+  ggsave(paste0(plotpfad_prod,"prod_mod_obs_left",cal,".png"),width=4,height=3)
 
 
 leg1 <- ggpubr::get_legend(mod_obs)

@@ -25,22 +25,25 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 
-data$date_hour <- round_date(data$date,"10 mins")
+data$date_hour <- round_date(data$date,"60 mins")
 mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 
 
 
-DS_anisotrop <- run_comsol(data=data,mod_dates = rev(mod_dates),offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_anisotrop_no_ref <- run_comsol(data=data,mod_dates = rev(mod_dates),offset_method = "no_ref",overwrite = F,plot=F,optim_method = "snopt",read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_anisotrop <- run_comsol(data=data,mod_dates = rev(mod_dates)[1:20],offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
 
 DS_df <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_optim_3DS")
 
+#bei disturbance ist eine 20cm Schicht unter der Sonde als disturbed im Modell (beim einbau) und hat einen höheren DS3 (DS3*30)
 DS_dist <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_disturbance_optim_3DS")
 
 colnames(DS_long)
 DS_long <- tidyr::pivot_longer(DS_df,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 DS_dist_long <- tidyr::pivot_longer(DS_dist,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 DS_anisotrop_long <- tidyr::pivot_longer(DS_anisotrop,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
+DS_anisotrop_long_no_ref <- tidyr::pivot_longer(DS_anisotrop_no_ref,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 
 save(DS_anisotrop_long,DS_anisotrop,file=paste0(comsolpfad,"DS_anisotrop_gam.RData"))
 
@@ -51,7 +54,10 @@ ggplot(DS_long)+
   geom_line(aes(date,DSD0,col=tiefe,linetype="isotrop"))+
   geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="anisotrop"))+ggsave(paste0(plotpfad,"DS_anisotrop.png"),width=5,height=3)
 ggplot()+
-  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="anisotrop"))#+ggsave(paste0(plotpfad,"DS_anisotrop.png"),width=5,height=3)
+  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="gam"))+
+  geom_line(data=DS_anisotrop_long_no_ref,aes(date,DSD0,col=tiefe,linetype="no ref"))#+
+  xlim(range(DS_anisotrop_long_no_ref$date))
+  #ggsave(paste0(plotpfad,"DS_anisotrop.png"),width=5,height=3)
 
 range(DS_anisotrop$DSD03)
 range(DS_df$DSD03)

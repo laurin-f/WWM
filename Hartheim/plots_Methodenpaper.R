@@ -51,10 +51,9 @@ DS_long_roll$DSD0_roll[which(DS_long_roll$date>pos8_date & DS_long_roll$date < (
 
 #anteil FCO2 10-17 an gesamt respiration
 F_2u3 <- subset(F_df,Versuch!="1")
-mean(F_2u3$Fz_roll2_10_17 / F_2u3$Fz_roll2,na.rm=T)
 
 data %>% group_by(Position,Pumpstufe) %>% summarise(injectionrate=mean(Fz))#ml per min
-range(F_df$Fz_roll,na.rm=T)
+
 ##################################################################################
 #plots
 ##################################################################################
@@ -64,29 +63,71 @@ range(F_df$Fz_roll,na.rm=T)
 img <- png::readPNG("../../Dokumentation/Berichte/Methodenpaper_sampler/Abbildungen/Sandboxplot3D.png")
 plot_minimal <- ggplot()+theme_minimal()+labs(title="a)")
 dim(img)
-img_plot <- ggdraw()+draw_image(img,height=1,width=2,x=-0.3)#+draw_plot(plot_minimal)
+img_plot <- ggdraw()+draw_image(img,height=1,width=2,x=-0.3,y=0.15)+
+  #draw_text("a)",0.1,0.9)
+  draw_plot(plot_minimal)
 
 
-colnames(data_sub)
+col<-scales::hue_pal()
+
 mod_obs_plot <- 
   ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
   #geom_ribbon(aes(xmin=min_mod,xmax=max_mod,y=tiefe,fill="sweep"),alpha=0.3)+
-  geom_line(aes(CO2_mod,tiefe,col="mod"))+
-  geom_point(aes(CO2,tiefe,fill="obs"))+
-  facet_wrap(~factor(material,levels=c("Sand","Sand & Splitt","Splitt"),labels=c("sand","mixture","grit")))+
-  geom_text(data=R2_mat,aes(y= -1,x=6000,label = paste0("R² = ",round(R2,3))),hjust="right")+
+  geom_line(aes(CO2_mod,tiefe,col=""))+
+  geom_point(aes(CO2,tiefe,shape="no prod"))+
+  geom_point(data=subset(respi_wide,Versuch%in%c(5:6,9)),aes(CO2_tracer_calc,tiefe,shape="with prod"),col=col(3)[2])+
+  facet_wrap(~factor(material,levels=c("Sand","Splitt","Sand & Splitt"),labels=c("sand","grit","mixture")))+
+#  geom_text(data=R2_mat,aes(y= -1,x=6000,label = paste0("R² = ",round(R2,3))),hjust="right")+
+  scale_shape_manual("obs",values=c(19,20))+
+  guides(shape=guide_legend(override.aes = list(color=c(1,col(3)[2]))))+
   #geom_text(data=subset(DS_D0_label,material%in% data_sub$material),aes(y= -1,x=6000,label = label),hjust="right")+
-  scale_color_manual(values=2)+
+  #scale_color_manual(values=2)+
   #annotate("text",y= c(-1,-1,-1),x=c(6000,6000,6000),label=c(label1,label2,label3),hjust="right")+
-  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="",fill="")+theme_bw()#+
+  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="mod",fill="")+theme_bw()#+
   #coord_cartesian(clip = "off") +geom_text(x=-500,y=3.5,size=5,label=c("b)",rep(NA,23)))#+
   #labs(title="b)")+
   #theme(plot.title = element_text(hjust=-0.05,vjust=-8),plot.margin = unit(c(0,1,1,1), "lines"))
   #ggsave(paste0(plotpfad,"comsol_mod_obs.png"),width = 7,height=3)
+mod_obs_plot 
 
-ggpubr::ggarrange(img_plot,mod_obs_plot,widths=c(1,3))+
+ggplot(respi_wide)+geom_point(aes(CO2_tracer,CO2_tracer_calc))
+R2(respi_wide$CO2_tracer,respi_wide$CO2_tracer_calc)
+
+  ggpubr::ggarrange(img_plot,mod_obs_plot,widths=c(1,3))+
   ggsave(paste0(plotpfad,"Fig_2_COMSOL_mod_obs.jpg"),width = 7,height=2.7)
-    #############################
+
+
+
+lims <- c("prod","tracer","tracer + prod")
+# respi_wide[nrow(respi_wide)+1,] <- NA
+# respi_wide[nrow(respi_wide),"material"] <- "Sand & Splitt"
+# respi_wide[nrow(respi_wide),"Versuch"] <- 9
+
+resp_plot <- ggplot(subset(respi_wide,Versuch%in%c(5:6)))+
+  geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_respi,y=tiefe,fill=lims[1]),alpha=0.2)+
+  geom_ribbon(aes(xmin=CO2_respi,xmax=CO2_ges,y=tiefe,fill=lims[2]),alpha=0.3)+
+  geom_point(aes(x=CO2_respi,y=tiefe,col=lims[1]))+
+  geom_point(aes(x=CO2_ges,y=tiefe,col=lims[3]))+
+  #  geom_line(aes(x=CO2_tracer_calc,y=tiefe,col="CO2tracer"))+
+  labs(fill=expression(CO[2]), x="", y="depth [cm]",col=expression(CO[2]))+
+  guides(col=guide_legend(override.aes = list(shape=c(19,NA,19),fill=c(NA,col(3)[2],NA))))+
+  scale_fill_manual(limits=c(lims),values=col(3)[c(1,2,3)])+
+  scale_color_manual(limits=c(lims),values=col(3)[c(1,2,3)])+
+  theme_bw()+
+  #xlim(c(min(respi_wide$CO2_atm),max(respi_wide$CO2_ges)))+
+  facet_wrap(~factor(material,levels=c("Sand","Splitt"),labels=c("sand","grit")))
+    
+
+#img_respi <- ggpubr::ggarrange(img_plot,resp_plot,widths=c(1,3))
+#egg::ggarrange(resp_plot,mod_obs_plot,ncol = 1,widths=c(2,3))
+
+cowplt <- cowplot::ggdraw()+cowplot::draw_plot(resp_plot,x=0,y=0.5,height=0.5,width=0.82)+cowplot::draw_plot(mod_obs_plot,height=0.5)+
+  cowplot::draw_text("b)",x=0.,y=0.95,hjust=0)+
+  cowplot::draw_text("c)",x=0.,y=0.45,hjust=0)
+#cowplt
+ggpubr::ggarrange(img_plot,cowplt,widths = c(1,3))+
+  ggsave(paste0(plotpfad,"Fig_2_COMSOL_mod_obs_prod.jpg"),width = 7,height=4)
+#############################
 #Figure 3 DS Labor und sandkiste
 ##############################
 ggplot()+
@@ -104,7 +145,7 @@ inj_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
   scale_fill_manual("",values=c(1,NA))+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
-  geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_inj,col=as.factor(-tiefe)))+
   labs(col="depth [cm]",x="",y=expression(CO[2]*" [ppm]"),title="a) injection sampler",fill="")+
   theme(axis.text.x = element_blank(),
         legend.title = element_text(color=1))+
@@ -118,7 +159,7 @@ ref_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
   scale_fill_manual("",values=c(1,NA))+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
-  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_ref,col=as.factor(-tiefe)))+
   guides(col=F,fill=F)+labs(y=expression(CO[2]*" [ppm]"),x="",title="b) reference sampler")+
   theme(axis.text.x = element_blank())#+
   #scale_color_discrete(limits=all_dpths)
@@ -131,7 +172,7 @@ data$Precip_Last24hrs_mm[data$Precip_Last24hrs_mm < 0] <- 0
 ###########
 #T
 T_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
-  geom_line(aes(date,mean_T,col=as.factor(-tiefe)))+
+  geom_line(aes(date,mean_T,col=as.factor(tiefe)))+
   guides(col=F)+
   labs(title="d)",x="date",y="Soil T [°C]",col="depth [cm]")#+
   #scale_color_discrete(limits=all_dpths)
@@ -141,7 +182,7 @@ T_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & 
 sec_ax_fac <- 1.25
 VWC_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
   geom_ribbon(data=subset(data,date > range2u3[1] & date < range2u3[2]),aes(x=date,ymin=0,ymax=Precip_Last24hrs_mm/sec_ax_fac),fill="blue",alpha=0.8)+
-  geom_line(aes(date,mean_VWC,col=as.factor(-tiefe)))+
+  geom_line(aes(date,mean_VWC,col=as.factor(tiefe)))+
   scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_fac,name=expression(P["24h"]*" [mm]")))+
   theme(
     axis.title.y.right = element_text(color = "blue"),
@@ -202,11 +243,11 @@ tracer_plot <- ggplot(plt_data)+
   #geom_vline(xintercept = Pumpzeiten$start[-1])+
   #geom_vline(xintercept = Pumpzeiten$start[c(11:14,17,18)],col="grey")+
   #annotate("text",x=Pumpzeiten$start[c(11,13,17)],y=Inf,label=paste("injection",1:3),vjust=1,hjust=-0.1)+
-  geom_line(aes(date,CO2_tracer_gam,col=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_tracer_gam,col=as.factor(-tiefe)))+
   labs(col="depth [cm]",x="",y=expression(CO[2]*"tracer [ppm]"))+
   facet_wrap(~factor(period,levels=1:3,labels=paste0("injection ",1:3,c("\nhigh fluctuations in topsoil","\nbetter but still no stable signal","\nclear tracer profile"))),scales="free_x",nrow=1)+theme_bw()+
   guides(colour = guide_legend(override.aes = list(size = 1.5)))
-jpeg(paste0(plotpfad,"CO2_tracer_gam.jpg"),width=7,height=3,units="in",res=300)
+jpeg(paste0(plotpfad,"Fig_4_CO2_tracer.jpg"),width=7,height=3,units="in",res=300)
 adj_grob_size(tracer_plot,plt_data,breaks="1 day",date_label="%b %d")
 dev.off()
 
@@ -245,8 +286,8 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
   ggnewscale::new_scale_color()+
   geom_line(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
   geom_ribbon(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(x=date,ymin=R_min,ymax=R_max,fill=""),alpha=0.15)+
-  scale_color_manual("transfer function\n(Maier et al., 2011)",values=grey(0.3))+
-  scale_fill_manual("transfer function\n(Maier et al., 2011)",values=grey(0.3))+
+  scale_color_manual("simple T and SWC model",values=grey(0.3))+
+  scale_fill_manual("simple T and SWC model",values=grey(0.3))+
   ggnewscale::new_scale_color()+
   #geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.2)+
   #geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-20 cm"),alpha=0.2)+
@@ -265,7 +306,7 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)
 
 
-flux_plot
+#flux_plot
 Fig5u6 <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),flux_plot,ncol=1,draw=F)
 jpeg(file=paste0(plotpfad,"Fig5u6.jpg"),width=7,height = 5,units="in",res=300)
 Fig5u6

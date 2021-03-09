@@ -220,22 +220,26 @@ for(i in seq_along(data_kal)){
 data$preds <- NA
 data$preds2 <- NA
 data$preds_drift <- NA
+data$preds_no_ref <- NA
 
 
 for(j in seq_along(data_PSt0)[-c(3,5)]){
 for(i in (1:7)*-3.5){
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
-  fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[j]],tiefe==i))
-  fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0[[j]],tiefe==i))
-  
-  fm2 <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0[[j]],tiefe==i))
+  #fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[j]],tiefe==i))
+  #fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0[[j]],tiefe==i))
+  fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,3) + poly(hour,4) ,data=subset(data_PSt0[[j]],tiefe==i))
+  #fm_no_ref <- mgcv::gam(CO2_roll_inj ~ s(date_int) + s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
+
+  #fm2 <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0[[j]],tiefe==i))
   
   pos <- na.omit(unique(data$Position))[j]
   ID <- which(data$tiefe==i & data$Position == pos& !is.na(data$CO2_ref))
-  
-  data$preds[ID] <- predict(fm,newdata = data[ID,])
-  data$preds_drift[ID] <- predict(fm_drift,newdata = data[ID,])
-  data$preds2[ID] <- predict(fm2,newdata = data[ID,])
+  # 
+  # data$preds[ID] <- predict(fm,newdata = data[ID,])
+  # data$preds_drift[ID] <- predict(fm_drift,newdata = data[ID,])
+  data$preds_no_ref[ID] <- predict(fm_no_ref,newdata = data[ID,])
+  # data$preds2[ID] <- predict(fm2,newdata = data[ID,])
   }
 }
 
@@ -245,7 +249,8 @@ for(i in (1:7)*-3.5){
 #data$CO2_tracer <- data$CO2_roll_inj - (data$CO2_roll_ref + data$offset)
 data$CO2_tracer <- data$CO2_inj - (data$CO2_ref + data$offset)
 data$CO2_tracer_glm <- data$CO2_inj - (data$preds)
-data$CO2_tracer_gam <- data$CO2_inj - (data$preds2)
+data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds2)
+data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
 data$CO2_tracer_drift <- data$CO2_inj - (data$CO2_ref + data$preds_drift)
 
 data$tracer_pos <- data$CO2_tracer > 0
@@ -295,4 +300,33 @@ paste("tiefe",rev(unique(data$tiefenstufe)),"=",rev(unique(data$tiefe)),"cm",col
 #ggplot(data_wide)+geom_line(aes(date,injection_ml_per_min))
 
 #write.csv(data_wide,file=paste0(datapfad_harth,"co2_profil_",paste(format(range(data_wide$date),"%j"),collapse = "-"),".txt"),row.names = F)
+
+#####################
+# PLOTS             #
+#####################
+adj_with_ref <- ggplot(subset(data,Position %in% c(7:8) ))+
+  geom_ribbon(aes(x=date,ymin=preds2,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
+  geom_line(aes(date,preds2,col=as.factor(-tiefe),linetype="ref adj"))+
+  labs(fill="",col="",title="with ref")
+adj_no_ref <- ggplot(subset(data,Position %in% c(7:8) ))+
+  geom_ribbon(aes(x=date,ymin=preds_no_ref,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
+  geom_line(aes(date,preds_no_ref,col=as.factor(-tiefe),linetype="ref adj"))+
+  labs(fill="",col="",title="no ref")
+  #geom_line(aes(date,preds_no_ref,linetype=as.factor(tiefe),col="no ref"))#+facet_grid(tiefe~.,scales = "free")
+
+
+with_ref <- ggplot(subset(data,Position %in% c(7:8)))+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(date,CO2_tracer_gam,col=as.factor(-tiefe)))+labs(title="ref")
+no_ref <- ggplot(subset(data,Position %in% c(7:8)))+
+  geom_hline(yintercept = 0)+
+  geom_line(aes(date,CO2_tracer_no_ref,col=as.factor(-tiefe)))+labs(title="no ref")
+
+  
+ggpubr::ggarrange(adj_with_ref,adj_no_ref,common.legend = T,ncol=1,legend="right")+
+  ggsave(paste0(plotpfad,"adj_with_or_without_ref.jpg"),width = 7,height=7)
+ggpubr::ggarrange(with_ref,no_ref,common.legend = T,ncol=1,legend="right")+
+  ggsave(paste0(plotpfad,"with_or_without_ref.jpg"),width = 7,height=7)
 

@@ -204,17 +204,17 @@ ggplot(subset(sub3_calib,tiefenstufe %in% c(3)))+
 calib_plt$data
 einspeisung_plot <- ggplot(sub3)+
   geom_vline(xintercept = Pumpzeiten$start[17:18],col="grey")+
-  geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
   #geom_line(aes(date,CO2_roll_ref,col=as.factor(tiefe),linetype="ref",alpha=0.2))+
-  geom_line(aes(date,preds2,col=as.factor(tiefe),linetype="ref adj"))+
-  geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds2,fill=as.factor(tiefe)),alpha=0.3)+
-  labs(y=expression(CO[2]*" [ppm]"),col="tiefe [cm]",linetype="sampler",fill="tiefe [cm]")+
+  geom_line(aes(date,preds2,col=as.factor(-tiefe),linetype="ref adj"))+
+  geom_ribbon(aes(date,ymax=CO2_inj,ymin=preds2,fill=as.factor(-tiefe)),alpha=0.3)+
+  labs(y=expression(CO[2]*" [ppm]"),col="depth [cm]",linetype="sampler",fill="depth [cm]")+
   xlim(c(range3[1],range3[2]-3600*24*4))+
   ggsave(paste0(plotpfad,"Einspeisung3_gam.png"),width=7,height=4)
 
 #####################
 #tracer gam 
-einspeisung_plot <- ggplot(sub2u3)+
+einspeisung2u3_plot <- ggplot(sub2u3)+
   geom_vline(xintercept = Pumpzeiten$start[c(11:14,17:18)],col="grey")+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(tiefe),linetype="inj"))+
   geom_line(aes(date,preds2,col=as.factor(tiefe),linetype="ref adj"))+
@@ -237,11 +237,11 @@ tiefe_plot <- ggplot(tracer_profile)+
   
   geom_ribbon(aes(xmin=min,xmax=max,y=tiefe),col="grey",alpha=0.3)+
   geom_point(aes(tracer_mean,tiefe))+
-  labs(x=expression(CO[2]*"tracer [ppm]"),y="tiefe [cm]")
+  labs(x=expression(CO[2]~"tracer [ppm]"),y="depth [cm]")
 
 tracer_tiefe_plot <- ggarrange(tracer_plot+labs(title="b)"),tiefe_plot+labs(title="c)"),widths=2:1)  
 ggpubr::ggarrange(einspeisung_plot+labs(title="a)"),tracer_tiefe_plot,ncol=1,heights = 4:3)
-ggpubr::ggarrange(einspeisung_plot+labs(title="a)"),tracer_tiefe_plot,ncol=1,heights = 4:3,common.legend = T,legend="right")+ggsave(paste0(plotpfad,"Einspeisung3_gam_tiefenprofil.png"),width=7,height=5)
+ggpubr::ggarrange(einspeisung_plot+labs(title="a)"),tracer_tiefe_plot,ncol=1,heights = 4:3,common.legend = T,legend="right")+ggsave(paste0(plotpfad,"Einspeisung3_gam_tiefenprofil.jpg"),width=7,height=5)
 
 #tracer drift
 ggplot(subset(data,date > range3[1] & date < range3[2]))+
