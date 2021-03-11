@@ -12,7 +12,7 @@ metapfad_comsol<- paste0(metapfad,"COMSOL/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
-plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/COMSOL/")
+plotpfad_comsol <- paste0(hauptpfad,"Dokumentation/Berichte/plots/COMSOL/")
 COMSOL_exepath <- "C:/Program Files/COMSOL/COMSOL52a/Multiphysics/bin/win64/"
 COMSOL_progammpath <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Programme/Fremdprogramme/COMSOL/"
 #Packages laden
@@ -26,12 +26,12 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 
 data$date_hour <- round_date(data$date,"60 mins")
-mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour& data$date > ymd_h("2020.07.10 00")]))
 
 
-
-DS_anisotrop_no_ref <- run_comsol(data=data,mod_dates = rev(mod_dates),offset_method = "no_ref",overwrite = F,plot=F,optim_method = "snopt",read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
-DS_anisotrop <- run_comsol(data=data,mod_dates = rev(mod_dates)[1:20],offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_anisotrop_drift <- run_comsol(data=data,mod_dates = rev(mod_dates),offset_method = "drift",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_anisotrop_no_ref <- run_comsol(data=data,mod_dates = rev(mod_dates),offset_method = "no_ref",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_anisotrop <- run_comsol(data=data,mod_dates = rev(mod_dates),offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
 
 DS_df <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_optim_3DS")
@@ -44,20 +44,37 @@ DS_long <- tidyr::pivot_longer(DS_df,matches("DS"),names_pattern = "(.+)(\\d)",n
 DS_dist_long <- tidyr::pivot_longer(DS_dist,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 DS_anisotrop_long <- tidyr::pivot_longer(DS_anisotrop,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 DS_anisotrop_long_no_ref <- tidyr::pivot_longer(DS_anisotrop_no_ref,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
+colnames(DS_anisotrop_drift)
+
+DS_anisotrop_drift[,paste0("DS_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DS",1:3)],width=10,mean,fill=NA)
+DS_anisotrop_drift[,paste0("DSD0_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DSD0",1:3)],width=10,mean,fill=NA)
+
+DS_anisotrop_long_drift <- tidyr::pivot_longer(DS_anisotrop_drift,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 
 save(DS_anisotrop_long,DS_anisotrop,file=paste0(comsolpfad,"DS_anisotrop_gam.RData"))
+save(DS_anisotrop_long_no_ref,DS_anisotrop_no_ref,file=paste0(comsolpfad,"DS_anisotrop_no_ref.RData"))
+save(DS_anisotrop_long_drift,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift.RData"))
 
 ggplot(DS_long)+
   geom_line(aes(date,DSD0,col=tiefe,linetype="no disturbance"))+
   geom_line(data=DS_dist_long,aes(date,DSD0,col=tiefe,linetype="with disturbance"))
 ggplot(DS_long)+
   geom_line(aes(date,DSD0,col=tiefe,linetype="isotrop"))+
-  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="anisotrop"))+ggsave(paste0(plotpfad,"DS_anisotrop.png"),width=5,height=3)
+  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="anisotrop"))+ggsave(paste0(plotpfad_comsol,"DS_anisotrop.png"),width=5,height=3)
 ggplot()+
   geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="gam"))+
   geom_line(data=DS_anisotrop_long_no_ref,aes(date,DSD0,col=tiefe,linetype="no ref"))#+
   xlim(range(DS_anisotrop_long_no_ref$date))
-  #ggsave(paste0(plotpfad,"DS_anisotrop.png"),width=5,height=3)
+  #ggsave(paste0(plotpfad_comsol,"DS_anisotrop.png"),width=5,height=3)
+
+
+ggplot()+
+  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="gam"))+
+  geom_line(data=DS_anisotrop_long_drift,aes(date,DSD0_roll,col=tiefe,linetype="drift"))#+
+ggplot()+
+  geom_line(data=DS_anisotrop_long,aes(date,Fz,col=tiefe,linetype="gam"))+
+  geom_line(data=DS_anisotrop_long_drift,aes(date,Fz,col=tiefe,linetype="drift"))+
+  geom_line(data=DS_anisotrop_long_no_ref,aes(date,Fz,col=tiefe,linetype="no_ref"))#+
 
 range(DS_anisotrop$DSD03)
 range(DS_df$DSD03)

@@ -25,20 +25,31 @@ load(file=paste0(klimapfad,"klima_data.RData"))
 #######################
 #einheiten anpassen für COMSOl
 #Tracersignal in COMSOL Einheit umrechnen
-offset_method <- "gam"
+offset_method <- "drift"
 ######################
 
-load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8_ext.RData"))
+# load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8_ext.RData"))
+# 
+# F_df_pos8 <- F_df
+# # load(file=paste0(comsolpfad,"F_df_gam_3DS_ext2.RData"))
+# # F_df_ext2<-rbind(F_df,F_df_pos8)
+# load(file=paste0(comsolpfad,"F_df_gam_3DS_ext.RData"))
+# F_df<-rbind(F_df,F_df_pos8)
 
-F_df_pos8 <- F_df
-# load(file=paste0(comsolpfad,"F_df_gam_3DS_ext2.RData"))
-# F_df_ext2<-rbind(F_df,F_df_pos8)
-load(file=paste0(comsolpfad,"F_df_gam_3DS_ext.RData"))
-F_df<-rbind(F_df,F_df_pos8)
-
+if(offset_method == "gam"){
 load(paste0(comsolpfad,"DS_anisotrop_gam.RData"))
 F_df <- DS_anisotrop
+}
+if(offset_method == "drift"){
+load(paste0(comsolpfad,"DS_anisotrop_drift.RData"))
+F_df <- DS_anisotrop_drift
+}
+if(offset_method == "no_ref"){
+ load(paste0(comsolpfad,"DS_anisotrop_no_ref.RData"))
+  F_df <- DS_anisotrop_no_ref
+}
 names(F_df) <- str_replace(names(F_df),"(\\d)$","_\\1")
+
 
 pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
 Versuch2_date <- ymd_h("2020.07.10 00")
@@ -97,13 +108,12 @@ for(i in 1:3){
   F_df[,paste0("DSD0_",i)] <- F_df[,paste0("DS_",i)]/F_df[,paste0("D0",i)]
 }
 
-
+hours_to_steady <- 20
 #Zeitraum bis steady state abschneiden 
 for(i in 1:nrow(Pumpzeiten)){
-  F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
-}
-for(i in 1:nrow(Pumpzeiten)){
-  DS_anisotrop_long[DS_anisotrop_long$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & DS_anisotrop_long$date < (round_date(Pumpzeiten$start,"hours")[i]+10*3600),"DSD0"]<-NA
+  F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+hours_to_steady*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
+
+  DS_anisotrop_long[DS_anisotrop_long$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & DS_anisotrop_long$date < (round_date(Pumpzeiten$start,"hours")[i]+hours_to_steady*3600),"DSD0"]<-NA
 }
 
 #######
@@ -203,7 +213,10 @@ soil_agg_plot <- soil_agg %>%
 ##################
 #save
 ###################
-save(F_df,soil_agg_plot,soil_wide,DS_long_roll,DS_long,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
+#save(F_df,soil_agg_plot,soil_wide,DS_long_roll,DS_long,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
+
+
+save(F_df,soil_agg_plot,soil_wide,DS_long_roll,DS_long,Kammer_flux,file=paste0(comsolpfad,"plotdata_Methodenpaper_",offset_method,".RData"))
 
 ##########################
 #PLOTS             #
