@@ -24,6 +24,7 @@ flux[[8]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=15,
 
 CO2_flux_list <- lapply(flux, function(x) x[["CO2"]][[1]])
 CH4_flux_list <- lapply(flux, function(x) x[["CH4"]][[1]])
+
 CO2_flux <- do.call(rbind,CO2_flux_list)
 CH4_flux <- do.call(rbind,CH4_flux_list)
 

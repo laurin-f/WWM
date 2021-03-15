@@ -14,15 +14,16 @@ unzip.files<-function(path=ggapfad){
   zips<-list.files(path,pattern=".zip$",
                    recursive = T,full.names = T)
 
+  #Falls derunterordner unzipped nicht besteht, diesen erstellen
+  if(!dir.exists(paste0(path,"unzipped/"))){
+    dir.create(paste0(path,"unzipped/"))
+  }
   #Schleife um zu testen ob die Dateien bereits im Ordner unzipped sind
   #und wenn nicht zu enpacken
   for(i in seq_along(zips)){
     #dateien der i-ten zip auflisten
     zip.list<-unzip(zips[i],list=T)
 
-    if(!dir.exists(paste0(path,"unzipped/"))){
-      dir.create(paste0(path,"unzipped/"))
-    }
     #wenn die Datei nicht im unzipped Ordner steht
     if(!file.exists(paste0(path,"unzipped/",zip.list$Name))){
       #unzippen
@@ -66,6 +67,7 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
   #sensornamen
   sensor_names<-table.name
   #schleife um db beider sensoren zu aktualisieren
+  #beim neuen steckt im Dateinamen "micro" beim alten "gga"
   for(i in sensor_names){
 
     #namen der bereits in der db existierenden files laden

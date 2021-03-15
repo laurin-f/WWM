@@ -121,13 +121,10 @@ chamber_flux <- function(mess_dir = "Hartheim",
       Vol_GGA#cm3
   }
 
-  ###########
-  #Temperatur
-  ###########
 
-  #in Hartheim sind zusätzliche Klimadaten verfügbar
-  load(file = paste0(klimapfad, "klima_data.RData"))
-  klima_sub <- subset(klima, date > beginn & date < ende)
+  ###########################
+  #Fluss berechnen
+  ###########################
 
   #Liste für Output anlegen
   flux <- list()
@@ -138,15 +135,8 @@ chamber_flux <- function(mess_dir = "Hartheim",
       flux[[i]] <- list(NULL, NULL)
       for (j in seq_along(Vol_schlauch)) {
         #falls klimadaten Vorhanden diese verwenden da interne Temperatur vom microGGA zu hoch ist (siehe Temp_micro_klimaturm.R)
-        if (any(klima_sub$date > beginn_seq[j] &
-                klima_sub$date < ende_seq[j])) {
-          T_deg <- mean(klima_sub$Ta_2m[klima_sub$date > beginn_seq[j] &
-                                          klima_sub$date < ende_seq[j]], na.rm =
-                          T)
-        } else{
           T_deg <- mean(data$AmbT_C[data$date > beginn_seq[j] &
                                       data$date < ende_seq[j]], na.rm = T)
-        }
 
         #Fluss mit calc_flux berechnen
         flux_j <-
@@ -167,13 +157,8 @@ chamber_flux <- function(mess_dir = "Hartheim",
   } else{
     #Wenn alle Schlauchlaengen gleich sind
     for (i in c("CO2", "CH4")) {
-      if (any(klima_sub$date > beginn_seq & klima_sub$date < ende_seq)) {
-        T_deg <- mean(klima_sub$Ta_2m[klima_sub$date > beginn_seq &
-                                        klima_sub$date < ende_seq], na.rm = T)
-      } else{
         T_deg <- mean(data$AmbT_C[data$date > beginn_seq &
                                     data$date < ende_seq], na.rm = T)
-      }
       flux[[i]] <- calc_flux(
         data = data,
         group = "kammer",
