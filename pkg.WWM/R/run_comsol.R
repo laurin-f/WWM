@@ -27,7 +27,6 @@
 #  plot=T
 #  offset_method = "glm"
 #  #which optimization method should be used nelder or snopt
-#  optim_method = "snopt"
 #' Title
 #'
 #' @param data
@@ -37,7 +36,6 @@
 #' @param n_DS
 #' @param plot
 #' @param offset_method
-#' @param optim_method
 #' @param modelname
 #'
 #' @return
@@ -51,10 +49,10 @@ run_comsol <- function(data=data,
                        n_DS=3,
                        plot=F,
                        offset_method = "gam",
-                       #which optimization method should be used nelder or snopt
-                       optim_method = "snopt",
                        z_soil_cm = 150,
-                       modelname = "Diffusion_freeSoil_optim_3DS"){
+                       modelname = "Diffusion_freeSoil_optim_3DS",
+                       file_suffix=NULL,
+                       input_pars=NULL){
 
   data <- as.data.frame(data)
   n_DS_ch <- paste0(n_DS,"DS")
@@ -85,6 +83,13 @@ run_comsol <- function(data=data,
   #Comsol ausführen
   ##############################################
   #
+  date_chr <- format(mod_dates,"%m_%d_%H_%M")
+  outfile_names <- paste0(modelname,"_",offset_method,"_",date_chr,".txt")
+
+  if(!is.null(file_suffix)){
+      outfile_names <- paste0(modelname,"_",offset_method,"_",date_chr,"_",file_suffix,".txt")
+  }
+
   for(j in seq_along(data_sub)){
     sub_j <- data_sub[[j]]
     injection_rate <- sub_j$inj_mol_m2_s[sub_j$tiefe == -24.5]
@@ -95,48 +100,13 @@ run_comsol <- function(data=data,
     }
 
     #command der an commandline gesendet wird um comsolbatch.exe zu starten
-    if(optim_method == "nelder"){
+    comsol_exe(modelname = modelname,
+               outfile_raw="CO2_optim.txt",
+               outfile_new=outfile_names[j],
+               job="b1",
+               overwrite=overwrite,
+               input_pars=input_pars)
 
-      outfile <- "Probe_table"
-      #erst cd (changedirectory) zum COMSOL_exepath
-      #dann && um zwei befehle in einer Reihe zu übergeben
-      #dann Modellname mit Pfad und entsprechende Injectionsrate mit -plist übergeben
-      #-study std6 ist nelder mead
-      cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph -outputfile ",COMSOL_progammpath,modelname,"_solved.mph -study std6 -pname injection_rate -plist ",injection_rate)
-    }
-    if(optim_method == "snopt"){
-      outfile <- "CO2_optim"
-      #snopt gibt nicht automatisch die DS werte aus deshalb wird ein batch in der GUI angelegt in dem der Output exportiert wird
-      cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph -outputfile ",COMSOL_progammpath,modelname,"_solved.mph -job b1 -pname injection_rate -plist ",injection_rate)
-    }
-
-    date_chr <- format(mod_dates[j],"%m_%d_%H_%M")
-    outfile_name <- paste0(modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt")
-    outfile_full_name <- paste0(comsolpfad,outfile_name)
-    if(file.exists(outfile_full_name) & overwrite == F){
-      print(paste("file",outfile_name,"exists set overwrite = T to replace it"))
-    }else{
-      print(paste("starting with",mod_dates[j]))
-      tictoc::tic()
-      #console_out <-
-      #commandline befehl ausführen
-      shell(cmd,translate=T,intern=F)
-      #print(paste(mod_dates[j],"calculated in:"))
-      tictoc::toc()
-      #comsoloutfiles_raw <- paste0(comsolpfad,c("Objective_table.txt","Probe_table.txt"))
-      #outputdateien von COMSOL umbenennen damit sie beim nächsten run nicht überschrieben werden
-      if(optim_method == "nelder"){
-        comsoloutfiles_raw <- list.files(comsolpfad,"Probe_table.txt|Probe_Table.txt",full.names = T)
-      }
-      if(optim_method =="snopt"){
-        comsoloutfiles_raw <- list.files(comsolpfad,"CO2_optim.txt",full.names = T)
-      }
-      #im Dateiname steht jetzt die methode und das datum
-      comsoloutfiles <- paste0(comsolpfad,modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt")
-      if(length(comsoloutfiles_raw)==1){
-        file.rename(comsoloutfiles_raw,outfile_full_name)
-      }
-    }
   }
 
   ##############################
@@ -145,9 +115,13 @@ run_comsol <- function(data=data,
   #alle dateien mit der gewünschten methode und datum
   if(read_all == T){
     date_pattern <- "\\d{2}(_\\d{2}){2,3}"
-    mod_files <- list.files(comsolpfad,pattern = paste(modelname,offset_method,optim_method,date_pattern,sep="_"))
-
-    mod_date_all_chr <- sort(unique(str_extract(mod_files,date_pattern)))
+    file_pattern <- paste(modelname,offset_method,date_pattern,sep="_")
+    if(!is.null(file_suffix)){
+      file_pattern <- paste(modelname,offset_method,date_pattern,file_suffix,sep="_")
+    }
+    outfile_names <- list.files(comsolpfad,pattern = file_pattern)
+#
+    mod_date_all_chr <- sort(unique(str_extract(outfile_names,date_pattern)))
 
     mod_date_all_chr_pad <- ifelse(nchar(mod_date_all_chr) == 8,paste0(mod_date_all_chr,"_00"),mod_date_all_chr)
 
@@ -156,6 +130,7 @@ run_comsol <- function(data=data,
   }else{
     mod_dates_all <- mod_dates
   }
+  outfiles <- paste0(comsolpfad,outfile_names)
 
 
     data_list <- lapply(mod_dates_all,function(x) data[data$date==x, ])
@@ -167,27 +142,14 @@ run_comsol <- function(data=data,
   #read loop
   #######################################
   for(j in seq_along(mod_dates_all)){
-    date_chr <- format(mod_dates_all[j],"%m_%d_%H_%M")
 
-    if(optim_method == "snopt"){
-      CO2_optim <- read.csv(paste0(comsolpfad,modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt"),skip=9,sep="",header=F)
+      CO2_optim <- read.csv(outfiles[j],skip=9,sep="",header=F)
 
       colnames(CO2_optim) <- c("r","z","CO2_mod_mol_m3",paste0("DS_",1:n_DS))
       CO2_mod <- CO2_optim[,1:3]
       best_DS <- CO2_optim[1,4:(n_DS+3)]
-    }
-    if(optim_method =="nelder"){
 
-      DS_mod <- read.csv(paste0(comsolpfad,modelname,"_",offset_method,"_",optim_method,"_",date_chr,".txt"),skip=5,sep="",header=F)
-      colnames_DS_raw <- readLines(paste0(comsolpfad,"Probe_table_",offset_method,"_",optim_method,"_",n_DS_ch,"_",date_chr,".txt"),n=5)
-      colnames_DS <- str_extract_all(colnames_DS_raw[5],"injection_rate|DS_\\d|Probe \\d",simplify = T)
-      colnames(DS_mod) <- str_replace(colnames_DS,"Probe ","CO2mod_tiefenstufe")
 
-      CO2_mod <- tidyr::pivot_longer(tail(DS_mod[,grep("CO2",colnames(DS_mod))],1),everything(),names_prefix = "CO2mod_tiefenstufe",values_to = "CO2_mod_mol_m3",names_to = "tiefenstufe")
-
-      best_DS <- tail(DS_mod[grep("DS",colnames_DS)],1)
-      print(best_DS)
-    }
     obs_j <- data_list[[as.character(mod_dates_all)[j]]]
     obs_mod <- merge(obs_j,CO2_mod)
 
@@ -220,7 +182,7 @@ run_comsol <- function(data=data,
       DS_profil_long <- tidyr::pivot_longer(DS_profil,!matches("DS|D0"),values_to = "tiefe")
       #DS_profil_long <- reshape2::melt(DS_profil,id=grep("DS|D0",colnames(DS_profil)),value.name="tiefe")
       par(mfrow=c(1,2))
-      plot(obs_mod$CO2_mol_per_m3,obs_mod$tiefe,xlab=expression(CO[2]~"[mol m"^{-3}*"]"),ylab="depth [cm]",main=date_chr)
+      plot(obs_mod$CO2_mol_per_m3,obs_mod$tiefe,xlab=expression(CO[2]~"[mol m"^{-3}*"]"),ylab="depth [cm]",main=date_chr[j])
       lines(obs_mod$CO2_mod_mol_m3,obs_mod$tiefe,col=2)
 
       DS_profil_long <- DS_profil_long[order(DS_profil_long$tiefe),]
@@ -228,7 +190,7 @@ run_comsol <- function(data=data,
 
       par(mfrow=c(1,1))
       }else{
-        plot(obs_mod$CO2_mol_per_m3,obs_mod$tiefe,xlab=expression(CO[2]~"[mol m"^{-3}*"]"),ylab="depth [cm]",main=paste(date_chr,"DSD0 =",round(best_DS/mean(obs_mod$D0,na.rm=T),2)))
+        plot(obs_mod$CO2_mol_per_m3,obs_mod$tiefe,xlab=expression(CO[2]~"[mol m"^{-3}*"]"),ylab="depth [cm]",main=paste(date_chr[j],"DSD0 =",round(best_DS/mean(obs_mod$D0,na.rm=T),2)))
       lines(obs_mod$CO2_mod_mol_m3,obs_mod$tiefe,col=2)
       }
       Sys.sleep(3)
@@ -257,7 +219,7 @@ run_comsol <- function(data=data,
       F_Comsol[F_Comsol$date == mod_dates_all[[j]],"DS"] <- best_DS
     }
     F_Comsol$Fz[F_Comsol$date == mod_dates_all[[j]]] <- Fz_mumol_per_s_m2
-    
+
   }
   return(F_Comsol)
 }

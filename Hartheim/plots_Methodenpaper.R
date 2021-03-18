@@ -28,8 +28,8 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 load(paste0(aufbereitete_ds,"Labor_Vergleich.RData"))
 #aus "plots_COMSOL_out_Hartheim_sweep.R"
-load(paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
-#load(paste0(comsolpfad,"plotdata_Methodenpaper_drift.RData"))
+#load(paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
+load(paste0(comsolpfad,"plotdata_Methodenpaper_drift.RData"))
 load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 
@@ -253,18 +253,22 @@ dev.off()
 DS_long_roll$range2 <- factor(DS_long_roll$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
 soil_agg_plot$range2 <- factor(soil_agg_plot$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
 
+Pumpzeiten$start[c(13,15)]
 DS_plot <- ggplot(subset(soil_agg_plot))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range2)),alpha=0.15)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(range2),linetype="f(eps)"))+
-  geom_line(data=subset(DS_long_roll, date > pos8_date),aes(date,DSD0_roll,col=range2,linetype="in situ"))+
-  geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
+  geom_line(data=subset(DS_long_roll, date > pos8_date ),aes(date,DSD0_roll2,col=range2,linetype="in situ"),alpha=0.3)+
+  geom_line(data=subset(DS_long_roll, date > (Pumpzeiten$start[17] + 18*3600) ),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
+  geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll2,col=range2,linetype="in situ"),alpha=0.3)+
+  geom_line(data=subset(DS_long_roll, Versuch == "2" &  date > (Pumpzeiten$start[13] + 18*3600)),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
   
   #geom_line(data=subset(DS_long_roll, Versuch == "1" & id != 1),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
   #xlim(range(DS_long$date))+
   scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(DS_long$date))+
-  scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))+
-  ggsave(file=paste0(plotpfad_ms,"DS_plot_gam_feps.jpg"),width=7,height = 3.5)
+  scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))#+
+#  ggsave(file=paste0(plotpfad_ms,"DS_plot_gam_feps.jpg"),width=7,height = 3.5)
+DS_plot
 ######################################
 #Figure 8 Flux
 ######################################

@@ -199,59 +199,61 @@ F_PTF_agg <- F_PTF %>%
 
 data$hour <- hour(data$date) 
 data$date_int <- as.numeric(data$date)
+data$offset <- NA
+data$offset[which(data$Pumpstufe == 0)] <- data$CO2_roll_inj[which(data$Pumpstufe == 0)] - data$CO2_roll_ref[which(data$Pumpstufe == 0)]
+
+
+data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
+#data$Position[data$date > Pumpzeiten$start[15] & data$date < Pumpzeiten$start[16]] <- NA
 
 
 data_PSt0 <- lapply(na.omit(unique(data$Position)),function(x) subset(data, Pumpstufe == 0 & Position == x))
-
-for(i in seq_along(data_PSt0)){
-  data_PSt0[[i]]$offset <-  data_PSt0[[i]]$CO2_inj - data_PSt0[[i]]$CO2_ref
-}
-
-
+Pumpzeiten
+j_78 <- which(sapply(data_PSt0, function(x) unique(x$Position %in% 7:8)))
 ##################
 #mit glm oder gam
-data$preds <- NA
-data$preds2 <- NA
+# data$preds_glm <- NA
+# data$preds_gam <- NA
+data$offset_drift <- NA
 data$preds_drift <- NA
-data$preds_no_ref <- NA
-data$ref_drift <- NA
-data$ref_drift_amp <- NA
+# data$preds_drift_amp <- NA
+ data$preds_no_ref <- NA
 
-
-for(j in seq_along(data_PSt0)[-c(3,5)]){
+#for(j in j_78){
+for(j in seq_along(data_PSt0)){
 for(i in (1:7)*-3.5){
   #nicht verwendet
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
-  fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[j]],tiefe==i))
-  fm_drift <- glm(offset ~ poly(date_int,3),data=subset(data_PSt0[[j]],tiefe==i))
+  #fm_glm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[j]],tiefe==i))
+  fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0[[j]],tiefe==i))
   fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,3) + poly(hour,4) ,data=subset(data_PSt0[[j]],tiefe==i))
   #nicht verwendet
   #fm_no_ref <- mgcv::gam(CO2_roll_inj ~ s(date_int) + s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
 
-  fm2 <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0[[j]],tiefe==i))
+  #fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref)+ s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
   
   pos <- na.omit(unique(data$Position))[j]
   ID <- which(data$tiefe==i & data$Position == pos& !is.na(data$CO2_ref))
   ID2 <- which(data$tiefe==i & data$Position == pos& !is.na(data$CO2_roll_ref))
   # 
-  data$preds[ID] <- predict(fm,newdata = data[ID,])
-  data$preds_drift[ID] <- predict(fm_drift,newdata = data[ID,])
-  data$ref_drift[ID2] <- data$CO2_roll_ref[ID2] + data$preds_drift[ID2]
-  fm_amp <- glm(CO2_roll_inj ~ poly(ref_drift,3),data=subset(data[ID2,],Pumpstufe == 0))
-  data$ref_drift_amp[ID] <- predict(fm_amp,newdata = data[ID,])
+  #data$preds_glm[ID] <- predict(fm_glm,newdata = data[ID,])
+  data$offset_drift[ID] <- predict(fm_drift,newdata = data[ID,])
+  data$preds_drift[ID2] <- data$CO2_roll_ref[ID2] + data$offset_drift[ID2]
+  #fm_amp <- glm(CO2_roll_inj ~ poly(preds_drift,2),data=subset(data[ID2,],Pumpstufe == 0))
+  #data$preds_drift_amp[ID] <- predict(fm_amp,newdata = data[ID,])
   data$preds_no_ref[ID] <- predict(fm_no_ref,newdata = data[ID,])
-  data$preds2[ID] <- predict(fm2,newdata = data[ID,])
+  #data$preds_gam[ID] <- predict(fm_gam,newdata = data[ID,])
   
   }
 }
 
 ########################
 
-data$CO2_tracer_glm <- data$CO2_inj - (data$preds)
-data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds2)
+#data$CO2_tracer_glm <- data$CO2_inj - (data$preds_glm)
+#data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds_gam)
 data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
-data$CO2_tracer_drift <- data$CO2_roll_inj - (data$CO2_roll_ref + data$preds_drift)
-data$CO2_tracer_drift_amp <- data$CO2_roll_inj - (data$ref_drift_amp)
+data$CO2_tracer_drift <- data$CO2_roll_inj - (data$preds_drift)
+#data$CO2_tracer_drift_amp <- data$CO2_roll_inj - (data$preds_drift_amp)
 
 
 
@@ -301,10 +303,15 @@ paste("tiefe",rev(unique(data$tiefenstufe)),"=",rev(unique(data$tiefe)),"cm",col
 #####################
 # PLOTS             #
 #####################
-adj_with_ref <- ggplot(subset(data,Position %in% c(7:8) ))+
-  geom_ribbon(aes(x=date,ymin=preds2,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
+
+ggplot(subset(data,Position %in% c(7)& tiefe > -30 ))+
+  geom_line(aes(date,offset,col=as.factor(tiefe)))+
+  geom_line(aes(date,offset_drift,col=as.factor(tiefe)))
+  
+adj_gam <- ggplot(subset(data,Position %in% c(7:8) ))+
+  geom_ribbon(aes(x=date,ymin=preds_gam,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
-  geom_line(aes(date,preds2,col=as.factor(-tiefe),linetype="ref adj"))+
+  geom_line(aes(date,preds_gam,col=as.factor(-tiefe),linetype="ref adj"))+
   labs(fill="",col="",title="with ref")
 adj_no_ref <- ggplot(subset(data,Position %in% c(7:8) ))+
   geom_ribbon(aes(x=date,ymin=preds_no_ref,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
@@ -318,9 +325,9 @@ adj_drift_amp <- ggplot(subset(data,Position %in% c(7:8) ))+
   labs(fill="",col="",title="drift amp")
 
 adj_drift <- ggplot(subset(data,Position %in% c(7:8) ))+
-  geom_ribbon(aes(x=date,ymin=preds_drift + CO2_roll_ref,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
+  geom_ribbon(aes(x=date,ymin=preds_drift,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
-  geom_line(aes(date,preds_drift + CO2_roll_ref,col=as.factor(-tiefe),linetype="ref adj"))+
+  geom_line(aes(date,preds_drift ,col=as.factor(-tiefe),linetype="ref adj"))+
   labs(fill="",col="",title="drift")
   #geom_line(aes(date,preds_no_ref,linetype=as.factor(tiefe),col="no ref"))#+facet_grid(tiefe~.,scales = "free")
 
@@ -331,11 +338,11 @@ ggplot(subset(data,Position %in% c(7:8) ))+
 
     adj_drift_amp
 adj_drift
-ggpubr::ggarrange(adj_with_ref,adj_drift,common.legend = T,ncol=1,legend="right")
+ggpubr::ggarrange(adj_gam,adj_drift,common.legend = T,ncol=1,legend="right")
 ggpubr::ggarrange(adj_drift_amp,adj_drift,common.legend = T,ncol=1,legend="right")
 
 
-with_ref <- ggplot(subset(data,Position %in% c(7:8)))+
+gam_ref <- ggplot(subset(data,Position %in% c(7:8)))+
   geom_hline(yintercept = 0)+
   geom_line(aes(date,CO2_tracer_gam,col=as.factor(-tiefe)))+labs(title="ref")
 no_ref <- ggplot(subset(data,Position %in% c(7:8)))+
@@ -348,9 +355,9 @@ drift_amp_ref <- ggplot(subset(data,Position %in% c(7:8)))+
   geom_hline(yintercept = 0)+
   geom_line(aes(date,CO2_tracer_drift_amp,col=as.factor(-tiefe)))+labs(title="drift_amp")
 
-ggpubr::ggarrange(with_ref+labs(title="gam"),drift_ref+ylim(-300,4000),common.legend = T,ncol=1,legend="right")+
+ggpubr::ggarrange(gam_ref+labs(title="gam"),drift_ref+ylim(-300,4000),common.legend = T,ncol=1,legend="right")+
   ggsave(paste0(plotpfad_harth,"gam_drift.jpg"),width = 7,height=7)
-ggpubr::ggarrange(adj_with_ref+labs(title="gam"),adj_drift,common.legend = T,ncol=1,legend="right")+
+ggpubr::ggarrange(adj_gam+labs(title="gam"),adj_drift,common.legend = T,ncol=1,legend="right")+
   ggsave(paste0(plotpfad_harth,"adj_gam_drift.jpg"),width = 7,height=7)
 
 ggpubr::ggarrange(drift_amp_ref,drift_ref,common.legend = T,ncol=1,legend="right")

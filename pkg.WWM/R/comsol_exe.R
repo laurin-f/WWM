@@ -15,7 +15,7 @@ comsol_exe <- function(modelname,input_pars=NULL,outfile_new=NULL,outfile_raw="C
   if(overwrite == F & !is.null(outfile_new) & file.exists(outfile_new_full)){
     print(paste(outfile_new,"already exists set overwrite = T to replace it"))
   }else{
-    cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph  -job ",job)
+    cmd <- paste0("cd ",COMSOL_exepath,"&& comsolbatch.exe -inputfile ",COMSOL_progammpath,modelname,".mph -outputfile ",COMSOL_progammpath,modelname,"_solved.mph -job ",job)
     if(!is.null(input_pars)){
       par_file <- paste0(comsolpfad,"input_pars.txt")
       if(!is.data.frame(input_pars)){

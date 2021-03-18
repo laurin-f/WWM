@@ -43,6 +43,7 @@ F_df <- DS_anisotrop
 if(offset_method == "drift"){
 load(paste0(comsolpfad,"DS_anisotrop_drift.RData"))
 F_df <- DS_anisotrop_drift
+DS_anisotrop_long <- DS_anisotrop_long_drift
 }
 if(offset_method == "no_ref"){
  load(paste0(comsolpfad,"DS_anisotrop_no_ref.RData"))
@@ -108,7 +109,7 @@ for(i in 1:3){
   F_df[,paste0("DSD0_",i)] <- F_df[,paste0("DS_",i)]/F_df[,paste0("D0",i)]
 }
 
-hours_to_steady <- 12
+hours_to_steady <- 0
 #Zeitraum bis steady state abschneiden 
 for(i in 1:nrow(Pumpzeiten)){
   F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+hours_to_steady*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
