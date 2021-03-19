@@ -93,19 +93,26 @@ run_comsol <- function(data=data,
   for(j in seq_along(data_sub)){
     sub_j <- data_sub[[j]]
     injection_rate <- sub_j$inj_mol_m2_s[sub_j$tiefe == -24.5]
+    names(injection_rate) <- "injection_rate"
 
     #schreibe messungen in files die in COMSOL als Objective verwendet werden
     for(i in 1:7){
       write.table(sub_j[sub_j$tiefe == (1:7*-3.5)[i],"CO2_mol_per_m3"],paste0(metapfad_comsol,"dom",i,".csv"),col.names = F,row.names = F,sep=",")
     }
-
+    if(is.null(input_pars)){
+      input_pars_j <- injection_rate
+    }else if(is.data.frame(input_pars)){
+      input_pars_j <- cbind(input_pars,injection_rate)
+    }else{
+      input_pars_j <- c(input_pars,injection_rate)
+    }
     #command der an commandline gesendet wird um comsolbatch.exe zu starten
     comsol_exe(modelname = modelname,
                outfile_raw="CO2_optim.txt",
                outfile_new=outfile_names[j],
                job="b1",
                overwrite=overwrite,
-               input_pars=input_pars)
+               input_pars=input_pars_j)
 
   }
 

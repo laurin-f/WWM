@@ -208,7 +208,7 @@ data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12
 
 
 data_PSt0 <- lapply(na.omit(unique(data$Position)),function(x) subset(data, Pumpstufe == 0 & Position == x))
-Pumpzeiten
+
 j_78 <- which(sapply(data_PSt0, function(x) unique(x$Position %in% 7:8)))
 ##################
 #mit glm oder gam
@@ -304,7 +304,7 @@ paste("tiefe",rev(unique(data$tiefenstufe)),"=",rev(unique(data$tiefe)),"cm",col
 # PLOTS             #
 #####################
 
-ggplot(subset(data,Position %in% c(7)& tiefe > -30 ))+
+ggplot(subset(data,Position %in% c(7:8)& tiefe > -30 ))+
   geom_line(aes(date,offset,col=as.factor(tiefe)))+
   geom_line(aes(date,offset_drift,col=as.factor(tiefe)))
   

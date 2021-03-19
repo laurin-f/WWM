@@ -42,7 +42,9 @@ mod_dates_short <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe
 # DS_anisotrop_max_inj <- run_comsol(data=data_max_inj,mod_dates = mod_dates_short,offset_method = "min_inj",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 date_pattern <- "\\d{2}(_\\d{2}){2,3}"
 
-DS_anisotrop_drift <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "drift2",overwrite = F,plot=F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_anisotrop_drift <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "drift2",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+# 
+# DS_anisotrop_drift_test <- run_comsol(data=data,mod_dates = (mod_dates_short[10]),offset_method = "drift2",overwrite = T,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS",file_suffix = "test")
 
 
 
@@ -68,15 +70,19 @@ DS_anisotrop_drift <- run_comsol(data=data,mod_dates = (mod_dates),offset_method
 # DS_anisotrop_long_no_ref <- tidyr::pivot_longer(DS_anisotrop_no_ref,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 # colnames(DS_anisotrop_drift)
 
-DS_anisotrop_drift[,paste0("DS_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DS",1:3)],width=10,mean,fill=NA)
-DS_anisotrop_drift[,paste0("DSD0_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DSD0",1:3)],width=10,mean,fill=NA)
+# DS_anisotrop_drift[,paste0("DS_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DS",1:3)],width=10,mean,fill=NA)
+# DS_anisotrop_drift[,paste0("DSD0_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DSD0",1:3)],width=10,mean,fill=NA)
 
 DS_anisotrop_long_drift <- tidyr::pivot_longer(DS_anisotrop_drift,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
+
+# DS_anisotrop_long_drift_test <- tidyr::pivot_longer(DS_anisotrop_drift_test,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 # DS_anisotrop_long_drift_amp <- tidyr::pivot_longer(DS_anisotrop_drift_amp,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 # 
 # save(DS_anisotrop_long,DS_anisotrop,file=paste0(comsolpfad,"DS_anisotrop_gam.RData"))
 # save(DS_anisotrop_long_no_ref,DS_anisotrop_no_ref,file=paste0(comsolpfad,"DS_anisotrop_no_ref.RData"))
+
 save(DS_anisotrop_long_drift,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift.RData"))
+
 #save(DS_anisotrop_long_drift_amp,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift_amp.RData"))
 
 
@@ -89,6 +95,8 @@ save(DS_anisotrop_long_drift,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_aniso
 ggplot()+
   #  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="gam"))+
   geom_line(data=DS_anisotrop_long_drift,aes(date,DSD0,col=tiefe,linetype="drift"))#+
+  geom_point(data=DS_anisotrop_long_drift_test,aes(date,DSD0,col=tiefe,shape="drifttest"))
+  
   
 #  geom_line(data=DS_anisotrop_long_min_inj,aes(date,DSD0,col=tiefe,linetype="min_inj"))#+
 ggplot(DS_long)+

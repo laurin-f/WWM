@@ -6,9 +6,11 @@
 \usage{
 comsol_exe(
   modelname,
-  input_pars,
-  outfile_name,
-  outfile_raw = "CO2_flux_prod.txt"
+  input_pars = NULL,
+  outfile_new = NULL,
+  outfile_raw = "CO2_flux_prod.txt",
+  job = "b1",
+  overwrite = F
 )
 }
 \arguments{
