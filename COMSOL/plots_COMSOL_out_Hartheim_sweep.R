@@ -68,17 +68,25 @@ soil_wide$R_max <- (0.14*soil_wide$VWC_max_20-0.05)*0.66*exp(0.076*soil_wide$T_m
 
 #soil_wide$R_soil <- (0.14*soil_wide$mean_VWC_20+0.2)*0.66*exp(0.076*soil_wide$mean_T_2)
 
+data$preds_drift[data$tiefe == 0] <- data$CO2_roll_ref[data$tiefe == 0]
 
-data$CO2_ref_mol_m3 <- ppm_to_mol(data$CO2_ref,"ppm",out_class = "units",T_C = data$T_soil,p_kPa = data$PressureActual_hPa/10)
+data$CO2_ref_mol_m3 <- ppm_to_mol(data$CO2_roll_ref,"ppm",out_class = "units",T_C = data$T_soil,p_kPa = data$PressureActual_hPa/10)
+#data$CO2_ref_mol_m3 <- ppm_to_mol(data$preds_drift,"ppm",out_class = "units",T_C = data$T_soil,p_kPa = data$PressureActual_hPa/10)
+data$CO2_ref_mol_m3_adj <- ppm_to_mol(data$preds_drift,"ppm",out_class = "units",T_C = data$T_soil,p_kPa = data$PressureActual_hPa/10)
 
 data_wide_CO2 <- tidyr::pivot_wider(data[data$date %in% F_df$date,],date,names_from=tiefenstufe,values_from = CO2_ref_mol_m3,names_prefix = "CO2_ref_")
+data_wide_CO2_adj <- tidyr::pivot_wider(data[data$date %in% F_df$date,],date,names_from=tiefenstufe,values_from = CO2_ref_mol_m3_adj,names_prefix = "CO2_ref_adj_")
 F_df <- merge(F_df,data_wide_CO2)
+F_df <- merge(F_df,data_wide_CO2_adj)
 
 
 ##################################################################
 #anstatt glm geht es viel schneller jeweils den mittelwert von 3 
     ################
     #flux
+    dC_dz_mol_0_10 <- rowMeans(cbind(F_df$CO2_ref_1 - F_df$CO2_ref_2,F_df$CO2_ref_2 - F_df$CO2_ref_3)/-3.5)
+    #dC_dz_mol_0_10_adj <- rowMeans(cbind(F_df$CO2_ref_adj_0 - F_df$CO2_ref_adj_1,F_df$CO2_ref_adj_1 - F_df$CO2_ref_adj_2,F_df$CO2_ref_adj_2 - F_df$CO2_ref_adj_3)/-3.5)
+    dC_dz_mol_0_10_adj <- rowMeans(cbind(F_df$CO2_ref_adj_1 - F_df$CO2_ref_adj_2,F_df$CO2_ref_adj_2 - F_df$CO2_ref_adj_3)/-3.5)
     dC_dz_mol_10_17 <- rowMeans(cbind(F_df$CO2_ref_3 - F_df$CO2_ref_4,F_df$CO2_ref_4 - F_df$CO2_ref_5)/-3.5)
     dC_dz_mol_ab20 <- rowMeans(cbind(F_df$CO2_ref_5 - F_df$CO2_ref_6,F_df$CO2_ref_6 - F_df$CO2_ref_7)/-3.5)
 #mol/m^3/cm
@@ -87,6 +95,8 @@ F_df <- merge(F_df,data_wide_CO2)
     #Ficks Law
     #Fz_mumol_per_s_m2 <- F_df$DS_1[k]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
     
+    F_df$Fz_0_10 <- F_df$DS_1   * dC_dz_mol_0_10 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
+    F_df$Fz_0_10_adj <- F_df$DS_1   * dC_dz_mol_0_10_adj * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
     F_df$Fz_10_17 <- F_df$DS_2   * dC_dz_mol_10_17 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
     F_df$Fz_ab20 <- F_df$DS_3   * dC_dz_mol_ab20 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
     
@@ -142,6 +152,8 @@ w <- sapply(F_df$date, function(x) ifelse((x - rollwidth/2) %in% F_df$date & (x 
 w2 <- sapply(F_df$date, function(x) ifelse((x - rollwidth2/2) %in% F_df$date & (x + rollwidth2/2) %in% F_df$date ,sum(F_df$date >= x - rollwidth2/2 & F_df$date <= x+ rollwidth2/2),0))
 
 F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=w,mean,na.rm=F,fill=NA)
+F_df$Fz_roll_0_10 <- zoo::rollapply(F_df$Fz_0_10,width=w,mean,na.rm=F,fill=NA)
+F_df$Fz_roll_0_10_adj <- zoo::rollapply(F_df$Fz_0_10_adj,width=w,mean,na.rm=F,fill=NA)
 F_df$Fz_roll_10_17 <- zoo::rollapply(F_df$Fz_10_17,width=w,mean,na.rm=F,fill=NA)
 F_df$Fz_roll_ab20 <- zoo::rollapply(F_df$Fz_ab20,width=w,mean,na.rm=F,fill=NA)
 F_df$Fz_roll2 <- zoo::rollapply(F_df$Fz,width=w2,mean,na.rm=F,fill=NA)
@@ -167,10 +179,10 @@ F_df$DSD0_roll2_3 <- zoo::rollapply(F_df$DSD0_3,width=w2,mean,na.rm=F,fill=NA)
 # range(F_df$DSD0_roll_2[F_df$Versuch=="3"],na.rm=T)
 # range(F_df$DSD0_roll_3[F_df$Versuch=="3"],na.rm=T)
 # 
- range(F_df$Fz_roll2[F_df$Versuch!="1"],na.rm=T)
- range(F_df$DSD0_roll2_1[F_df$Versuch!="1"],na.rm=T)
- range(F_df$DSD0_roll2_2[F_df$Versuch!="1"],na.rm=T)
- range(F_df$DSD0_roll2_3[F_df$Versuch!="1"],na.rm=T)
+ range(F_df$Fz_roll[F_df$Versuch!="1"],na.rm=T)
+ range(F_df$DSD0_roll_1[F_df$Versuch!="1"],na.rm=T)
+ range(F_df$DSD0_roll_2[F_df$Versuch!="1"],na.rm=T)
+ range(F_df$DSD0_roll_3[F_df$Versuch!="1"],na.rm=T)
 
 DS_long <-tidyr::pivot_longer(F_df[!grepl("DS(D0)?_roll_\\d$",colnames(F_df))],matches("DS(D0)?_"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 DS_long_roll <-tidyr::pivot_longer(F_df[!grepl("DS(D0)?_(min_|max_|sorted_)?\\d$",colnames(F_df))],matches("DS(D0)?_roll"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))

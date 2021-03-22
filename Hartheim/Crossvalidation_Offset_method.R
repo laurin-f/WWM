@@ -24,9 +24,9 @@ data_PSt0 <- subset(data_sub, Pumpstufe == 0)
 
 data_PSt0$offset <-  data_PSt0$CO2_inj - data_PSt0$CO2_ref
 
-data_PSt0$preds_glm <- data_PSt0$preds
-data_PSt0$preds_gam <- data_PSt0$preds2
-data_PSt0$preds_drift <- data_PSt0$preds_drift + data_PSt0$CO2_roll_ref 
+# data_PSt0$preds_glm <- data_PSt0$preds
+# data_PSt0$preds_gam <- data_PSt0$preds2
+# data_PSt0$preds_drift <- data_PSt0$preds_drift + data_PSt0$CO2_roll_ref 
 
 #data_kal <- aggregate(data_PSt0[,grep("CO2|offset",colnames(data_PSt0))] ,list(tiefe = data_PSt0$tiefe), mean, na.rm=T)
 
@@ -36,7 +36,7 @@ data_PSt0$preds_drift <- data_PSt0$preds_drift + data_PSt0$CO2_roll_ref
 
 ##################
 #mit glm oder gam
-data_PSt0$preds_cv_glm <- NA
+#data_PSt0$preds_cv_glm <- NA
 data_PSt0$preds_cv_gam <- NA
 data_PSt0$preds_cv_drift <- NA
 data_PSt0$preds_cv_no_ref <- NA
@@ -59,10 +59,8 @@ ncv <- fold
 # R2 <- rmse
 combs <- sapply(c(2,seq(5,length(days)-2,2)),function(x) (1:length(days))[-(x:(x+1))])
 ncv <- ncol(combs)
-j <- 4
-i <- -14
+
 count <- 1
-#j<-1
 #fitdays <- days[-(5:6)]
 calc <-T
 if(calc==T){
@@ -82,16 +80,16 @@ for(j in 1:ncv){
     if(any(!is.na(test$CO2_roll_ref))){
       fit_df <- subset(data_PSt0,tiefe==i & ymd %in% fitdays)
       
-      fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
-      fm_drift <- glm(offset ~ poly(date_int,3),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
+      #fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
+      fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       
       #fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,3) + poly(hour,4) ,data=subset(data_PSt0,tiefe==i& ymd %in% fitdays))
-      fm_no_ref <- mgcv::gam(CO2_roll_inj ~ s(date_int) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
+      fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       
       ID <- which(data_PSt0$tiefe==i & !is.na(data_PSt0$CO2_roll_ref) & !data_PSt0$ymd %in% fitdays)
       
-      data_PSt0$preds_cv_glm[ID] <- predict(fm,newdata = data_PSt0[ID,])
+      #data_PSt0$preds_cv_glm[ID] <- predict(fm,newdata = data_PSt0[ID,])
       data_PSt0$preds_cv_drift[ID] <- data_PSt0[ID,]$CO2_roll_ref + predict(fm_drift,newdata = data_PSt0[ID,])
       data_PSt0$preds_cv_no_ref[ID] <- predict(fm_no_ref,newdata = data_PSt0[ID,])
       data_PSt0$preds_cv_gam[ID] <- predict(fm_gam,newdata = data_PSt0[ID,])
@@ -111,7 +109,13 @@ data_agg <- data_PSt0 %>%
 
 data_agg$cv[is.na(data_agg$cv)] <- "full"
 
+ggplot(data_agg)+geom_col(aes(func,rmse,fill=as.factor(tiefe)),position = "dodge")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))
 ggplot(data_agg)+geom_col(aes(func,rmse,fill=as.factor(tiefe)),position = "stack")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))+ggsave(paste0(plotpfad_harth,"cv_barplot.jpg"),width=7,height=5)
+
+agg <- data_agg %>% group_by(func,cv) %>% summarise_at(c("R2","rmse"),list(min=min,max=max,mean=mean),na.rm=T)
+
+range(subset(data,Position %in% 7:8 & tiefe > -10)$CO2_tracer_drift,na.rm = T)
+
 
 #gam
 ggplot(data_PSt0)+

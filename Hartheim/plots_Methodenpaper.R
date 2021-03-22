@@ -250,19 +250,21 @@ dev.off()
 #Figure 7 Ds profile over time
 ######################################
 
+h_steady <- 24
 DS_long_roll$range2 <- factor(DS_long_roll$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
 soil_agg_plot$range2 <- factor(soil_agg_plot$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
 
-Pumpzeiten$start[c(13,15)]
+ds_sub <- subset(DS_long_roll, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+F_sub <- subset(F_df, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+
+
 DS_plot <- ggplot(subset(soil_agg_plot))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range2)),alpha=0.15)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(range2),linetype="f(eps)"))+
-  geom_line(data=subset(DS_long_roll, date > pos8_date ),aes(date,DSD0_roll2,col=range2,linetype="in situ"),alpha=0.3)+
-  geom_line(data=subset(DS_long_roll, date > (Pumpzeiten$start[17] + 18*3600) ),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
-  geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll2,col=range2,linetype="in situ"),alpha=0.3)+
-  geom_line(data=subset(DS_long_roll, Versuch == "2" &  date > (Pumpzeiten$start[13] + 18*3600)),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
-  
-  #geom_line(data=subset(DS_long_roll, Versuch == "1" & id != 1),aes(date,DSD0_roll2,col=range2,linetype="in situ"))+
+  #hours till steady state
+  #geom_line(data=subset(DS_long_roll, date > pos8_date ),aes(date,DSD0_roll,col=range2,linetype="in situ"),alpha=0.3)+
+  #geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll,col=range2,linetype="in situ"),alpha=0.3)+
+  geom_line(data=ds_sub,aes(date,DSD0_roll,col=range2,linetype="in situ"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
   #xlim(range(DS_long$date))+
   scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(DS_long$date))+
@@ -288,14 +290,12 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
   scale_color_manual("simple T and SWC model",values=grey(0.3))+
   scale_fill_manual("simple T and SWC model",values=grey(0.3))+
   ggnewscale::new_scale_color()+
-  #geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.2)+
-  #geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-20 cm"),alpha=0.2)+
-  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll,col="0-10 cm"))+
-  geom_line(data=subset(F_df,date > pos8_date),aes(date,Fz_roll_10_17,col="10-20 cm"))+
-  geom_line(data=subset(F_df,Versuch %in% 1:3 & date > mindate),aes(date,Fz_roll_ab20,col="below 20 cm"))+
-  geom_line(data=subset(F_df,Versuch %in% 2) ,aes(date,Fz_roll2,col="0-10 cm"))+
-  geom_line(data=subset(F_df,Versuch %in% 1:2),aes(date,Fz_roll2_10_17,col="10-20 cm"))+
-    #scale_color_brewer("gradient method",type="qual",palette=6)+
+  #geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.3)+
+  #geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-20 cm"),alpha=0.3)+
+  geom_line(data=F_sub,aes(date,Fz_roll_0_10_adj,col="0-10 cm"))+
+  #geom_line(data=F_sub,aes(date,Fz_roll2,col="0-10 cm"))+
+
+  geom_line(data=F_sub,aes(date,Fz_roll_10_17,col="10-20 cm"))+
   guides(col=F)+
   #scale_color_manual("gradient method",values=1:2)+
   #xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
@@ -305,9 +305,10 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)
 
 
+flux_plot
 #flux_plot
 Fig5u6 <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),flux_plot,ncol=1,draw=F)
-jpeg(file=paste0(plotpfad_ms,"Fig5u6.jpg"),width=7,height = 5,units="in",res=300)
+jpeg(file=paste0(plotpfad_ms,"Fig5u6_drift_adj.jpg"),width=7,height = 5,units="in",res=300)
 Fig5u6
 dev.off()
 
@@ -335,3 +336,76 @@ ggplot(subset(Kammer_flux,date < ymd_h("2020.07.17 00")))+
   labs(y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
     #theme(legend.position = "top")#+
 ggsave(paste0(plotpfad_ms,"Flux_Kammer_Comsol_gam_3DS.jpg"),width=7,height = 3.5)
+
+
+#######################
+#
+
+efflux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
+  geom_linerange(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=""))+
+  geom_point(aes(date,CO2flux,col=""))+
+  labs(col="chamber")+
+  scale_color_manual(values=c(1))+
+  ggnewscale::new_scale_color()+
+  geom_line(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
+  geom_ribbon(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(x=date,ymin=R_min,ymax=R_max,fill=""),alpha=0.15)+
+  scale_color_manual("simple T and SWC model",values=grey(0.3))+
+  scale_fill_manual("simple T and SWC model",values=grey(0.3))+
+  ggnewscale::new_scale_color()+
+  
+  geom_line(data=subset(F_df,date > (Pumpzeiten$start[17] + 18*3600)),aes(date,Fz_roll,col="0-7 cm"))+
+  geom_line(data=subset(F_df,date > (Pumpzeiten$start[17] + 18*3600)),aes(date,Fz_roll_0_10,col="3-10 cm"))+
+  geom_line(data=subset(F_df,date > (Pumpzeiten$start[17] + 18*3600)),aes(date,Fz_roll_0_10_adj,col="3-10 cm adj"))+
+
+  geom_line(data=subset(F_df,Versuch %in% 2 & date > (Pumpzeiten$start[13] + 18*3600)) ,aes(date,Fz_roll,col="0-7 cm"))+
+  geom_line(data=subset(F_df,Versuch %in% 2 & date > (Pumpzeiten$start[13] + 18*3600)) ,aes(date,Fz_roll_0_10,col="3-10 cm"))+
+  geom_line(data=subset(F_df,Versuch %in% 2 & date > (Pumpzeiten$start[13] + 18*3600)) ,aes(date,Fz_roll_0_10_adj,col="3-10 cm adj"))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
+  labs(y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
+  geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)
+
+
+efflux_plot+ggsave(paste0(plotpfad_ms,"Flux_calc.jpg"),width=7,height = 5)
+
+colnames(F_df)
+ggplot(F_df)+
+  geom_line(aes(date, CO2_ref_0,col="0"))+
+  geom_line(aes(date, CO2_ref_1,col="1"))+
+  geom_line(aes(date, CO2_ref_2,col="2"))+
+  geom_line(aes(date, CO2_ref_3,col="3"))
+ggplot(F_df)+
+  geom_line(aes(date, CO2_ref_adj_0,col="0"))+
+  geom_line(aes(date, CO2_ref_adj_1,col="1"))+
+  geom_line(aes(date, CO2_ref_adj_2,col="2"))+
+  geom_line(aes(date, CO2_ref_adj_3,col="3"))
+
+ggplot(data.frame(x=seq_along(dC_dz_mol_0_10),y=dC_dz_mol_0_10_adj))+geom_line(aes(x,y))
+test <- F_df[1,]
+sub <- subset(data,date== test$date)
+ggplot(subset(sub))+
+  geom_line(aes(preds_drift,tiefe,col="ref_adj"))+
+  geom_line(aes(CO2_roll_ref,tiefe,col="ref"))
+  
+fm <- glm(as.numeric(CO2_ref_mol_m3_adj)~tiefe,data=subset(sub,tiefe > -12))
+fm$coefficients
+
+rowMeans(cbind(test$CO2_ref_adj_1 - test$CO2_ref_adj_2,test$CO2_ref_adj_2 - test$CO2_ref_adj_3)/-3.5)
+##########################
+#ranges
+data_sub
+data$Wind <- zoo::rollapply(data$WindVel_30m_ms,60*6,mean,fill=NA)
+axis_fac <- 10
+wind_plot <- ggplot(subset(data,date > min(F_df$date) & date < max(F_df$date)))+
+  geom_line(aes(date,Wind,linetype="windspeed"),col=grey(0.5))+
+  geom_line(data=ds_sub,aes(date,DSD0_roll*axis_fac,col=range2,linetype="DSD0"))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(DS_long$date))+
+  scale_y_continuous(sec.axis = sec_axis(trans=~./axis_fac,name="DSD0"))+
+  labs(y="Windspeed [m/s]",x="")
+
+
+wind_plot+ggsave(paste0(plotpfad_ms,"DS_Wind.jpg"),width=7,height = 5)
+ggpubr::ggarrange(DS_plot,wind_plot,ncol=1,align = "v")
+egg::ggarrange(DS_plot+ labs(x="") ,wind_plot,ncol=1)
+ds_sub %>% group_by(range) %>% summarise(min(DSD0_roll,na.rm=T),max(DSD0_roll,na.rm=T))
+F_sub %>% summarise(min(Fz_roll_0_10_adj,na.rm=T),max(Fz_roll_0_10_adj,na.rm=T), mean(Fz_roll_10_17/Fz_roll_0_10,na.rm = T))
+F_sub %>% summarise(min(Fz_roll_0_10_adj,na.rm=T),max(Fz_roll_0_10_adj,na.rm=T))

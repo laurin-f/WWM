@@ -213,7 +213,7 @@ j_78 <- which(sapply(data_PSt0, function(x) unique(x$Position %in% 7:8)))
 ##################
 #mit glm oder gam
 # data$preds_glm <- NA
-# data$preds_gam <- NA
+ data$preds_gam <- NA
 data$offset_drift <- NA
 data$preds_drift <- NA
 # data$preds_drift_amp <- NA
@@ -226,11 +226,11 @@ for(i in (1:7)*-3.5){
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
   #fm_glm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[j]],tiefe==i))
   fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0[[j]],tiefe==i))
-  fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,3) + poly(hour,4) ,data=subset(data_PSt0[[j]],tiefe==i))
+  #fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,2) + poly(hour,4) ,data=subset(data_PSt0[[j]],tiefe==i))
   #nicht verwendet
-  #fm_no_ref <- mgcv::gam(CO2_roll_inj ~ s(date_int) + s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
+  fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
 
-  #fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref)+ s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
+  fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref)+ s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
   
   pos <- na.omit(unique(data$Position))[j]
   ID <- which(data$tiefe==i & data$Position == pos& !is.na(data$CO2_ref))
@@ -242,7 +242,7 @@ for(i in (1:7)*-3.5){
   #fm_amp <- glm(CO2_roll_inj ~ poly(preds_drift,2),data=subset(data[ID2,],Pumpstufe == 0))
   #data$preds_drift_amp[ID] <- predict(fm_amp,newdata = data[ID,])
   data$preds_no_ref[ID] <- predict(fm_no_ref,newdata = data[ID,])
-  #data$preds_gam[ID] <- predict(fm_gam,newdata = data[ID,])
+  data$preds_gam[ID] <- predict(fm_gam,newdata = data[ID,])
   
   }
 }
@@ -250,7 +250,7 @@ for(i in (1:7)*-3.5){
 ########################
 
 #data$CO2_tracer_glm <- data$CO2_inj - (data$preds_glm)
-#data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds_gam)
+data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds_gam)
 data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
 data$CO2_tracer_drift <- data$CO2_roll_inj - (data$preds_drift)
 #data$CO2_tracer_drift_amp <- data$CO2_roll_inj - (data$preds_drift_amp)
