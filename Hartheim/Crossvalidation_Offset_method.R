@@ -109,6 +109,7 @@ data_agg <- data_PSt0 %>%
 
 data_agg$cv[is.na(data_agg$cv)] <- "full"
 
+
 ggplot(data_agg)+geom_col(aes(func,rmse,fill=as.factor(tiefe)),position = "dodge")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))
 ggplot(data_agg)+geom_col(aes(func,rmse,fill=as.factor(tiefe)),position = "stack")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))+ggsave(paste0(plotpfad_harth,"cv_barplot.jpg"),width=7,height=5)
 
@@ -132,6 +133,22 @@ ggplot(data_PSt0)+
   geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"))+
   geom_line(aes(date,preds_cv_drift,linetype=as.factor(tiefe),col="drift"))+
   scale_linetype_manual(values = rep(1,8))
+
+
+#######################
+#(RMSE / SD)^2 == R2
+
+sd_agg_cv <- data_PSt0 %>% group_by(tiefe) %>%
+  filter(!is.na(preds_cv_drift)) %>% summarise(sd=sd(CO2_roll_inj,na.rm = T)) %>% mutate(cv="cv")
+sd_agg <- data_PSt0 %>% group_by(tiefe) %>%
+  filter(!is.na(preds_drift)) %>% summarise(sd=sd(CO2_roll_inj,na.rm = T)) %>% mutate(cv="full")
+data_agg_2 <- merge(data_agg,rbind(sd_agg,sd_agg_cv),all.x = T)
+#data_agg_2 <- subset(data_agg_2,cv == "cv")
+
+rmse_sd <- (1- data_agg_2$rmse^2 / data_agg_2$sd^2)
+data_agg_2$R2 == rmse_sd
+plot(data_agg_2$R2)
+points(rmse_sd,col=2,pch=20)
 
 ########################################
 # ALT                                    #
@@ -181,9 +198,7 @@ range(sd_agg$gam_rmse)
 range(sd_agg$CO2_sd)
 sd(data_PSt0$CO2_roll_inj,na.rm=T)
 RMSE_cv/RMSEfit
-RMSE_cv_offset <- RMSE(data_PSt0$offset_cv +data_PSt0$CO2_roll_ref ,data_PSt0$CO2_roll_inj)
-RMSE_fit_offset <- RMSE(data_PSt0$offset +data_PSt0$CO2_roll_ref ,data_PSt0$CO2_roll_inj)
-RMSE_cv_offset/RMSE_fit_offset
+
 #R2(data_PSt0$CO2_roll_ref+data_PSt0$offset,data_PSt0$CO2_roll_inj)
 ########################
 

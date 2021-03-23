@@ -36,7 +36,8 @@ colnames(klima_data) <- str_remove_all(colnames(klima_data),"MET_|_CS\\d+|_degC|
 #   })
 # rm(T1_Sx)
 # T1 <- do.call("cbind",T1_Si)
-klima <- klima_data[,grep("date|Precip|^Ta|WindVel|PressureActual",colnames(klima_data))]
+colnames(klima_data)
+klima <- klima_data[,grep("date|Precip|^Ta|WindVel|PressureActual|SWin_CNR1",colnames(klima_data))]
 colnames(klima)
 # ggplot(klima_data)+geom_line(aes(date,Precip_Intensity_mmhr))
 # ggplot(klima_data)+geom_line(aes(date,Precip_Last1hr_mm))

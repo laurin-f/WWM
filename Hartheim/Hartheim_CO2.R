@@ -204,6 +204,8 @@ data$offset[which(data$Pumpstufe == 0)] <- data$CO2_roll_inj[which(data$Pumpstuf
 
 
 data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
+data$Position[data$date > ymd_h("2020.07.29 12")] <- NA
+data$Position[data$date < ymd_h("2020.07.26 00") & data$date > Pumpzeiten$start[18]] <- NA
 #data$Position[data$date > Pumpzeiten$start[15] & data$date < Pumpzeiten$start[16]] <- NA
 
 
@@ -219,8 +221,8 @@ data$preds_drift <- NA
 # data$preds_drift_amp <- NA
  data$preds_no_ref <- NA
 
-#for(j in j_78){
-for(j in seq_along(data_PSt0)){
+for(j in j_78){
+#for(j in seq_along(data_PSt0)){
 for(i in (1:7)*-3.5){
   #nicht verwendet
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
@@ -255,7 +257,14 @@ data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
 data$CO2_tracer_drift <- data$CO2_roll_inj - (data$preds_drift)
 #data$CO2_tracer_drift_amp <- data$CO2_roll_inj - (data$preds_drift_amp)
 
-
+x<-rep(NA,100)
+x[1:90] <- 1
+mean_na <- function(x,thr=0.2){
+  ifelse(length(which(is.na(x)))/length(x) < thr,
+         mean(x,na.rm=T),#if
+         NA)#else
+}
+data <- data %>% group_by(tiefe) %>% mutate(CO2_tracer_roll = zoo::rollapply(CO2_tracer_drift,60*12,mean_na,fill=NA))
 
 ########################
 #
@@ -305,8 +314,9 @@ paste("tiefe",rev(unique(data$tiefenstufe)),"=",rev(unique(data$tiefe)),"cm",col
 #####################
 
 ggplot(subset(data,Position %in% c(7:8)& tiefe > -30 ))+
-  geom_line(aes(date,offset,col=as.factor(tiefe)))+
-  geom_line(aes(date,offset_drift,col=as.factor(tiefe)))
+  geom_line(aes(date,offset,col=as.factor(-tiefe),linetype="offset inj - ref"))+
+  geom_line(aes(date,offset_drift,col=as.factor(-tiefe),linetype="correction function"))+facet_grid(~factor(Position,levels=7:8,labels=paste("Injection",1:2)),scales = "free_x")+
+  scale_linetype_manual(values=2:1)+ggsave(paste0(plotpfad_harth,"offset_timedrift.jpg"),width = 7,height=4)
   
 adj_gam <- ggplot(subset(data,Position %in% c(7:8) ))+
   geom_ribbon(aes(x=date,ymin=preds_gam,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
@@ -318,11 +328,6 @@ adj_no_ref <- ggplot(subset(data,Position %in% c(7:8) ))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
   geom_line(aes(date,preds_no_ref,col=as.factor(-tiefe),linetype="ref adj"))+
   labs(fill="",col="",title="no ref")
-adj_drift_amp <- ggplot(subset(data,Position %in% c(7:8) ))+
-  geom_ribbon(aes(x=date,ymin=ref_drift_amp,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
-  geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
-  geom_line(aes(date,ref_drift_amp,col=as.factor(-tiefe),linetype="ref adj"))+
-  labs(fill="",col="",title="drift amp")
 
 adj_drift <- ggplot(subset(data,Position %in% c(7:8) ))+
   geom_ribbon(aes(x=date,ymin=preds_drift,ymax=CO2_roll_inj,fill=as.factor(-tiefe)),alpha=0.3)+
@@ -330,7 +335,7 @@ adj_drift <- ggplot(subset(data,Position %in% c(7:8) ))+
   geom_line(aes(date,preds_drift ,col=as.factor(-tiefe),linetype="ref adj"))+
   labs(fill="",col="",title="drift")
   #geom_line(aes(date,preds_no_ref,linetype=as.factor(tiefe),col="no ref"))#+facet_grid(tiefe~.,scales = "free")
-
+adj_drift
 ggplot(subset(data,Position %in% c(7:8) ))+
   geom_line(aes(date,preds_drift + CO2_roll_ref,col=as.factor(-tiefe),linetype="drift"))+
   geom_line(aes(date,preds_drift ,col=as.factor(-tiefe),linetype="drift"))+
@@ -351,9 +356,8 @@ no_ref <- ggplot(subset(data,Position %in% c(7:8)))+
 drift_ref <- ggplot(subset(data,Position %in% c(7:8)))+
   geom_hline(yintercept = 0)+
   geom_line(aes(date,CO2_tracer_drift,col=as.factor(-tiefe)))+labs(title="drift")
-drift_amp_ref <- ggplot(subset(data,Position %in% c(7:8)))+
-  geom_hline(yintercept = 0)+
-  geom_line(aes(date,CO2_tracer_drift_amp,col=as.factor(-tiefe)))+labs(title="drift_amp")
+
+drift_ref
 
 ggpubr::ggarrange(gam_ref+labs(title="gam"),drift_ref+ylim(-300,4000),common.legend = T,ncol=1,legend="right")+
   ggsave(paste0(plotpfad_harth,"gam_drift.jpg"),width = 7,height=7)

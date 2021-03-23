@@ -391,6 +391,13 @@ time_plt <- ggplot(subset(data_sub,ID %in% c(1,3,7) & !is.na(Position)& tiefe < 
   labs(x="",y=expression(CO[2]~"[ppm]"),col="depth [cm]",linetype="")+
   scale_x_datetime(date_breaks = "2 days",date_labels = "%b %d")+
   theme_bw()
+time_plt_adj <- ggplot(subset(data_sub,ID %in% c(1,3,7) & !is.na(Position)& tiefe < 0))+
+  geom_line(aes(date,preds_drift,col=as.factor(-tiefe),linetype="ref adj"))+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
+  facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("Position",1:3)),scales="free")+
+  labs(x="",y=expression(CO[2]~"[ppm]"),col="depth [cm]",linetype="")+
+  scale_x_datetime(date_breaks = "2 days",date_labels = "%b %d")+
+  theme_bw()
 
 leg1 <- ggpubr::get_legend(tiefe_plt)
 legend1 <- ggpubr::as_ggplot(leg1)
@@ -398,9 +405,15 @@ leg2 <- ggpubr::get_legend(time_plt)
 legend2 <- ggpubr::as_ggplot(leg2)
 leg <- ggpubr::ggarrange(legend1,legend2,heights = c(1,1.5),ncol=1,align = "v")
 
+leg2_adj <- ggpubr::get_legend(time_plt_adj)
+legend2_adj <- ggpubr::as_ggplot(leg2_adj)
+leg_adj <- ggpubr::ggarrange(legend1,legend2_adj,heights = c(1,1.5),ncol=1,align = "v")
+
 
 no_leg <- ggpubr::ggarrange(tiefe_plt+theme(legend.position = "none"),time_plt+theme(legend.position = "none"),ncol=1,align="v") 
+no_leg_adj <- ggpubr::ggarrange(tiefe_plt+theme(legend.position = "none"),time_plt_adj+theme(legend.position = "none"),ncol=1,align="v") 
 ggpubr::ggarrange(no_leg,leg,widths = c(8,2))+ggsave(paste0(plotpfad_harth,"heterogeneity.jpg"),width=7,height=5)
+ggpubr::ggarrange(no_leg_adj,leg_adj,widths = c(8,2))+ggsave(paste0(plotpfad_harth,"heterogeneity_adj.jpg"),width=7,height=5)
 Sys.setlocale("LC_ALL","")
 
 
