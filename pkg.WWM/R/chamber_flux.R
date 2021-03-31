@@ -10,6 +10,8 @@
 chamber_flux <- function(mess_dir = "Hartheim",
                          messnr = NULL,
                          aggregate = F,
+                         p_kPa = 101.3,
+                         T_deg = NULL,
                          ...) {
   ########################
   #Metadaten laden
@@ -99,7 +101,7 @@ chamber_flux <- function(mess_dir = "Hartheim",
     Vol_kragen <- (kragen$height - Kammer$Hoehe_cm[1]) * Grundfl
     #das Volumen des Kragens selber (ausendurchmessen -innendurchmesser) wird vom Kammervolumen abgezogen
     Vol_kragen_rand <-
-      kragen$height * Grundfl_aussen - kragen$height * Grundfl
+      Kammer$Hoehe_cm[1] * Grundfl_aussen - Kammer$Hoehe_cm[1] * Grundfl
 
     #Wenn Vol_kragen größer null ist heißt dass das unter der Kammer noch zusätzliches Volumen im Kragen ist, sonst ist es null
     Vol <-
@@ -157,7 +159,8 @@ chamber_flux <- function(mess_dir = "Hartheim",
             Vol = Vol + Vol_schlauch[j],
             Grundfl = Grundfl,
             aggregate = aggregate,
-            T_deg = T_deg
+            T_deg = T_deg,
+            p_kPa = p_kPa
           )
         flux[[i]][[1]] <- rbind(flux[[i]][[1]], flux_j[[1]])
         flux[[i]][[2]] <- rbind(flux[[i]][[2]], flux_j[[2]])
@@ -181,7 +184,8 @@ chamber_flux <- function(mess_dir = "Hartheim",
         Vol = Vol + unique(Vol_schlauch),
         Grundfl = Grundfl,
         aggregate = aggregate,
-        T_deg = T_deg
+        T_deg = T_deg,
+        p_kPa = p_kPa
       )
     }
   }

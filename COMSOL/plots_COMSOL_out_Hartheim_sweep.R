@@ -25,7 +25,7 @@ load(file=paste0(klimapfad,"klima_data.RData"))
 #######################
 #einheiten anpassen für COMSOl
 #Tracersignal in COMSOL Einheit umrechnen
-offset_method <- "drift"
+offset_method <- "roll"
 ######################
 
 # load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8_ext.RData"))
@@ -44,6 +44,11 @@ if(offset_method == "drift"){
 load(paste0(comsolpfad,"DS_anisotrop_drift.RData"))
 F_df <- DS_anisotrop_drift
 DS_anisotrop_long <- DS_anisotrop_long_drift
+}
+if(offset_method == "roll"){
+load(paste0(comsolpfad,"DS_anisotrop_roll.RData"))
+F_df <- DS_anisotrop_roll
+DS_anisotrop_long <- DS_anisotrop_long_roll
 }
 if(offset_method == "no_ref"){
  load(paste0(comsolpfad,"DS_anisotrop_no_ref.RData"))

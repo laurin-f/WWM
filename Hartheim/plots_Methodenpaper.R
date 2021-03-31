@@ -29,7 +29,8 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 load(paste0(aufbereitete_ds,"Labor_Vergleich.RData"))
 #aus "plots_COMSOL_out_Hartheim_sweep.R"
 #load(paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
-load(paste0(comsolpfad,"plotdata_Methodenpaper_drift.RData"))
+#load(paste0(comsolpfad,"plotdata_Methodenpaper_drift.RData"))
+load(paste0(comsolpfad,"plotdata_Methodenpaper_roll.RData"))
 load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 
@@ -42,10 +43,33 @@ range2u3 <- range(data$date[data$Position %in% 7:8],na.rm = T)
 F_df[which(F_df$date>pos8_date & F_df$date < (pos8_date + 20*3600)),c("DSD0_1","Fz","Fz_roll")] <- NA
 DS_long_roll$DSD0_roll[which(DS_long_roll$date>pos8_date & DS_long_roll$date < (pos8_date + 20*3600) & DS_long_roll$id == 1)] <- NA
 
+
+data$preds_drift[data$tiefe == 0] <- data$CO2_roll_ref[data$tiefe == 0]
 #anteil FCO2 10-17 an gesamt respiration
 F_2u3 <- subset(F_df,Versuch!="1")
 
 data %>% group_by(Position,Pumpstufe) %>% summarise(injectionrate=mean(Fz))#ml per min
+
+h_steady <- 18
+
+# DS_long_roll <- DS_anisotrop_long_roll
+# DS_long_roll$DSD0_roll <- DS_long_roll$DSD0
+# ranges <- c("0 to -10","-10 to -20","> -20")
+# 
+# DS_long_roll$range <- factor(DS_long_roll$tiefe,levels=1:3,labels=ranges)
+# 
+DS_long_roll$range2 <- factor(DS_long_roll$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
+soil_agg_plot$range2 <- factor(soil_agg_plot$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
+pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
+Versuch2_date <- ymd_h("2020.07.10 00")
+DS_long_roll$Versuch <- ifelse(DS_long_roll$date < pos8_date,ifelse(DS_long_roll$date < Versuch2_date,"1","2"),"3")
+# 
+# ds_sub <- subset(DS_long_roll)
+ds_sub <- subset(DS_long_roll, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+F_sub <- subset(F_df, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+
+data$Wind <- RcppRoll::roll_mean(data$WindVel_30m_ms,60*4,fill=NA)
+
 
 ##################################################################################
 #plots
@@ -166,12 +190,18 @@ data$Precip_Last24hrs_mm[data$Precip_Last24hrs_mm < 0] <- 0
 
 ###########
 #T
+y_fac <- 2
 T_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
   geom_line(aes(date,mean_T,col=as.factor(tiefe)))+
   guides(col=F)+
-  labs(title="d)",x="date",y="Soil T [°C]",col="depth [cm]")#+
+  labs(title="d)",x="date",y="Soil T [°C]",col="depth [cm]")+
+  geom_line(data=subset(data,date > range2u3[1] & date < range2u3[2]),
+            aes(date,WindVel_30m_ms*y_fac),alpha=0.2)+
+  geom_line(data=subset(data,date > range2u3[1] & date < range2u3[2]),
+            aes(date,Wind*y_fac),col=grey(0.3))+
+  scale_y_continuous(sec.axis = sec_axis(~./y_fac,name="Windspeed [m/s]"))
   #scale_color_discrete(limits=all_dpths)
-
+T_plot_2u3 
 ################
 #VWC P
 sec_ax_fac <- 1.25
@@ -250,14 +280,7 @@ dev.off()
 #Figure 7 Ds profile over time
 ######################################
 
-h_steady <- 24
-DS_long_roll$range2 <- factor(DS_long_roll$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
-soil_agg_plot$range2 <- factor(soil_agg_plot$range,levels=c("0 to -10","-10 to -20","> -20"),labels = c("0-10","10-20","below 20"))
-
-ds_sub <- subset(DS_long_roll, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
-F_sub <- subset(F_df, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
-
-
+y_fac_ds <- 1/20
 DS_plot <- ggplot(subset(soil_agg_plot))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range2)),alpha=0.15)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(range2),linetype="f(eps)"))+
@@ -266,11 +289,19 @@ DS_plot <- ggplot(subset(soil_agg_plot))+
   #geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll,col=range2,linetype="in situ"),alpha=0.3)+
   geom_line(data=ds_sub,aes(date,DSD0_roll,col=range2,linetype="in situ"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
+  #geom_line(data=subset(data,date > range2u3[1] & date < range2u3[2]),
+  #          aes(date,WindVel_30m_ms*y_fac_ds),alpha=0.2)+
+  #geom_line(data=subset(data,date > range2u3[1] & date < range2u3[2]),
+  #          aes(date,Wind*y_fac_ds),col=grey(0.3))+
+  #scale_y_continuous(sec.axis = sec_axis(~./y_fac_ds,name="Windspeed [m/s]"))+
   #xlim(range(DS_long$date))+
   scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(DS_long$date))+
   scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))#+
 #  ggsave(file=paste0(plotpfad_ms,"DS_plot_gam_feps.jpg"),width=7,height = 3.5)
 DS_plot
+Wind_plot <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
+  geom_line(aes(date,WindVel_30m_ms),alpha=0.2)+
+  geom_line(aes(date,Wind),col=grey(0.3))
 ######################################
 #Figure 8 Flux
 ######################################
@@ -292,7 +323,7 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
   ggnewscale::new_scale_color()+
   #geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.3)+
   #geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-20 cm"),alpha=0.3)+
-  geom_line(data=F_sub,aes(date,Fz_roll_0_10_adj,col="0-10 cm"))+
+  geom_line(data=F_sub,aes(date,Fz_roll_0_10,col="0-10 cm"))+
   #geom_line(data=F_sub,aes(date,Fz_roll2,col="0-10 cm"))+
 
   geom_line(data=F_sub,aes(date,Fz_roll_10_17,col="10-20 cm"))+
@@ -307,7 +338,13 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
 
 flux_plot
 #flux_plot
+Fig6wind <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),flux_plot,Wind_plot+scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),ncol=1,heights = c(2,2,1),draw=F)
+
 Fig5u6 <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),flux_plot,ncol=1,draw=F)
+
+jpeg(file=paste0(plotpfad_ms,"Fig6Wind.jpg"),width=7,height = 5,units="in",res=300)
+Fig6wind
+dev.off()
 jpeg(file=paste0(plotpfad_ms,"Fig5u6_drift_adj.jpg"),width=7,height = 5,units="in",res=300)
 Fig5u6
 dev.off()
@@ -390,18 +427,21 @@ rowMeans(cbind(test$CO2_ref_adj_1 - test$CO2_ref_adj_2,test$CO2_ref_adj_2 - test
 ##########################
 #ranges
 
-data$Wind <- zoo::rollapply(data$WindVel_30m_ms,60*6,mean,fill=NA)
+
+#data$Wind_sd <- zoo::rollapply(data$WindVel_30m_ms,60*4,sd,fill=NA)
 
 axis_fac <- 10
-wind_plot <- ggplot(subset(data,date > min(F_df$date) & date < max(F_df$date)))+
+Versuch_i <- 1
+wind_plot <- ggplot(subset(data,date >  range2u3[1] & date <  range2u3[2]))+
   geom_line(aes(date,WindVel_30m_ms),col=grey(0.5),alpha=0.2)+
-  geom_line(aes(date,Wind,linetype="windspeed"),col=grey(0.2))+
+  geom_line(aes(date,Wind),col=grey(0.2))+
   geom_line(data=ds_sub,aes(date,DSD0_roll*axis_fac,col=range2,linetype="DSD0"))+
-  scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(subset(DS_long,Versuch%in%2)$date))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(subset(DS_long_roll,Versuch%in%Versuch_i)$date))+
   scale_y_continuous(sec.axis = sec_axis(trans=~./axis_fac,name="DSD0"))+
-  labs(y="Windspeed [m/s]",x="")
+  labs(y="Windspeed [m/s]",x="")+
+  ggsave(paste0(plotpfad_harth,"DS_Wind_Inj",Versuch_i -1,".jpg"),width=7,height = 5)
 
-wind_plot+ggsave(paste0(plotpfad_harth,"DS_Wind_Inj1.jpg"),width=7,height = 5)
+wind_plot
 
 klima$SWin_2m <- (klima$SWin_CNR1_2m_A_Wm2 + klima$SWin_CNR1_2m_B_Wm2)/2
 ggplot()+
@@ -421,6 +461,41 @@ T_DS_plot <- ggplot(subset(data,date > min(F_df$date) & date < max(F_df$date)))+
 
 T_DS_plot+ggsave(paste0(plotpfad_harth,"DS_Tsoil.jpg"),width=7,height = 5)
 
+axis_fac_3 <- 300
+Versuch_i <- 3
+ggplot(subset(data,date > min(subset(F_df,Versuch==Versuch_i)$date)-3*3600*24 & date < max(subset(F_df,Versuch==Versuch_i)$date)+2*3600*24 & tiefe > -11))+
+  geom_rect(data = subset(Pumpzeiten,Pumpstufe %in% c(3,5)[Versuch_i-1]),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf),alpha=0.1)+
+  geom_line(aes(date,WindVel_30m_ms*axis_fac_3),col=grey(0.5),alpha=0.2)+
+  geom_line(aes(date,Wind*axis_fac_3),col=grey(0.2))+
+  geom_line(aes(date,preds_drift,col=as.factor(-tiefe),linetype="ref adj"))+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days")+
+  scale_y_continuous(sec.axis = sec_axis(trans=~./axis_fac_3,name="Windspeed [m/s]"))+
+  theme_bw()+
+  labs(title=paste("Injektion",Versuch_i-1),y="CO2 ppm",col="tiefe [cm]",linetype="")#+
+  #ggsave(paste0(plotpfad_harth,"CO2_Wind_Inj_",Versuch_i-1,".jpg"),width=7,height = 5)
+
+ggplot(subset(data,date > min(subset(F_df,Versuch==Versuch_i)$date)-3*3600*24 & date < max(subset(F_df,Versuch==Versuch_i)$date)+2*3600*24 & tiefe > -10))+
+  geom_rect(data = subset(Pumpzeiten,Pumpstufe %in% c(3,5)[Versuch_i-1]),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf),alpha=0.1)+
+  geom_line(aes(date,Wind_sd*axis_fac_3*3),col=grey(0.2))+
+  geom_line(aes(date,preds_drift,col=as.factor(-tiefe),linetype="ref adj"))+
+  geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="inj"))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days")+
+  scale_y_continuous(sec.axis = sec_axis(trans=~./(axis_fac_3*3),name="Windspeed sd [m/s]"))+
+  theme_bw()+
+  labs(title=paste("Injektion",Versuch_i-1),y="CO2 ppm",col="tiefe [cm]",linetype="")+
+  ggsave(paste0(plotpfad_harth,"CO2_Windsd_Inj_",Versuch_i-1,".jpg"),width=7,height = 5)
+  
+  
+ggplot(F_df)+geom_line(aes(date, Fz,col=as.factor(Versuch)))
+
+ggplot(subset(data,date > min(F_df$date) & date < max(F_df$date) & T_C > 12))+
+  geom_rect(data = subset(Pumpzeiten,Pumpstufe %in% c(3,5)),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf),alpha=0.1)+
+  geom_line(aes(date,T_C,col="T Inj"))+
+  labs(y="T Injectionskiste [°C]")+
+  scale_y_continuous(sec.axis = sec_axis(trans=~./60,name="DS/D0"))+
+  geom_line(data=subset(ds_sub,range2 == "0-10"),aes(date,DSD0_roll*60,col="DSD01"))+
+  ggsave(paste0(plotpfad_harth,"DS_T_injektionskiste.jpg"),width=7,height = 5)
 
 #data <- data %>% group_by(tiefe) %>% mutate(CO2_tracer_roll = zoo::rollapply(CO2_tracer_drift,60*12,mean,na.rm=T,fill=NA))
 
@@ -428,17 +503,18 @@ ggplot(subset(data,Position %in% 7:8 & tiefe >= -10.5 & tiefe < 0))+
   geom_rect(data = subset(Pumpzeiten,Pumpstufe %in% c(3,5)),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf),alpha=0.1)+
   geom_hline(yintercept = 0,col="grey")+
   geom_line(aes(date,CO2_tracer_drift,col=as.factor(-tiefe)),alpha=0.4)+
-  geom_line(aes(date,CO2_tracer_roll,col=as.factor(-tiefe)))+
+  geom_line(aes(date,CO2_tracer_roll4,col=as.factor(-tiefe)))+
   theme_bw()+
-scale_x_datetime(date_label="%b %d",breaks="2 days")+
-  ggsave(paste0(plotpfad_harth,"drift_tracer_tiefe123.jpg"),width=7,height = 4)
+scale_x_datetime(date_label="%b %d",breaks="2 days")#+
+  #ggsave(paste0(plotpfad_harth,"drift_tracer_tiefe123.jpg"),width=7,height = 4)
 
 
 for(i in 1:7*3.5){
 ggplot(subset(data,Position %in% 7:8 & tiefe == -i))+
   geom_line(aes(date,preds_drift,col="ref adj"))+
   geom_line(aes(date,CO2_roll_ref,col="ref"))+
-  geom_line(aes(date,CO2_roll_inj,col="inj"))+theme_bw()+
+  geom_line(aes(date,CO2_roll_inj,col="inj"))+
+    theme_bw()+
   scale_x_datetime(date_label="%b %d",breaks="2 days")+
   labs(title=paste("tiefe",i,"cm"),x="",y="CO2 [ppm]")+
   ggsave(paste0(plotpfad_harth,"inj_ref_adj_tiefe",floor(i),".jpg"),width=7,height = 5)

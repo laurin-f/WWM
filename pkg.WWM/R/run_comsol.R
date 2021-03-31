@@ -126,7 +126,7 @@ run_comsol <- function(data=data,
     if(!is.null(file_suffix)){
       file_pattern <- paste(modelname,offset_method,date_pattern,file_suffix,sep="_")
     }
-    outfile_names <- list.files(comsolpfad,pattern = file_pattern)
+    outfile_names <- list.files(comsolpfad,pattern = paste0(file_pattern,".txt$"))
 #
     mod_date_all_chr <- sort(unique(str_extract(outfile_names,date_pattern)))
 
@@ -134,6 +134,13 @@ run_comsol <- function(data=data,
 
     mod_dates_all <- ymd_hm(paste("2020",mod_date_all_chr_pad))
     mod_dates_all <-mod_dates_all[mod_dates_all %in% data$date]
+
+    date_chr <- format(mod_dates_all,"%m_%d_%H_%M")
+    outfile_names <- paste0(modelname,"_",offset_method,"_",date_chr,".txt")
+
+    if(!is.null(file_suffix)){
+      outfile_names <- paste0(modelname,"_",offset_method,"_",date_chr,"_",file_suffix,".txt")
+    }
   }else{
     mod_dates_all <- mod_dates
   }

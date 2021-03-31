@@ -28,8 +28,11 @@ data$CO2_tracer_drift2 <- data$CO2_tracer_drift
 
 data$date_hour <- round_date(data$date,"60 mins")
 data$date_3_hours <- round_date(data$date,"3 hours")
+
 mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour& data$date > ymd_h("2020.07.10 00")]))
-mod_dates_short <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_3_hours]))
+mod_dates_short <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe != 0 & data$date %in% data$date_3_hours]))
+mod_dates_inj1 <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe == 1.5 & data$date %in% data$date_3_hours]))
+
 
 # data_min_inj <- data %>% 
 #   filter(Position == 8 & as.numeric(inj_mol_m2_s) > 0) %>% 
@@ -43,10 +46,10 @@ mod_dates_short <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe
 date_pattern <- "\\d{2}(_\\d{2}){2,3}"
 
 DS_anisotrop_drift <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "drift2",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_anisotrop_roll <- run_comsol(data=data,mod_dates = (mod_dates_inj1),offset_method = "roll4",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+
 # 
 # DS_anisotrop_drift_test <- run_comsol(data=data,mod_dates = (mod_dates_short[10]),offset_method = "drift2",overwrite = T,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS",file_suffix = "test")
-
-
 
 # DS_anisotrop_no_ref <- run_comsol(data=data,mod_dates = rev(mod_dates),offset_method = "no_ref",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 # DS_anisotrop <- run_comsol(data=data,mod_dates = rev(mod_dates),offset_method = "gam",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
@@ -71,9 +74,14 @@ DS_anisotrop_drift <- run_comsol(data=data,mod_dates = (mod_dates),offset_method
 # colnames(DS_anisotrop_drift)
 
 # DS_anisotrop_drift[,paste0("DS_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DS",1:3)],width=10,mean,fill=NA)
-# DS_anisotrop_drift[,paste0("DSD0_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DSD0",1:3)],width=10,mean,fill=NA)
+ DS_anisotrop_drift[,paste0("DSD0_roll",1:3)] <- zoo::rollapply(DS_anisotrop_drift[,paste0("DSD0",1:3)],width=10,mean,fill=NA)
 
 DS_anisotrop_long_drift <- tidyr::pivot_longer(DS_anisotrop_drift,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
+
+
+DS_anisotrop_roll <- DS_anisotrop_roll %>% 
+  subset(date %in% data$date[!is.na(data$CO2_tracer_roll4)] )
+DS_anisotrop_long_roll <- tidyr::pivot_longer(DS_anisotrop_roll,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe")) 
 
 # DS_anisotrop_long_drift_test <- tidyr::pivot_longer(DS_anisotrop_drift_test,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
 # DS_anisotrop_long_drift_amp <- tidyr::pivot_longer(DS_anisotrop_drift_amp,matches("DS"),names_pattern = "(.+)(\\d)",names_to = c(".value","tiefe"))
@@ -82,6 +90,7 @@ DS_anisotrop_long_drift <- tidyr::pivot_longer(DS_anisotrop_drift,matches("DS"),
 # save(DS_anisotrop_long_no_ref,DS_anisotrop_no_ref,file=paste0(comsolpfad,"DS_anisotrop_no_ref.RData"))
 
 save(DS_anisotrop_long_drift,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift.RData"))
+save(DS_anisotrop_long_roll,DS_anisotrop_roll,file=paste0(comsolpfad,"DS_anisotrop_roll.RData"))
 
 #save(DS_anisotrop_long_drift_amp,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift_amp.RData"))
 
@@ -92,6 +101,13 @@ save(DS_anisotrop_long_drift,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_aniso
 #############################################
 #           PLOTS                           #
 #############################################
+
+ggplot()+
+  #  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="gam"))+
+  geom_line(data=DS_anisotrop_long_roll,aes(date,DSD0,col=tiefe,linetype="roll"))+
+  geom_line(data=DS_anisotrop_long_drift,aes(date,DSD0,col=tiefe,linetype="drift"))+
+#  geom_vline(xintercept=ymd_h(c("2020.07.23 05","2020.07.23 09")))+
+  scale_x_datetime(date_label="%b %d",breaks="1 days")+theme_bw()
 ggplot()+
   #  geom_line(data=DS_anisotrop_long,aes(date,DSD0,col=tiefe,linetype="gam"))+
   geom_line(data=DS_anisotrop_long_drift,aes(date,DSD0,col=tiefe,linetype="drift"))#+

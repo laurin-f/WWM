@@ -40,6 +40,7 @@ datelim <- min(c(Pumpzeiten$start,Pumpzeiten$ende),na.rm = T)
 
 data <- read_sampler("sampler1u2",datelim = datelim, format = "long")
 
+
 colnames(data) <- str_replace_all(colnames(data),c("smp1" = "inj", "smp2" = "ref"))
 
 
@@ -68,18 +69,29 @@ for(i in seq_along(Pumpzeiten$Pumpstufe)){
 
 
 #kurven glätten mit rollapply
-for(j in c("_inj","_ref")){
- data[,paste0("CO2_roll",j)] <- NA
-for(i in unique(data$tiefe)){
-  tiefe.i <- data$tiefe == i
-  data[tiefe.i,paste0("CO2_roll",j)] <- zoo::rollapply(data[tiefe.i,paste0("CO2",j)],width=50,mean,fill=NA)
-}
-}
+# for(j in c("_inj","_ref")){
+#  data[,paste0("CO2_roll",j)] <- NA
+# for(i in unique(data$tiefe)){
+#   tiefe.i <- data$tiefe == i
+#   data[tiefe.i,paste0("CO2_roll",j)] <- zoo::rollapply(data[tiefe.i,paste0("CO2",j)],width=50,mean,fill=NA)
+# }
+# }
+
+data <- data %>% 
+  group_by(tiefe) %>% 
+  mutate(
+    CO2_roll_ref = RcppRoll::roll_mean(CO2_ref,n=50,fill=NA),
+    CO2_roll_inj = RcppRoll::roll_mean(CO2_inj,n=50,fill=NA)
+         ) %>% 
+  ungroup() %>% 
+  as.data.frame()
+
+
 
 ############################
 #Fz mit zeitlichem drift bestimmen
 flux$date <- ymd_hms(flux$date)
-data$Fz <- NA
+data$Fz <- as.numeric(NA)
 for(i in na.omit(unique(data$Pumpstufe))){
   flux_i <- subset(flux, Pumpstufe == i)
   id <- which(data$Pumpstufe == i)
@@ -89,6 +101,7 @@ for(i in na.omit(unique(data$Pumpstufe))){
     data[id,"Fz"] <- flux_i$tracer_ml_per_min
   }
 }
+
 
 ##########################
 #soil data to data
@@ -202,10 +215,13 @@ data$date_int <- as.numeric(data$date)
 data$offset <- NA
 data$offset[which(data$Pumpstufe == 0)] <- data$CO2_roll_inj[which(data$Pumpstufe == 0)] - data$CO2_roll_ref[which(data$Pumpstufe == 0)]
 
-
+#injektion 1 weg
 data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
-data$Position[data$date > ymd_h("2020.07.29 12")] <- NA
+
+#position 8 tracer abfall weg
 data$Position[data$date < ymd_h("2020.07.26 00") & data$date > Pumpzeiten$start[18]] <- NA
+#postion 8 kürzen
+data$Position[data$date > ymd_h("2020.07.29 12")] <- NA
 #data$Position[data$date > Pumpzeiten$start[15] & data$date < Pumpzeiten$start[16]] <- NA
 
 
@@ -257,14 +273,20 @@ data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
 data$CO2_tracer_drift <- data$CO2_roll_inj - (data$preds_drift)
 #data$CO2_tracer_drift_amp <- data$CO2_roll_inj - (data$preds_drift_amp)
 
-x<-rep(NA,100)
-x[1:90] <- 1
-mean_na <- function(x,thr=0.2){
+mean_na <- function(x,thr=0.4){
   ifelse(length(which(is.na(x)))/length(x) < thr,
          mean(x,na.rm=T),#if
          NA)#else
 }
-data <- data %>% group_by(tiefe) %>% mutate(CO2_tracer_roll = zoo::rollapply(CO2_tracer_drift,60*12,mean_na,fill=NA))
+
+data <- data %>% group_by(tiefe) %>% mutate(
+  CO2_tracer_roll12 = data.table::frollapply(CO2_tracer_drift,60*12,mean_na,fill=NA,align = "center"),
+  #CO2_tracer_roll6 = zoo::rollapply(CO2_tracer_drift,60*6,mean_na,fill=NA),
+  CO2_tracer_roll4 = data.table::frollapply(CO2_tracer_drift,60*4,mean_na,fill=NA,align = "center")
+  ) %>% 
+  as.data.frame()
+
+
 
 ########################
 #
@@ -295,6 +317,7 @@ data_agg <- data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure|DS",colnames(
   summarise_all(mean,na.rm=T)
   
 data_agg <- subset(data_agg, Pumpstufe != 0)
+
 save(data,data_agg,Pumpzeiten,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
 
 

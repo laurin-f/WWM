@@ -383,6 +383,7 @@ tiefe_plt <-  ggplot(data_sub_agg)+
   facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("Position",1:3)))+
   labs(x=expression(CO[2]~"[ppm]"),fill="",col="",y="depth [cm]")+theme_bw()
 
+
 Sys.setlocale("LC_ALL","English")
 time_plt <- ggplot(subset(data_sub,ID %in% c(1,3,7) & !is.na(Position)& tiefe < 0))+
   geom_line(aes(date,CO2_roll_ref,col=as.factor(-tiefe),linetype="ref"))+
