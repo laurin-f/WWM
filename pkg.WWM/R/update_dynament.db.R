@@ -46,15 +46,24 @@ update_dynament.db<-function(table.name="dynament_test"){
 
       dyn <- do.call(rbind,dyn.list)
 
+      
+      char_cols <- which(sapply(dyn[-1],class)== "character")+1
+      
+      dyn[,char_cols] <- sapply(dyn[,char_cols],as.numeric)
+
       CO2_cols <- grep("CO2",colnames(dyn))
       dyn[,CO2_cols][dyn[,CO2_cols] < 0] <- NA
 
 
       dyn[dyn < -20] <- NA
       dyn[dyn > 7000] <- NA
-      dyn$date <- as.numeric(lubridate::ymd_hms(dyn$date))
-      colnames(dyn) <- stringr::str_replace(colnames(dyn),"date","date_int")
 
+      
+      dyn$date <- as.numeric(lubridate::ymd_hms(dyn$date))
+      dyn <- dyn[!is.na(dyn$date),]
+      
+      colnames(dyn) <- stringr::str_replace(colnames(dyn),"date","date_int")
+      
       if(!grepl("raw",table.name)){
       load(paste0(metapfad_dyn,"korrektur_fm.RData"))#,envir = .GlobalEnv)
       names(fm) <- stringr::str_replace(names(fm),"_sampler3","")
