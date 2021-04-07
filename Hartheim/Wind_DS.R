@@ -9,6 +9,7 @@ metapfad_harth<- paste0(metapfad,"Hartheim/")
 metapfad_comsol<- paste0(metapfad,"COMSOL/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad_ms <- paste0(hauptpfad,"Dokumentation/Berichte/plots/Methodenpaper/")
+klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/") 
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
@@ -19,7 +20,7 @@ aufbereitete_ds<-paste0(hauptpfad,"Daten/aufbereiteteDaten/DS_Labor/")
 plotpfad_harth <- paste0(hauptpfad,"Dokumentation/Berichte/plots/hartheim/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr","png","cowplot","magick")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr","png","cowplot","magick","rmatio","PerformanceAnalytics")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -71,8 +72,26 @@ data <- data %>% group_by(tiefe) %>%
 ds_sub2 <- merge(ds_sub,data[data$tiefe == 0,c("date","WindVel_30m_ms","Wind")])
 
 ##################
+#PPC
+##################
+files.mat <- list.files(paste0(klimapfad,"PPC"),"PPC_gnd.+\\.mat$",full.names = T)
+PPC_ls <- lapply(files.mat,function(x) as.data.frame(read.mat(x)[[1]]))
+for(i in seq_along(files.mat)){
+  PPC_ls[[i]]$date <- seq.POSIXt(ymd_hm(paste(str_extract(files.mat[i],"\\d{4}_\\d{1,2}_\\d{1,2}"),"00:00")),by="30 min",len=48)
+  
+}
+PPC <- do.call(rbind,PPC_ls)
+PPC_long <- tidyr::pivot_longer(PPC,matches("V"),values_to = "PPC")
+PPC_agg <- PPC_long %>% group_by(date) %>% summarise(PPC_mean=mean(PPC))
 
+ggplot(PPC_long)+
+  geom_line(aes(date,PPC,col=name))+
+  geom_line(data = ds_sub,aes(date,DSD0_roll,col=range2))
+ggplot(PPC_agg)+
+  geom_line(aes(date,PPC_mean))+
+  geom_line(data = ds_sub,aes(date,DSD0_roll,col=range2))
 
+  
 
 test <- ds_sub2 %>% 
   filter(id==1) %>%
@@ -93,6 +112,30 @@ test <- ds_sub2 %>%
     ) %>% 
   filter(!is.na(DSD0_min))
 
+PPC_DS <- merge(test,PPC)
+PPC_DS_long <- tidyr::pivot_longer(PPC_DS,matches("^V\\d"),values_to = "PPC")
+
+
+ggplot(PPC_DS)+
+  geom_line(aes(date,V19,col="V19"))+
+  geom_line(aes(date,V20,col="V20"))+
+  geom_line(aes(date,peak,col="DSD0_peak"))+
+  xlim(range(test$date))
+  colnames(PPC_DS)
+  corcols <- grep("^V\\d|^peak$",colnames(PPC_DS))
+cormat <- cor(PPC_DS[,corcols],use="complete")
+best_cors <- names(which(cormat[,1]>0.9))
+best_cor <- names(sort(cormat[-1,1],decreasing = T)[1])
+
+ggplot(subset(PPC_DS_long,name %in% best_cor))+
+  geom_line(aes(date,PPC,col="PPC"))+
+  geom_line(aes(date,peak,col="DSD0 peak"))+
+  geom_line(aes(date,DSD0_roll,col="DSD0"))+
+  ggsave(paste0(plotpfad_harth,"DS_PPC.jpg"),width=7,height=5)
+ggplot(subset(PPC_DS_long,name %in% best_cors))+
+  geom_smooth(aes(peak,PPC,col=name))+
+  geom_point(aes(peak,PPC,col=name))+
+  facet_wrap(~name)
 
 # ggplot(test)+
 # 
@@ -110,7 +153,6 @@ test <- ds_sub2 %>%
 # for(i in 2:3){
 # test$DSD0_base[test$Versuch == i] <-  predict(glm(DSD0_min ~ I(poly(-date_int,2)),data=test[test$Versuch == i,]))
 # }
-
 ggplot(test)+
   geom_line(aes(date,DSD0_roll))+
   geom_line(aes(date,DSD0_min,col="base",linetype="DSD0"))+
