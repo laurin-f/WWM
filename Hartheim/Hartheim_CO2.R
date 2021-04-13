@@ -197,14 +197,14 @@ data_wide[,paste0("F_z_",j2,paste(c(-tiefen[i-1],-tiefen[i]),collapse="-"))] <- 
 
 
 
-F_z_wide <- data_wide[,grep("date|F_z",colnames(data_wide))]
+# F_z_wide <- data_wide[,grep("date|F_z",colnames(data_wide))]
+# 
+# F_PTF <- tidyr::pivot_longer(F_z_wide,grep("F_z",colnames(F_z_wide)),names_pattern = "F_z_(min|max|mean)_(\\d+\\.?\\d*-\\d+\\.?\\d*)",names_to = c(".value","tiefe"))
 
-F_PTF <- tidyr::pivot_longer(F_z_wide,grep("F_z",colnames(F_z_wide)),names_pattern = "F_z_(min|max|mean)_(\\d+\\.?\\d*-\\d+\\.?\\d*)",names_to = c(".value","tiefe"))
 
-
-F_PTF_agg <- F_PTF %>%
-  group_by(round_date(date,"hour"),tiefe) %>%
-  summarise(date = mean(date),min=min(min),max=max(max),mean=mean(mean))
+# F_PTF_agg <- F_PTF %>%
+#   group_by(round_date(date,"hour"),tiefe) %>%
+#   summarise(date = mean(date),min=min(min),max=max(max),mean=mean(mean))
 
 ###############
 #tiefen Offset
@@ -237,8 +237,8 @@ data$preds_drift <- NA
 # data$preds_drift_amp <- NA
  data$preds_no_ref <- NA
 
-for(j in j_78){
-#for(j in seq_along(data_PSt0)){
+#for(j in j_78){
+for(j in seq_along(data_PSt0)[-c(3,5)]){
 for(i in (1:7)*-3.5){
   #nicht verwendet
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))

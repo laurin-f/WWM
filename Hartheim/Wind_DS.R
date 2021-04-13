@@ -84,16 +84,27 @@ PPC <- do.call(rbind,PPC_ls)
 PPC_long <- tidyr::pivot_longer(PPC,matches("V"),values_to = "PPC")
 PPC_agg <- PPC_long %>% group_by(date) %>% summarise(PPC_mean=mean(PPC))
 
-ggplot(PPC_long)+
-  geom_line(aes(date,PPC,col=name))+
-  geom_line(data = ds_sub,aes(date,DSD0_roll,col=range2))
-ggplot(PPC_agg)+
-  geom_line(aes(date,PPC_mean))+
-  geom_line(data = ds_sub,aes(date,DSD0_roll,col=range2))
 
-  
+date_seq <- seq.POSIXt(min(ds_sub2$date),max(ds_sub2$date),by="min")
+ds_wide <- tidyr::pivot_wider(ds_sub2,matches("date|id|Versuch"),names_from=id,values_from="DSD0_roll",names_prefix = "DSD0_")
+Versuch2 <- ds_wide$date[range(which(ds_wide$Versuch == 2))]
+Versuch3 <- ds_wide$date[range(which(ds_wide$Versuch == 3))]
 
-test <- ds_sub2 %>% 
+ds_approx <- data.frame(date=date_seq,
+                        Versuch=NA,
+                        DSD0_1=approx(x=ds_wide$date,y=ds_wide$DSD0_1,xout=date_seq)$y,
+                        DSD0_2=approx(x=ds_wide$date,y=ds_wide$DSD0_2,xout=date_seq)$y,
+                        DSD0_3=approx(x=ds_wide$date,y=ds_wide$DSD0_3,xout=date_seq)$y
+                        )
+
+ds_approx$Versuch[ds_approx$date >= Versuch2[1] & ds_approx$date <= Versuch2[2]] <- 2
+ds_approx$Versuch[ds_approx$date >= Versuch3[1] & ds_approx$date <= Versuch3[2]] <- 3
+
+ggplot()+
+  geom_point(data=ds_wide,aes(date,DSD0_1))+
+  geom_point(data=ds_approx,aes(date,DSD0_1))
+colnames(ds_wide)
+ds_peak <- ds_sub2 %>% 
   filter(id==1) %>%
   select(date,DSD0_roll,Wind,WindVel_30m_ms,id,range2,Versuch) %>% 
   group_by(Versuch) %>% 
@@ -102,31 +113,81 @@ test <- ds_sub2 %>%
     slope2 = c(NA, diff(slope)),
     DSD0_min = RcppRoll::roll_minr(DSD0_roll,19,na.rm = T),
     tal = ifelse(abs(slope) < 5e-3 & (slope2) > 0& !DSD0_roll > DSD0_min + 0.01, DSD0_roll, NA),
-    base3 = zoo::na.approx(tal,na.rm=F),
-    base4 = ifelse(base3 < DSD0_roll,base3,DSD0_roll),
-    base = RcppRoll::roll_mean(DSD0_min,40,na.rm = T,fill=NA),
-    peak = DSD0_roll-DSD0_min,
-    base2 = ifelse(DSD0_min < base, DSD0_min, base),
-    peak2 = DSD0_roll-base2,
-    peak3 = DSD0_roll - base4
+    tal_approx = zoo::na.approx(tal,na.rm=F),
+    base = ifelse(tal_approx < DSD0_roll,tal_approx,DSD0_roll),
+    peak_min = DSD0_roll-DSD0_min,
+    peak = DSD0_roll - base
     ) %>% 
   filter(!is.na(DSD0_min))
 
-PPC_DS <- merge(test,PPC)
+lim <- 1e-5
+lim2 <- 0.01
+ds_peak <- ds_approx %>% 
+  filter(!is.na(Versuch)) %>% 
+  group_by(Versuch) %>% 
+  select(date,DSD0_1,Versuch) %>% 
+  mutate(
+    DSD0_roll = RcppRoll::roll_mean(DSD0_1,n=60,fill=NA),
+    slope = c(NA, diff(DSD0_roll)),
+    slope2 = RcppRoll::roll_mean(c(NA, diff(slope)),n=60,fill=NA),
+    DSD0_min = RcppRoll::roll_minr(DSD0_1,19*60,na.rm = T),
+    tal = ifelse(abs(slope) < lim & (slope2) > 0& !DSD0_1 > DSD0_min + lim2, DSD0_1, NA),
+    tal_approx = zoo::na.approx(tal,na.rm=F),
+    base = ifelse(tal_approx < DSD0_1,tal_approx,DSD0_1),
+    peak_min = DSD0_1-DSD0_min,
+    peak = DSD0_1 - base
+    ) %>% 
+  filter(!is.na(DSD0_min))
+
+PPC_DS <- merge(ds_peak,PPC)
 PPC_DS_long <- tidyr::pivot_longer(PPC_DS,matches("^V\\d"),values_to = "PPC")
 
 
-ggplot(PPC_DS)+
-  geom_line(aes(date,V19,col="V19"))+
-  geom_line(aes(date,V20,col="V20"))+
-  geom_line(aes(date,peak,col="DSD0_peak"))+
-  xlim(range(test$date))
-  colnames(PPC_DS)
-  corcols <- grep("^V\\d|^peak$",colnames(PPC_DS))
+corcols <- grep("^V\\d|^peak$",colnames(PPC_DS))
 cormat <- cor(PPC_DS[,corcols],use="complete")
 best_cors <- names(which(cormat[,1]>0.9))
-best_cor <- names(sort(cormat[-1,1],decreasing = T)[1])
+best_cor <- names(sort(cormat[-1,1],decreasing = T)[1:6])
+PPC_DS$PPC <- PPC_DS[,"V19"]
+PPC_DS <- PPC_DS[!grepl("^V\\d+$",colnames(PPC_DS))]
+PPC$PPC <- PPC[,"V19"]
 
+colnames(PPC)
+####################
+#save
+save(PPC_DS,PPC,file=paste0(datapfad_harth,"PPC_DS.RData"))
+############################
+
+############################
+#plots
+###############################
+
+ggplot(PPC)+
+  geom_line(aes(date,V13,col="V13"))+
+  geom_line(aes(date,V19,col="V19"))+
+  geom_line(aes(date,V21,col="V21"))+
+  geom_line(aes(date,V27,col="V27"))+
+  geom_line(aes(date,V20,col="V20"))+
+  ggsave(paste0(plotpfad_harth,"PPC_spatial_var.jpg"),width=7,height=5)
+
+ggplot(PPC_long)+
+  geom_line(aes(date,PPC,col=name))
+
+  
+
+ggplot(PPC)+
+  geom_line(aes(date,PPC,col="V19"))+
+  geom_line(aes(date,V20,col="V20"))+
+  geom_line(aes(date,peak,col="DSD0_peak"))+
+  xlim(range(ds_peak$date))
+
+ggplot(PPC_long)+
+  geom_line(aes(date,PPC,col=name))+
+  geom_line(data = ds_sub,aes(date,DSD0_roll,col=range2))
+ggplot(PPC_agg)+
+  geom_line(aes(date,PPC_mean))+
+  geom_line(data = ds_sub,aes(date,DSD0_roll,col=range2))
+
+colnames(PPC_DS)
 ggplot(subset(PPC_DS_long,name %in% best_cor))+
   geom_line(aes(date,PPC,col="PPC"))+
   geom_line(aes(date,peak,col="DSD0 peak"))+
@@ -137,29 +198,42 @@ ggplot(subset(PPC_DS_long,name %in% best_cors))+
   geom_point(aes(peak,PPC,col=name))+
   facet_wrap(~name)
 
-# ggplot(test)+
-# 
-#   #geom_point(aes(date,tal,col="tal"))+
-#   geom_point(aes(date,DSD0_roll),col=ifelse(abs(test$slope) < 5e-3 & (test$slope2) > 0& !test$DSD0_roll > test$DSD0_min + 0.01,1,2))+
-#   geom_point(aes(date,slope,col="slope"))+
-#   geom_point(aes(date,slope2,col="slope2"))+
-#   geom_hline(yintercept = c(-5e-3,0,5e-3))+
-#   xlim(range(test$date[test$Versuch == 3]))
-# 
-#   
+lim <- 1e-5
+
+ds_peak$tal2 <- ifelse(abs(ds_peak$slope) < lim & (ds_peak$slope2) > 0& !ds_peak$DSD0_1 > ds_peak$DSD0_min + lim2, 1, 0)
+ggplot(ds_peak)+
+  geom_line(aes(date,DSD0_1/1000,col="DSDD0"))+
+  geom_line(aes(date,DSD0_min/1000,col="DSDD0_min"))+
+  geom_point(data= subset(ds_peak,tal2==1),aes(date,DSD0_1/1000))+
+  #geom_point(aes(date,tal,col="tal"))+
+  geom_point(aes(date,slope,col="slope"))+
+  geom_line(aes(date,slope2*50,col="slope2"))+
+  geom_hline(yintercept = c(-lim,0,lim))+
+  facet_wrap(~Versuch,scales="free")+
+  ylim(c(-5e-4,5e-4))
 
 
-# test$DSD0_base <- NA
+
+
+
+# ds_peak$DSD0_base <- NA
 # for(i in 2:3){
-# test$DSD0_base[test$Versuch == i] <-  predict(glm(DSD0_min ~ I(poly(-date_int,2)),data=test[test$Versuch == i,]))
+# ds_peak$DSD0_base[ds_peak$Versuch == i] <-  predict(glm(DSD0_min ~ I(poly(-date_int,2)),data=ds_peak[ds_peak$Versuch == i,]))
 # }
-ggplot(test)+
+unique(ds_peak$Versuch)
+ggplot(ds_peak)+
+  geom_line(aes(date,DSD0_1))+
+  geom_line(aes(date,DSD0_min,col="base_min"))+
+  geom_line(aes(date,base,col="base"))+
+  geom_line(aes(date,peak,col="peak"))+
+  facet_wrap(~Versuch,scales="free")
+ggplot(ds_peak)+
   geom_line(aes(date,DSD0_roll))+
   geom_line(aes(date,DSD0_min,col="base",linetype="DSD0"))+
-  #geom_line(aes(date,base,col="base"))+
-  #geom_line(aes(date,base2,col="base2"))+
+  geom_line(aes(date,base,col="base"))+
+  geom_line(aes(date,base2,col="base2"))+
   geom_line(aes(date,peak,col="peak",linetype="DSD0"))+
-  #geom_line(aes(date,peak2,col="peak2"))+
+  geom_line(aes(date,peak2,col="peak2"))+
   geom_line(aes(date,base4,col="base2"))+
   geom_line(aes(date,peak3,col="peak2"))+
   geom_line(aes(date,Wind/20,linetype="Wind"))+
@@ -172,21 +246,21 @@ ggplot(subset(ds_sub2))+
   geom_line(aes(date,DSD0_roll,col=id))+
   geom_line(aes(date,Wind/10))
 
-ggplot(subset(test,id==1))+geom_point(aes(DSD0_roll,Wind))
-ggplot(subset(test,id==1))+geom_point(aes(peak,Wind))
-ggplot(subset(test,id==1))+geom_point(aes(peak3,Wind))
+ggplot(subset(ds_peak,id==1))+geom_point(aes(DSD0_roll,Wind))
+ggplot(subset(ds_peak,id==1))+geom_point(aes(peak,Wind))
+ggplot(subset(ds_peak,id==1))+geom_point(aes(peak3,Wind))
 
-summary(lm(peak ~ Wind,data=test))
-summary(lm(peak3 ~ Wind,data=test))
+summary(lm(peak ~ Wind,data=ds_peak))
+summary(lm(peak3 ~ Wind,data=ds_peak))
 
-fm <- glm(peak ~ Wind,data=test)
+fm <- glm(peak ~ Wind,data=ds_peak)
 R2 <- 1- fm$deviance / fm$null.deviance
-ggplot(subset(test,id==1))+
+ggplot(subset(ds_peak,id==1))+
   geom_point(aes(peak,Wind))+
   geom_smooth(aes(peak,Wind),method="glm",se=F)+
   annotate("text",x=0,y=4.5,label=paste("R² =",round(R2,2)),hjust=0)+
   ggsave(paste0(plotpfad_harth,"peaks_Wind_scatter.jpg"),width=7,height=5)
 
-summary(lm(peak3 ~ Wind,data=test))
+summary(lm(peak3 ~ Wind,data=ds_peak))
 
 ds_sub$DSD0_roll
