@@ -69,9 +69,9 @@ leave_NAtime_plot <- function(y="CO2",
 #' @export
 #'
 #' @examples adj_grob_size(plt2,plt_data,"1 day",date_labels= "%b %d")
-adj_grob_size <- function(p, data ,breaks="10 hours", ...){
+adj_grob_size <- function(p, data ,breaks="10 hours",date_labels = "%b %d",plot=T, ...){
   # convert ggplot object to grob object
-  p <- p+scale_x_datetime(date_breaks = breaks, ...)
+  p <- p+scale_x_datetime(date_breaks = breaks, date_labels = date_labels, ...)
   gp <- ggplotGrob(p)
 
 
@@ -92,5 +92,8 @@ adj_grob_size <- function(p, data ,breaks="10 hours", ...){
   gp$widths[facet.columns] <- gp$widths[facet.columns] * (x.var/sum(x.var))
 
   # plot result
+  if(plot==T){
   grid::grid.draw(gp)
+  }
+  return(gp)
 }

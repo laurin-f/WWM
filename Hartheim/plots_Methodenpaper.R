@@ -149,6 +149,10 @@ cowplt <- cowplot::ggdraw()+cowplot::draw_plot(resp_plot,x=0,y=0.5,height=0.5,wi
 ggpubr::ggarrange(img_plot,cowplt,widths = c(1,3))+
   ggsave(paste0(plotpfad_ms,"Fig_2_COMSOL_mod_obs_prod.jpg"),width = 7,height=4)
 
+cowplt <- cowplot::ggdraw()+cowplot::draw_plot(resp_plot,x=0,y=0.5,height=0.5,width=0.82)+cowplot::draw_plot(mod_obs_plot,height=0.5)+
+  cowplot::draw_text("a)",x=0.01,y=0.95,hjust=0)+
+  cowplot::draw_text("b)",x=0.01,y=0.45,hjust=0)+
+  ggsave(paste0(plotpfad_ms,"Fig_2_COMSOL_mod_obs_prod.jpg"),width = 7,height=5)
 
 ###########################
 # Figure 4 heterogeneity
@@ -167,8 +171,12 @@ Pump_sub <- subset(Pumpzeiten,Pumpstufe==0 & !grepl("regen|tauscht",Pumpzeiten$b
 
 data_sub_ls <- vector("list",nrow(Pump_sub))
 for (i in 1:nrow(Pump_sub)) {
-  data_sub_ls[[i]] <-subset(data,date > Pump_sub$start[i] & date < (Pump_sub$ende[i]-3600*3))
+  #data_sub_ls[[i]] <-subset(data,date > Pump_sub$start[i] & date < (Pump_sub$ende[i]-3600*3))
+  #data_sub_ls[[i]] <-subset(data,date > Pump_sub$start[i] & date < Pump_sub$start[i] + 3.8*24*3600)
+  data_sub_ls[[i]] <-subset(data,date > (Pump_sub$ende[i]-3600*3-3.8*3600*24) & date < (Pump_sub$ende[i]-3600*3))
+  
   data_sub_ls[[i]]$ID <- i
+  
 }
 
 data_sub <- do.call(rbind,data_sub_ls)
@@ -177,22 +185,24 @@ data_sub <- do.call(rbind,data_sub_ls)
 data_sub2 <- subset(data_sub,ID %in% c(1,3,7) & !is.na(Position) & tiefe < 0)
 data_sub_agg <- data_sub2 %>% group_by(ID,tiefe) %>% summarise_at(paste0("CO2_roll_",c("inj","ref")),list(min=min,max=max,mean=mean),na.rm=T)
 data_sub_agg[data_sub_agg == Inf |data_sub_agg == -Inf] <- NA
+
 tiefe_plt <-  ggplot(data_sub_agg)+
-  geom_ribbon(aes(xmin=CO2_roll_ref_min,xmax=CO2_roll_ref_max,y=tiefe,fill="B"),alpha=0.2)+
+  geom_ribbon(aes(xmin=CO2_roll_ref_min,xmax=CO2_roll_ref_max,y=tiefe,fill=factor(ID,levels = c(1,3,7),labels=c("B","C","D"))),alpha=0.2)+
   geom_ribbon(aes(xmin=CO2_roll_inj_min,xmax=CO2_roll_inj_max,y=tiefe,fill="A"),alpha=0.2)+
-  geom_line(aes(CO2_roll_ref_mean,tiefe,col="B"))+
+  geom_line(aes(CO2_roll_ref_mean,tiefe,col=factor(ID,levels = c(1,3,7),labels=c("B","C","D"))))+
   geom_line(aes(CO2_roll_inj_mean,tiefe,col="A"))+
-  facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("location",1:3)))+
-  labs(x=expression(CO[2]~"[ppm]"),fill="probe",col="probe",y="depth [cm]")+theme_bw()
+  facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("profile",c("A + B","A + C","A + D"))))+
+  labs(x=expression(CO[2]~"[ppm]"),fill="profile",col="profile",y="depth [cm]")+theme_bw()
 
 
 Sys.setlocale("LC_ALL","English")
 
 time_plt_adj <- ggplot(subset(data_sub,ID %in% c(1,3,7) & !is.na(Position)& tiefe < 0))+
-  geom_line(aes(date,preds_drift,col=as.factor(-tiefe),linetype="B adj"))+
+  geom_line(aes(date,preds_drift,col=as.factor(-tiefe),linetype="B/C/D  adj"))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="A"))+
-  facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("location",1:3)),scales="free")+
-  labs(x="",y=expression(CO[2]~"[ppm]"),col="depth [cm]",linetype="probe")+
+  #facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("location",1:3)),scales="free")+
+  facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("profile",c("A + B","A + C","A + D"))),scales="free")+
+  labs(x="",y=expression(CO[2]~"[ppm]"),col="depth [cm]",linetype="profile")+
   scale_x_datetime(date_breaks = "2 days",date_labels = "%b %d")+
   theme_bw()
 
@@ -205,6 +215,7 @@ leg_adj <- ggpubr::ggarrange(legend1,legend2_adj,heights = c(1,1.5),ncol=1,align
 
 
 no_leg_adj <- ggpubr::ggarrange(tiefe_plt+theme(legend.position = "none"),time_plt_adj+theme(legend.position = "none"),ncol=1,align="v") 
+#ggpubr::ggarrange(no_leg_adj,leg_adj,widths = c(8,2))
 ggpubr::ggarrange(no_leg_adj,leg_adj,widths = c(8,2))+ggsave(paste0(plotpfad_ms,"heterogeneity_adj.jpg"),width=7,height=5)
 Sys.setlocale("LC_ALL","")
 
@@ -214,33 +225,60 @@ Sys.setlocale("LC_ALL","")
 ##########################
 #inj ref
 #all_dpths <- sort(c(unique(data$tiefe),unique(-soil_agg$tiefe)))[-1]
-inj_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
+data$date_hour <- round_date(data$date,"hours")
+
+starts <- as.data.frame(Pumpzeiten)[c(1,5,12),"start"]
+enden <- as.data.frame(Pumpzeiten)[c(1,5,18),"ende"]
+Pumpzeiten$period <- NA
+Pumpzeiten$period[12:18] <- 3
+data$period <- NA
+soil_agg$period <- NA
+for(i in seq_along(starts)){
+  data$period[data$date >= starts[i]+3*3600 & data$date <= enden[i]-3*3600] <- i
+  soil_agg$period[soil_agg$date >= starts[i]+3*3600 & soil_agg$date <= enden[i]-3*3600] <- i
+  
+}
+data_agg <- data %>% 
+  filter(!is.na(period)) %>% 
+  group_by(date_hour,tiefe) %>% summarise_all(mean)
+
+
+#inj_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
+inj_2u3 <- ggplot(data_agg)+
   #geom_rect(data=subset(Pumpzeiten,Pumpstufe==0 & (is.na(bemerkung)|bemerkung=="zurück getauscht") & Position %in% 8),aes(xmin=min(start),xmax=max(ende),ymin=-Inf,ymax=Inf,col="Zoom extend",fill="Zoom extend"),alpha=0.2)+
   geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection\nperiod",col="injection\nperiod"),alpha=0.15)+
   scale_fill_manual("",values=c(1,NA))+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_inj,col=as.factor(-tiefe)))+
-  labs(col="depth [cm]",x="",y=expression(CO[2]*" [ppm]"),title="a) injection probe",fill="")+
+  labs(col="depth [cm]",x="",y=expression(CO[2]*" [ppm]"),title="a) profile A: injection",fill="")+
   theme(axis.text.x = element_blank(),
         legend.title = element_text(color=1))+
   #scale_color_discrete(limits=all_dpths)+
   guides(colour = guide_legend(override.aes = list(size = 1.5)))+
-  scale_x_datetime(date_breaks = "2 days")
+  facet_wrap(~period,scales="free_x")+
+  scale_x_datetime(date_breaks = "2 days")+
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  )
+inj_adj <- adj_grob_size(inj_2u3+theme(legend.position = "none"),breaks = "2 days",data_agg,date_labels="",plot=F)
 
 
-ref_2u3 <- ggplot(subset(data,date > range2u3[1] & date < range2u3[2]))+
+ref_2u3 <- ggplot(data_agg)+
   #geom_rect(data=subset(Pumpzeiten,Pumpstufe==0 & (is.na(bemerkung)|bemerkung=="zurück getauscht") & Position %in% 8),aes(xmin=min(start),xmax=max(ende),ymin=-Inf,ymax=Inf,col="Zoom extend",fill="Zoom extend"),alpha=0.2)+
   geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf,fill="injection period",col="injection period"),alpha=0.15)+
   scale_fill_manual("",values=c(1,NA))+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_ref,col=as.factor(-tiefe)))+
-  guides(col=F,fill=F)+labs(y=expression(CO[2]*" [ppm]"),x="",title="b) reference probe")+
+  guides(col=F,fill=F)+labs(y=expression(CO[2]*" [ppm]"),x="",title="b) profile B/C/D: reference")+
   theme(axis.text.x = element_blank())+
+  facet_wrap(~factor(period,levels=1:3,labels = paste("profile",c("B","C","D"))),scales="free_x")+
   scale_x_datetime(date_breaks = "2 days")#+
   #scale_color_discrete(limits=all_dpths)
 
+ref_adj <- adj_grob_size(ref_2u3+theme(legend.position = "none"),data_agg,breaks = "2 days",date_labels="",plot=F)
 
 ##########################
 #klimadaten dazu
@@ -252,32 +290,42 @@ PPC$PPC[PPC$date < ymd_h("2020.07.10 09")] <- NA
 y_fac <- 2
 PPC_fac <- 50
 PPC_offset <- 0
-T_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
+
+T_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period)& tiefe %in% c(2,5,10,20,50)))+
   geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf),alpha=0.15)+
   geom_line(aes(date,mean_T,col=as.factor(tiefe)))+
   guides(col=F)+
-  labs(title="d)",x="date",y="Soil T [°C]",col="depth [cm]")+
-  #geom_line(data=subset(data,date > range2u3[1] & date < range2u3[2]),
-  #          aes(date,WindVel_30m_ms*y_fac),alpha=0.2)+
-  #geom_line(data=subset(data,date > range2u3[1] & date < range2u3[2]),
-  #          aes(date,Wind*y_fac),col=grey(0.3))+
+  labs(x="",y="Soil T [°C]",col="depth [cm]")+
+  geom_line(data=subset(data,!is.na(period)),
+            aes(date,WindVel_30m_ms*y_fac),alpha=0.2)+
+  geom_line(data=subset(data,!is.na(period)),
+            aes(date,Wind*y_fac),col=grey(0.3))+
   
-  geom_line(data=subset(PPC,date > range2u3[1] & date < range2u3[2]),
-            aes(date,PPC*PPC_fac+PPC_offset),col=grey(0.3))+
+  #geom_line(data=subset(PPC,date > range2u3[1] & date < range2u3[2]),
+  #          aes(date,PPC*PPC_fac+PPC_offset),col=grey(0.3))+
   
-  #scale_y_continuous(breaks=c(10,15,20),
-  #                   sec.axis = sec_axis(~./y_fac,name=expression("wind velocity [m s"^{-1}*"]"),breaks=c(0,3,6)))+
   scale_y_continuous(breaks=c(10,15,20),
-                     sec.axis = sec_axis(~(.-PPC_offset)/PPC_fac,name=expression("PPC [Pa s"^{-1}*"]"),breaks=seq(0,0.4,by=0.2)))+
-  scale_x_datetime(date_breaks = "2 days",date_labels = "%b %d")
+                     sec.axis = sec_axis(~./y_fac,name=expression("wind velocity [m s"^{-1}*"]"),breaks=c(0,3,6)))+
+  #scale_y_continuous(breaks=c(10,15,20),
+  #                   sec.axis = sec_axis(~(.-PPC_offset)/PPC_fac,name=expression("PPC [Pa s"^{-1}*"]"),breaks=seq(0,0.4,by=0.2)))+
+  facet_wrap(~period,scales="free_x")+
+  scale_x_datetime(date_breaks = "2 days",date_labels = "%b %d")+
+theme(
+  strip.background = element_blank(),
+  strip.text.x = element_blank()
+)
   
-T_plot_2u3 
+Sys.setlocale("LC_ALL","English")
+T_plot_adj <- adj_grob_size(T_plot_2u3,subset(data,!is.na(period)),breaks="4 days",date_labels = "%b %d",plot=F)
+
+
+
 ################
 #VWC P
 sec_ax_fac <- 1.25
-VWC_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] & tiefe %in% c(2,5,10,20,50)))+
+VWC_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period) & tiefe %in% c(2,5,10,20,50)))+
   geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf),alpha=0.15)+
-  geom_ribbon(data=subset(data,date > range2u3[1] & date < range2u3[2]),aes(x=date,ymin=0,ymax=Precip_Last24hrs_mm/sec_ax_fac),fill="blue",alpha=0.8)+
+  geom_ribbon(data=subset(data,!is.na(period)),aes(x=date,ymin=0,ymax=Precip_Last24hrs_mm/sec_ax_fac),fill="blue",alpha=0.8)+
   geom_line(aes(date,mean_VWC,col=as.factor(tiefe)))+
   scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_fac,name=expression(P["24h"]*" [mm]")))+
   theme(
@@ -286,10 +334,17 @@ VWC_plot_2u3 <-  ggplot(subset(soil_agg,date > range2u3[1] & date < range2u3[2] 
     axis.text.x = element_blank()
   )+
   guides()+
-  labs(title="c)",x="",y="SWC [Vol. %]",col="depth [cm]")+
+  labs(x="",y="SWC [Vol. %]",col="depth [cm]")+
   guides(colour = guide_legend(override.aes = list(size = 1.5)))+
-  scale_x_datetime(date_breaks = "2 days")
+  facet_wrap(~period,scales="free_x")+
+  scale_x_datetime(date_breaks = "2 days")+
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  )
+
   #scale_color_discrete(limits=all_dpths)
+VWC_plot_adj <- adj_grob_size(VWC_plot_2u3+theme(legend.position = "none"),subset(data,!is.na(period)),breaks="2 days",plot=F)
 
 leg1 <- get_legend(inj_2u3)
 legend1 <- as_ggplot(leg1)
@@ -299,10 +354,19 @@ leg <- ggpubr::ggarrange(legend1,legend2,ncol=1,align = "v")
 
 
 rawdata_no_leg <- egg::ggarrange(inj_2u3+theme(legend.position = "none"),ref_2u3+theme(legend.position = "none"),VWC_plot_2u3+guides(col=F),T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1),draw=F)
+rawdata_no_leg <- egg::ggarrange(inj_adj,ref_adj,VWC_plot_adj,T_plot_adj,ncol=1,heights = c(1.5,1.5,1,1),draw=F)
 ggpubr::ggarrange(rawdata_no_leg,leg,widths=c(5,1))+ggsave(paste0(plotpfad_ms,"Fig_5_Rawdata.jpg"),width=7,height=7)
+Sys.setlocale("LC_ALL","")
 
+ref_plot <- cowplot::ggdraw()+cowplot::draw_plot(ref_adj,x=-0.005,width=0.94)
+inj_plot <- cowplot::ggdraw()+cowplot::draw_plot(inj_adj,x=-0.005,width=0.94)
+VWC_plot <- cowplot::ggdraw()+cowplot::draw_plot(VWC_plot_adj,x=0.025,width = 0.98)+cowplot::draw_text("c)",x=0.12,y=1.05)
+T_plot <- cowplot::ggdraw()+cowplot::draw_plot(T_plot_adj,x=0.025,width = 0.98)+cowplot::draw_text("d)",x=0.12,y=1.05)
 
+no_leg <- ggpubr::ggarrange(inj_plot,ref_plot,VWC_plot,T_plot,ncol=1,heights = c(1.5,1.7,1,1))#,draw=F)
 
+ggpubr::ggarrange(no_leg,leg,widths=c(5,1))+ggsave(paste0(plotpfad_ms,"Fig_4_Rawdata.jpg"),width=7,height=7)
+Sys.setlocale("LC_ALL","")
 
 ######################################
 #Figure 6 Ds profile over time
