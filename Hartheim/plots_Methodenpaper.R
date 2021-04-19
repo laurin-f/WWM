@@ -73,6 +73,31 @@ data$Wind <- RcppRoll::roll_mean(data$WindVel_30m_ms,60*4,fill=NA)
 
 Pumpzeiten$Position[10:11] <- NA
 
+# for(i in 1:7){
+#   F_df[,c(paste0("Fz_",i))] <- as.numeric((F_df[,c(paste0("CO2_ref_",i-1))] - F_df[,c(paste0("CO2_ref_",i))])/-3.5 *
+#     ifelse(i < 3,F_df$DS_1,ifelse(i < 6,F_df$DS_2, F_df$DS_3)) * 100 * 10^6)
+# }
+# 
+# F_long <- tidyr::pivot_longer(F_df,matches("Fz_\\d$"),names_to = "tiefe",values_to = "flux",names_prefix = "Fz_")
+# ggplot(F_long)+
+#   geom_line(aes(date,flux,col=tiefe))
+# ggplot(subset(F_long,date %in% calm_dates))+geom_path(aes(flux,as.numeric(tiefe),col=as.factor(date)))+guides(col=F)
+
+calm_dates
+diff(calm_dates)
+colnames(F_sub)
+F_sub$P_0_10 <- F_sub$Fz_roll_0_10 - F_sub$Fz_roll_10_17
+F_sub$P_10_20 <- F_sub$Fz_10_17
+colnames(F_sub)
+F_long <- tidyr::pivot_longer(F_sub,matches("P_\\d+"),names_to = "tiefe",values_to = "P",names_prefix = "P_")
+F_long$tiefe2 <- factor(F_long$tiefe,levels=c("0_10","10_20"),labels=c("0-10 cm","10-20 cm"))
+calm_dates <- PPC$date[which(PPC$PPC < 0.03)]
+colnames(F_long)
+diff(F_sub$date)
+ggplot(subset(F_long,date %in% calm_dates))+
+  geom_col(data=subset(F_long,date %in% calm_dates),aes(date,P,fill=tiefe,col=tiefe))+
+  geom_line(data=F_sub,aes(date,Fz_0_10))+
+  geom_line(data=PPC,aes(date,PPC*10))
 ##################################################################################
 #plots
 ##################################################################################
@@ -258,11 +283,12 @@ inj_2u3 <- ggplot(data_agg)+
   guides(colour = guide_legend(override.aes = list(size = 1.5)))+
   facet_wrap(~period,scales="free_x")+
   scale_x_datetime(date_breaks = "2 days")+
+  theme_bw()+
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank()
   )
-inj_adj <- adj_grob_size(inj_2u3+theme(legend.position = "none"),breaks = "2 days",data_agg,date_labels="",plot=F)
+inj_adj <- adj_grob_size(inj_2u3+theme(legend.position = "none"),breaks = "4 days",data_agg,date_labels=" ",plot=F)
 
 
 ref_2u3 <- ggplot(data_agg)+
@@ -275,10 +301,11 @@ ref_2u3 <- ggplot(data_agg)+
   guides(col=F,fill=F)+labs(y=expression(CO[2]*" [ppm]"),x="",title="b) profile B/C/D: reference")+
   theme(axis.text.x = element_blank())+
   facet_wrap(~factor(period,levels=1:3,labels = paste("profile",c("B","C","D"))),scales="free_x")+
-  scale_x_datetime(date_breaks = "2 days")#+
+  scale_x_datetime(date_breaks = "2 days")+
+  theme_bw()
   #scale_color_discrete(limits=all_dpths)
 
-ref_adj <- adj_grob_size(ref_2u3+theme(legend.position = "none"),data_agg,breaks = "2 days",date_labels="",plot=F)
+ref_adj <- adj_grob_size(ref_2u3+theme(legend.position = "none"),data_agg,breaks = "4 days",date_labels=" ",plot=F)
 
 ##########################
 #klimadaten dazu
@@ -310,6 +337,7 @@ T_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period)& tiefe %in% c(2,5,10,20,50)
   #                   sec.axis = sec_axis(~(.-PPC_offset)/PPC_fac,name=expression("PPC [Pa s"^{-1}*"]"),breaks=seq(0,0.4,by=0.2)))+
   facet_wrap(~period,scales="free_x")+
   scale_x_datetime(date_breaks = "2 days",date_labels = "%b %d")+
+  theme_bw()+
 theme(
   strip.background = element_blank(),
   strip.text.x = element_blank()
@@ -338,13 +366,14 @@ VWC_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period) & tiefe %in% c(2,5,10,20,
   guides(colour = guide_legend(override.aes = list(size = 1.5)))+
   facet_wrap(~period,scales="free_x")+
   scale_x_datetime(date_breaks = "2 days")+
+  theme_bw()+
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank()
   )
 
   #scale_color_discrete(limits=all_dpths)
-VWC_plot_adj <- adj_grob_size(VWC_plot_2u3+theme(legend.position = "none"),subset(data,!is.na(period)),breaks="2 days",plot=F)
+VWC_plot_adj <- adj_grob_size(VWC_plot_2u3+theme(legend.position = "none"),subset(data,!is.na(period)),breaks="4 days",date_labels=" ",plot=F)
 
 leg1 <- get_legend(inj_2u3)
 legend1 <- as_ggplot(leg1)
@@ -353,10 +382,9 @@ legend2 <- as_ggplot(leg2)
 leg <- ggpubr::ggarrange(legend1,legend2,ncol=1,align = "v")
 
 
-rawdata_no_leg <- egg::ggarrange(inj_2u3+theme(legend.position = "none"),ref_2u3+theme(legend.position = "none"),VWC_plot_2u3+guides(col=F),T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1),draw=F)
-rawdata_no_leg <- egg::ggarrange(inj_adj,ref_adj,VWC_plot_adj,T_plot_adj,ncol=1,heights = c(1.5,1.5,1,1),draw=F)
-ggpubr::ggarrange(rawdata_no_leg,leg,widths=c(5,1))+ggsave(paste0(plotpfad_ms,"Fig_5_Rawdata.jpg"),width=7,height=7)
-Sys.setlocale("LC_ALL","")
+# rawdata_no_leg <- egg::ggarrange(inj_2u3+theme(legend.position = "none"),ref_2u3+theme(legend.position = "none"),VWC_plot_2u3+guides(col=F),T_plot_2u3,ncol=1,heights = c(1.5,1.5,1,1),draw=F)
+# ggpubr::ggarrange(rawdata_no_leg,leg,widths=c(5,1))+ggsave(paste0(plotpfad_ms,"Fig_5_Rawdata.jpg"),width=7,height=7)
+# Sys.setlocale("LC_ALL","")
 
 ref_plot <- cowplot::ggdraw()+cowplot::draw_plot(ref_adj,x=-0.005,width=0.94)
 inj_plot <- cowplot::ggdraw()+cowplot::draw_plot(inj_adj,x=-0.005,width=0.94)
@@ -365,21 +393,21 @@ T_plot <- cowplot::ggdraw()+cowplot::draw_plot(T_plot_adj,x=0.025,width = 0.98)+
 
 no_leg <- ggpubr::ggarrange(inj_plot,ref_plot,VWC_plot,T_plot,ncol=1,heights = c(1.5,1.7,1,1))#,draw=F)
 
-ggpubr::ggarrange(no_leg,leg,widths=c(5,1))+ggsave(paste0(plotpfad_ms,"Fig_4_Rawdata.jpg"),width=7,height=7)
+ggpubr::ggarrange(no_leg,leg,widths=c(5,1))+ggsave(paste0(plotpfad_ms,"Fig_4_Rawdata_bw.jpg"),width=7,height=7)
 Sys.setlocale("LC_ALL","")
 
 ######################################
 #Figure 6 Ds profile over time
 ######################################
-
+soil_agg_plot
 y_fac_ds <- 1/20
-DS_plot <- ggplot(subset(soil_agg_plot))+
+DS_plot <- ggplot(subset(soil_agg_plot,range2 %in% c("0-10","10-20")))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range2)),alpha=0.15)+
   geom_line(aes(date,DSD0_PTF,col=as.factor(range2),linetype="f(eps)"))+
   #hours till steady state
   #geom_line(data=subset(DS_long_roll, date > pos8_date ),aes(date,DSD0_roll,col=range2,linetype="in situ"),alpha=0.3)+
   #geom_line(data=subset(DS_long_roll, Versuch == "2"),aes(date,DSD0_roll,col=range2,linetype="in situ"),alpha=0.3)+
-  geom_line(data=ds_sub,aes(date,DSD0_roll,col=range2,linetype="in situ"))+
+  geom_line(data=subset(ds_sub,range2  %in% c("0-10","10-20")),aes(date,DSD0_roll,col=range2,linetype="in situ"))+
   labs(y=expression(D[S]/D[0]),col="depth [cm]",fill="depth [cm]",linetype="")+
   scale_x_datetime(date_label="%b %d",breaks="2 days",limits = range(DS_long$date))+
   scale_linetype_manual(values=2:1,labels=c(expression(f~(epsilon),"in situ")))#+
@@ -393,8 +421,10 @@ DS_plot#+facet_zoom(xlim = range7)
 #ggplot(subset(F_df,Versuch!="1"))+geom_line(aes(date,Fz_roll2_10_17 / Fz_roll2))
 
 Kammer_flux_agg <- Kammer_flux %>% group_by(day) %>% summarise(CO2flux = mean(CO2flux),CO2flux_max=max(CO2flux_max),CO2flux_min=min(CO2flux_min),date=mean(date))
-cols <- scales::hue_pal()(3)
+cols <- scales::hue_pal()(2)
 mindate <- ymd_h("2020-07-06 16")
+calm_dates <- PPC$date[which(PPC$PPC < 0.068)]
+
 flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
   geom_linerange(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=""))+
   geom_point(aes(date,CO2flux,col=""))+
@@ -406,24 +436,42 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
   scale_color_manual("simple T and SWC model",values=grey(0.3))+
   scale_fill_manual("simple T and SWC model",values=grey(0.3))+
   ggnewscale::new_scale_color()+
+  ggnewscale::new_scale_fill()+
   #geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.3)+
   #geom_line(data=subset(F_df),aes(date,Fz_10_17,col="10-20 cm"),alpha=0.3)+
-  geom_line(data=F_sub,aes(date,Fz_roll_0_10,col="0-10 cm"))+
+  #geom_line(data=F_sub,aes(date,Fz_roll_0_10,col="0-10 cm"))+
   #geom_line(data=F_sub,aes(date,Fz_roll2,col="0-10 cm"))+
 
-  geom_line(data=F_sub,aes(date,Fz_roll_10_17,col="10-20 cm"))+
-  guides(col=F)+
-  scale_color_manual(values=cols[1:2])+
+  #geom_line(data=F_sub,aes(date,Fz_roll_10_17,col="10-20 cm"))+
+  geom_col(data=subset(F_long)[-(1:2),],aes(date,P,fill=tiefe2,alpha="windy"),width=3600, show.legend = FALSE)+
+  geom_col(data=subset(F_long)[1,],aes(date,P,fill=tiefe2,alpha=""),width=3600, show.legend = FALSE)+
+  geom_col(data=subset(F_long)[2,],aes(date,P,fill=tiefe2,alpha=" "),width=3600, show.legend = FALSE)+
+  geom_col(data=subset(F_long,date %in% calm_dates),aes(date,P,fill=tiefe2,alpha="calm"),width=3600)+
+  geom_line(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA)),col=grey(0.3),linetype=2)+
+  
+  scale_alpha_manual(values=c(0.6,0.35,0.6,0.35))+
+  guides(col=F,fill=F,
+         alpha= guide_legend("0-10   10-20 cm",override.aes = list(fill=rep(cols[1:2],each=2)),ncol=2))+
+#  scale_color_manual(values=cols[1:2])+
   #scale_color_manual("gradient method",values=1:2)+
   #xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
   scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
-  ylim(range(F_sub[,c("Fz_roll_0_10","Fz_roll_10_17")],na.rm=T))+
-  labs(y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
+  #ylim(range(F_sub[,c("Fz_roll_0_10","Fz_roll_10_17")],na.rm=T))+
+  ylim(c(0,max(F_sub[,"Fz_0_10"],na.rm=T)))+
+  labs(x="",y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)
-
 
 flux_plot
 #flux_plot
+
+ggplot(PPC)+
+  geom_col(data=subset(F_long),aes(date,P/10,fill=tiefe2),width=3600, show.legend = FALSE)+
+  geom_line(aes(date,PPC))+geom_hline(yintercept = 0.071)+ylim(c(0,0.1))
+
+colnames(F_sub)
+F_long <- tidyr::pivot_longer(F_sub[,c("date","Fz_roll_0_10","Fz_roll_10_17")],matches("Fz_roll_(0_10|10_17)"),names_to = "range",values_to = "Fz",names_prefix = "Fz_roll_")
+colnames(F_sub)
+ggplot(F_long)+geom_point(aes(Fz,range,col=as.factor(date)))+guides(col=F)
 
 
 Fig5u6 <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),flux_plot,ncol=1,draw=F)
@@ -451,10 +499,10 @@ wind_DS <- ggplot(subset(data,!is.na(Versuch)))+
   scale_y_continuous(sec.axis = sec_axis(trans=~.*axis_fac,name=expression("wind velocity [m s"^{-1}*"]")))+
   scale_color_manual("",values = c(scales::hue_pal()(1),grey(0.2)),labels=c(expression(D[S]/D[0]~1),"wind velocity"))+
   facet_wrap(~factor(Versuch,levels=c("2","3"),labels = c("windy period","calm period")),scales="free_x")+
-  labs(y=expression(D[S]/D["0"]),x="")+
-  ggsave(paste0(plotpfad_harth,"DS_Wind_Inj1u2.jpg"),width=7,height = 5)
+  labs(y=expression(D[S]/D["0"]),x="")#+
+  #ggsave(paste0(plotpfad_harth,"DS_Wind_Inj1u2.jpg"),width=7,height = 5)
 
-Fig6windDS <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),flux_plot,wind_DS,ncol=1,heights = c(1,1,1),draw=F)
+Fig6windDS <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),wind_DS,flux_plot,ncol=1,heights = c(1,1,1),draw=F)
 jpeg(file=paste0(plotpfad_ms,"Fig6WindDS.jpg"),width=7,height = 7.5,units="in",res=300)
 Fig6windDS
 dev.off()
@@ -474,12 +522,12 @@ PPC_DS_plot <-
   facet_wrap(~factor(Versuch,levels=c("2","3"),labels = c("windy period","calm period")),scales="free_x")+
   labs(y=expression(D[S]/D["0"]),x="")+
 
-    theme(legend.text.align = 0)+
-  ggsave(paste0(plotpfad_harth,"DS_PPC_Inj1u2.jpg"),width=7,height = 5)
+    theme(legend.text.align = 0)#+
+  #ggsave(paste0(plotpfad_harth,"DS_PPC_Inj1u2.jpg"),width=7,height = 5)
 
 
 
-Fig6PPCDS <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),flux_plot,PPC_DS_plot,ncol=1,heights = c(1,1,1),draw=F)
+Fig6PPCDS <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),PPC_DS_plot,flux_plot,ncol=1,heights = c(1,1,1),draw=F)
 jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS.jpg"),width=7,height = 7.5,units="in",res=300)
 Fig6PPCDS
 dev.off()
