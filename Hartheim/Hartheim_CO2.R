@@ -335,6 +335,17 @@ paste("tiefe",rev(unique(data$tiefenstufe)),"=",rev(unique(data$tiefe)),"cm",col
 #####################
 # PLOTS             #
 #####################
+data <- data %>% group_by(tiefe) %>% mutate(tracer_slope= c(NA,diff(CO2_tracer_drift)))
+ggplot(subset(data,Position == 8))+geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))+geom_vline(xintercept = c(Pumpzeiten$start[17],Pumpzeiten$start[17]+32*3600,tracer_peak))
+test <- subset(data,Position == 8&tiefe==-21)
+tracer_peak <- test$date[which.max(test$CO2_tracer_drift)]
+difftime(tracer_peak,Pumpzeiten$start[17],units = "hours")
+test <- subset(data,Position == 7&tiefe==-21)
+tracer_peak <- test$date[which.max(test$CO2_tracer_drift)]
+difftime(tracer_peak,Pumpzeiten$start[13],units = "hours")
+
+ggplot(subset(data,Position == 7))+geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))+geom_vline(xintercept = c(Pumpzeiten$start[13],Pumpzeiten$start[13]+32*3600))
+
 
 ggplot(subset(data,Position %in% c(7:8)& tiefe > -30 ))+
   geom_line(aes(date,offset,col=as.factor(-tiefe),linetype="offset inj - ref"))+

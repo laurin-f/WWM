@@ -415,29 +415,42 @@ DS_plot <- ggplot(subset(soil_agg_plot,range2 %in% c("0-10","10-20")))+
 #DS_plot#+facet_zoom(xlim = range7)
 
 soil_agg_plot$date <- round_date(soil_agg_plot$date,"mins")
-
+soil_agg
 ds_soil <- merge(ds_sub[,c("date","range2","Versuch","DSD0_roll","id")],soil_agg_plot) 
 ds_soil$Versuch <- as.numeric(ds_soil$Versuch)
 ds_soil$windy <- factor(ds_soil$Versuch,levels = 2:3,labels=c("windy","calm"))
+PPC_DS$windy <- factor(PPC_DS$Versuch,levels = 2:3,labels=c("windy","calm"))
 ds_soil_long <- tidyr::pivot_longer(ds_soil,matches("DSD0_PTF"),values_to = "DSD0_PTF")
+ggplot()+
+  geom_line(data=ds_soil,aes(date,DSD0_roll,col=id))+
+  geom_line(data=subset(PPC_DS,date %in% ds_soil$date),aes(date,base))
 
+ggplot()+
+  #geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_median_median))+
+  #geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_min_min))+
+  geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_q25_min,col="q25 min"))+
+  geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_q25_median,col="q25 median"))+
+  geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_q25_max,col="q25 max"))
+  
 DS_boxplot <- 
-ggplot(ds_soil)+
+ggplot()+
   geom_boxplot(data=subset(ds_soil,id=="1"),aes("in situ",DSD0_roll,fill="0-10 cm",col="0-10 cm"),alpha=0.5)+
   geom_boxplot(data=subset(ds_soil,id=="2"),aes("in situ",DSD0_roll,fill="10-20 cm",col="10-20 cm"),alpha=0.5)+
-  geom_boxplot(data=subset(ds_soil_long,id=="1"),aes("xfeps",DSD0_PTF,fill="0-10 cm",col="0-10 cm"),col=NA,alpha=0.4)+
-  geom_boxplot(data=subset(ds_soil_long,id=="2"),aes("xfeps",DSD0_PTF,fill="10-20 cm"),col=NA,alpha=0.4)+
-  geom_boxplot(data=subset(ds_soil,id=="2"),aes("xfeps",DSD0_PTF,fill="10-20 cm",col="10-20 cm"))+
-  geom_boxplot(data=subset(ds_soil,id=="1"),aes("xfeps",DSD0_PTF,fill="0-10 cm",col="0-10 cm"))+
+  geom_boxplot(data=subset(ds_soil_long,id=="1"),aes("feps",DSD0_PTF,fill="0-10 cm",col="0-10 cm"),col=NA,alpha=0.4)+
+  geom_boxplot(data=subset(ds_soil_long,id=="2"),aes("feps",DSD0_PTF,fill="10-20 cm"),col=NA,alpha=0.4)+
+  geom_boxplot(data=subset(ds_soil,id=="2"),aes("feps",DSD0_PTF,fill="10-20 cm",col="10-20 cm"))+
+  geom_boxplot(data=subset(ds_soil,id=="1"),aes("feps",DSD0_PTF,fill="0-10 cm",col="0-10 cm"))+
+  geom_boxplot(data=subset(PPC_DS,date %in% ds_soil$date),aes("in situ DPPE",base,fill="0-10 cm",col="0-10 cm"),alpha=0.5)+
   #scale_x_discrete(labels=c(expression(f(epsilon)~"calm"),expression(f(epsilon)~"windy"),paste("in situ",c("calm","windy"))))+
   
-  scale_x_discrete(labels=c("in situ",expression(f(epsilon))))+
+  scale_x_discrete(labels=c(expression(f(epsilon)),expression(D[eff]/D[0]~"in situ"),expression(D[PPC]/D[0]~"in situ")))+
   
   facet_wrap(~windy)+
   labs(x="",y=expression(D[S]/D[0]),fill="",col="")+
   guides(fill=guide_legend(override.aes = list(alpha=0.1)))
 
 DS_box <- egg::tag_facet(DS_boxplot,tag_pool = c("windy","calm"),open="",close="",fontface=1,hjust=-0.1)
+DS_box
   ######################################
 #Flux
 ######################################
@@ -555,8 +568,8 @@ PPC_DS_plot <-
 PPC_DS_plot
 
 cor <- cor(PPC_DS$peak,PPC_DS$PPC,use = "complete")
-DPPE_PPC <- ggplot(subset(PPC_DS,date %in% ds_sub$date))+geom_point(aes(PPC,peak))+annotate("text",x=-Inf,y=0.25,label=paste("r =",round(cor,2)),hjust=-0.1)+
-  labs(y=expression(D[PPE]/D[0]),x=expression("PPC [Pa s"^{-1}*"]"))
+DPPE_PPC <- ggplot(subset(PPC_DS,date %in% ds_sub$date))+geom_point(aes(PPC,peak,col=paste(windy,"period")))+annotate("text",x=-Inf,y=0.25,label=paste("r =",round(cor,2)),hjust=-0.1)+
+  labs(y=expression(D[PPE]/D[0]),x=expression("PPC [Pa s"^{-1}*"]"),col="")
 legbox <- get_legend(DS_boxplot)
 legend_box <- as_ggplot(legbox)
 boxplt_scatter <- egg::ggarrange(DS_boxplot+theme(legend.position = "none"),DPPE_PPC,legend_box,nrow=1,widths=c(3,3,1))

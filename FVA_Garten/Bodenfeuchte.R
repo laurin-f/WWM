@@ -4,7 +4,7 @@ hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_harth<- paste0(metapfad,"Hartheim/")
 metapfad_comsol<- paste0(metapfad,"COMSOL/")
-datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
+datapfad_bf<- paste0(hauptpfad,"Daten/Urdaten/Bodenfeuchte_FVA_Garten/")
 plotpfad_harth <- paste0(hauptpfad,"Dokumentation/Berichte/plots/hartheim/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/") 
@@ -16,21 +16,15 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr")
 check.packages(packages)
 
-datelim <- ymd_h("2021.03.30 15")
+files <- list.files(datapfad_bf,pattern = ".xls$",full.names = T)
 
-data_sampler1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
-data_sampler3 <-  read_sampler("sampler3",datelim = datelim, format = "long")
+data_ls <- lapply(files,readxl::read_xls,skip=2,col_types = c("date",rep("numeric",5)))
+data <- do.call(rbind,data_ls)
+colnames(data) <- c("date",paste("bf_",c("1a","1b","2a","2b","3a")))
 
-colnames(data_sampler1u2)
-colnames(data_sampler3) <- str_replace(colnames(data_sampler3),"CO2","CO2_smp3")
-data <- merge(data_sampler1u2,data_sampler3,all=T)
-
-
-smp1 <- ggplot(data_sampler1u2)+
-  geom_line(aes(date,CO2_smp1,col=as.factor(tiefe)))+guides(col=F)
-smp2 <- ggplot(data_sampler1u2)+
-  geom_line(aes(date,CO2_smp2,col=as.factor(tiefe)))
-smp3 <- ggplot(data)+
-  geom_line(aes(date,CO2_smp3,col=as.factor(tiefe)))+guides(col=F)
-
-egg::ggarrange(smp1,smp2,smp3,ncol=1)
+#data$date <- ymd_hms(data$date)
+data <- subset(data, date > ymd("2021.04.01"))
+range(data$date)
+data_long <- tidyr::pivot_longer(data,matches("bf"),names_to = "tiefe",values_to = "bf",names_prefix = "bf_")
+ggplot(data_long)+
+  geom_line(aes(date,bf,col=tiefe))
