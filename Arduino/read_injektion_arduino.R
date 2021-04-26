@@ -16,12 +16,12 @@ data$CO2[ data$CO2 < 300| data$CO2 > 9000] <- NA
 
 
 range(data$date,na.rm=T)
-daterange <- ymd_h(c("21/04/22 10", "21/04/22 16"))
+daterange <- ymd_h(c("21/04/26 10", "21/04/26 16"))
 
 
-data <- subset(data, date >= min(daterange) & date <= max(daterange))
+data_sub <- subset(data, date >= min(daterange) & date <= max(daterange))
 
-ggplot(data)+geom_line(aes(date,CO2))
+ggplot(data_sub)+geom_line(aes(date,CO2))
 data$CO2_raw <- data$CO2
 injectionrate(data=data)
 split_chamber(data)

@@ -112,6 +112,7 @@ soil_agg[,paste0("PTF_",i,"_median")] <- soil_agg$c_PTF * soil_agg[,paste0("eps_
 }
 ranges <- c("0-10 cm","10-20 cm","below 20 cm")
 soil_agg$range <- factor(soil_agg$tiefe,levels=c(2,5,10,20,50,100),labels=ranges[c(1,1,2,2,3,3)])
+soil_agg$id <- factor(soil_agg$tiefe,levels=c(2,5,10,20,50,100),labels=c("1","1","2","2","3","3"))
 
 # soil_agg$PV <- approx(soil$tiefe,soil$PV_mean,soil_agg$tiefe,method = "constant",rule = 2)$y
 # soil_agg$PV_min <- approx(soil$tiefe,soil$PV_min,soil_agg$tiefe,method = "constant",rule = 2)$y

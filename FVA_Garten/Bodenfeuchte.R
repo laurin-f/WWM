@@ -19,6 +19,13 @@ check.packages(packages)
 files <- list.files(datapfad_bf,pattern = ".xls$",full.names = T)
 
 data_ls <- lapply(files,readxl::read_xls,skip=2,col_types = c("date",rep("numeric",5)))
+for(i in seq_along(data_ls)){
+  if(any(grepl("m³",colnames(data_ls[[i]])))){
+    data_ls[[i]][,-1] <- data_ls[[i]][,-1]*100
+  }
+  colnames(data_ls[[i]])<- c("date",paste("bf_",c("1a","1b","2a","2b","3a")))
+}
+
 data <- do.call(rbind,data_ls)
 colnames(data) <- c("date",paste("bf_",c("1a","1b","2a","2b","3a")))
 

@@ -87,6 +87,12 @@ F_sub$P_0_10 <- F_sub$Fz_roll_0_10 - F_sub$Fz_roll_10_17
 F_sub$P_10_20 <- F_sub$Fz_10_17
 F_long <- tidyr::pivot_longer(F_sub,matches("P_\\d+"),names_to = "tiefe",values_to = "P",names_prefix = "P_")
 F_long$tiefe2 <- factor(F_long$tiefe,levels=c("0_10","10_20"),labels=c("0-10 cm","10-20 cm"))
+
+soil_agg$id <- as.numeric(factor(soil_agg$tiefe,levels=c(2,5,10,20,50,100),labels=c(1,1,1,2,3,3)))
+soil_agg_plot <- subset(soil_agg, tiefe %in% c(5,10,20) & date > range2u3[1] & date < range2u3[2] ) %>% 
+  group_by(date,range) %>% 
+  summarise_all(mean)
+soil_agg_plot$id <- as.character(soil_agg_plot$id)
 ##################################################################################
 #plots
 ##################################################################################
@@ -415,12 +421,12 @@ DS_plot <- ggplot(subset(soil_agg_plot,range2 %in% c("0-10","10-20")))+
 #DS_plot#+facet_zoom(xlim = range7)
 
 soil_agg_plot$date <- round_date(soil_agg_plot$date,"mins")
-soil_agg
 ds_soil <- merge(ds_sub[,c("date","range2","Versuch","DSD0_roll","id")],soil_agg_plot) 
 ds_soil$Versuch <- as.numeric(ds_soil$Versuch)
 ds_soil$windy <- factor(ds_soil$Versuch,levels = 2:3,labels=c("windy","calm"))
 PPC_DS$windy <- factor(PPC_DS$Versuch,levels = 2:3,labels=c("windy","calm"))
-ds_soil_long <- tidyr::pivot_longer(ds_soil,matches("DSD0_PTF"),values_to = "DSD0_PTF")
+
+#ds_soil_long <- tidyr::pivot_longer(ds_soil,matches("PTF"),values_to = "DSD0_PTF",names_prefix = "PTF_")
 ggplot()+
   geom_line(data=ds_soil,aes(date,DSD0_roll,col=id))+
   geom_line(data=subset(PPC_DS,date %in% ds_soil$date),aes(date,base))
@@ -428,29 +434,48 @@ ggplot()+
 ggplot()+
   #geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_median_median))+
   #geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_min_min))+
-  geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_q25_min,col="q25 min"))+
-  geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_q25_median,col="q25 median"))+
-  geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_q25_max,col="q25 max"))
+  geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_min,col="q25 min"))+
+  geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_median,col="q25 median"))+
+  geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_max,col="q25 max"))
   
-DS_boxplot <- 
-ggplot()+
-  geom_boxplot(data=subset(ds_soil,id=="1"),aes("in situ",DSD0_roll,fill="0-10 cm",col="0-10 cm"),alpha=0.5)+
-  geom_boxplot(data=subset(ds_soil,id=="2"),aes("in situ",DSD0_roll,fill="10-20 cm",col="10-20 cm"),alpha=0.5)+
-  geom_boxplot(data=subset(ds_soil_long,id=="1"),aes("feps",DSD0_PTF,fill="0-10 cm",col="0-10 cm"),col=NA,alpha=0.4)+
-  geom_boxplot(data=subset(ds_soil_long,id=="2"),aes("feps",DSD0_PTF,fill="10-20 cm"),col=NA,alpha=0.4)+
-  geom_boxplot(data=subset(ds_soil,id=="2"),aes("feps",DSD0_PTF,fill="10-20 cm",col="10-20 cm"))+
-  geom_boxplot(data=subset(ds_soil,id=="1"),aes("feps",DSD0_PTF,fill="0-10 cm",col="0-10 cm"))+
-  geom_boxplot(data=subset(PPC_DS,date %in% ds_soil$date),aes("in situ DPPE",base,fill="0-10 cm",col="0-10 cm"),alpha=0.5)+
-  #scale_x_discrete(labels=c(expression(f(epsilon)~"calm"),expression(f(epsilon)~"windy"),paste("in situ",c("calm","windy"))))+
-  
-  scale_x_discrete(labels=c(expression(f(epsilon)),expression(D[eff]/D[0]~"in situ"),expression(D[PPC]/D[0]~"in situ")))+
-  
-  facet_wrap(~windy)+
-  labs(x="",y=expression(D[S]/D[0]),fill="",col="")+
-  guides(fill=guide_legend(override.aes = list(alpha=0.1)))
+ggplot(subset(ds_soil,id=="1"))+
+  geom_line(aes(date,PTF_min_min,col="min"))+
+  geom_line(aes(date,PTF_min_max,col="max"))
+ds_soil_agg <- ds_soil %>% group_by(id,windy) %>% summarise_all(mean)
 
-DS_box <- egg::tag_facet(DS_boxplot,tag_pool = c("windy","calm"),open="",close="",fontface=1,hjust=-0.1)
-DS_box
+#detach(subset(ds_soil_agg,id=="1"&Versuch==2))
+DS_boxplot <- 
+  ggplot()+
+  #geom_boxplot(data=subset(ds_soil_agg,id=="1"),aes("feps",y=c(0,2),middle=1,ymin=0,ymax=2,lower=0.5,upper=1.5))#+facet_wrap(~Versuch)or
+  geom_boxplot(data=subset(ds_soil_agg),aes(x="feps",middle=PTF_median_median,ymin=PTF_min_max,ymax=PTF_max_min,lower=PTF_q25_median,upper=PTF_q75_median,fill=id),stat="identity")+
+  geom_boxplot(data=subset(ds_soil),aes("in situ",DSD0_roll,fill=id,col=id),alpha=0.5)+
+  #geom_boxplot(data=subset(PPC_DS,date %in% ds_soil$date),aes("in situ DS",base,fill=id,col=id),width=0.4,alpha=0.5)+
+  scale_x_discrete(labels=c(expression(f(epsilon)),"in situ"))+#expression(D[eff]/D[0]~"")))+
+  facet_wrap(~windy)+
+  scale_color_manual(limits=1:2,values=scales::hue_pal()(2),labels=c("0-10 cm","10-20 cm"))+
+  scale_fill_manual(limits=1:2,values=scales::hue_pal()(2),labels=c("0-10 cm","10-20 cm"))+
+  labs(x="",y="exchange coefficient",fill=expression(f(epsilon)),col="in situ")+
+  guides(col = guide_legend(override.aes = list(fill=scales::hue_pal()(2),alpha=0.2)))
+  
+  #DS_boxplot <- 
+# ggplot()+
+#   geom_boxplot(data=subset(ds_soil),aes("in situ",DSD0_roll,fill="0-10 cm",col="0-10 cm"),alpha=0.5)
+#   geom_boxplot(data=subset(ds_soil,id=="2"),aes("in situ",DSD0_roll,fill="10-20 cm",col="10-20 cm"),alpha=0.5)+
+#   geom_boxplot(data=subset(ds_soil_long,id=="1"),aes("feps",DSD0_PTF,fill="0-10 cm",col="0-10 cm"),col=NA,alpha=0.4)+
+#   geom_boxplot(data=subset(ds_soil_long,id=="2"),aes("feps",DSD0_PTF,fill="10-20 cm"),col=NA,alpha=0.4)+
+#   geom_boxplot(data=subset(ds_soil,id=="2"),aes("feps",DSD0_PTF,fill="10-20 cm",col="10-20 cm"))+
+#   geom_boxplot(data=subset(ds_soil,id=="1"),aes("feps",DSD0_PTF,fill="0-10 cm",col="0-10 cm"))+
+#   geom_boxplot(data=subset(PPC_DS,date %in% ds_soil$date),aes("in situ DPPE",base,fill="0-10 cm",col="0-10 cm"),alpha=0.5)+
+#   #scale_x_discrete(labels=c(expression(f(epsilon)~"calm"),expression(f(epsilon)~"windy"),paste("in situ",c("calm","windy"))))+
+#   
+#   scale_x_discrete(labels=c(expression(f(epsilon)),expression(D[eff]/D[0]~"in situ"),expression(D[PPC]/D[0]~"in situ")))+
+#   
+#   facet_wrap(~windy)+
+#   labs(x="",y=expression(D[S]/D[0]),fill="",col="")+
+#   guides(fill=guide_legend(override.aes = list(alpha=0.1)))
+
+#DS_box <- egg::tag_facet(DS_boxplot,tag_pool = c("windy","calm"),open="",close="",fontface=1)
+#DS_box
   ######################################
 #Flux
 ######################################
@@ -464,16 +489,26 @@ cols <- scales::hue_pal()(2)
 mindate <- ymd_h("2020-07-06 16")
 calm_dates <- PPC$date[which(PPC$PPC < 0.07)]
 
-flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
+range2
+range3
+Kammer_flux_agg$Versuch <- NA
+Kammer_flux_agg$Versuch[Kammer_flux_agg$date > range2[1] - 3600 * 40 & Kammer_flux_agg$date < range2[2]] <- 2
+
+
+soil_wide$Versuch <- NA
+soil_wide$Versuch[soil_wide$date > range2[1] - 3600 * 20 & soil_wide$date < range2[2] - 3600 * 20] <- 2
+soil_wide$Versuch[soil_wide$date > Pumpzeiten$start[17] & soil_wide$date < Pumpzeiten$ende[17]] <- 3
+
+flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   geom_linerange(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=""))+
   geom_point(aes(date,CO2flux,col=""))+
   labs(col="chamber")+
   scale_color_manual(values=c(1))+
   ggnewscale::new_scale_color()+
-  geom_line(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
-  geom_ribbon(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(x=date,ymin=R_min,ymax=R_max,fill=""),alpha=0.15)+
-  scale_color_manual("simple T and SWC model",values=grey(0.3))+
-  scale_fill_manual("simple T and SWC model",values=grey(0.3))+
+  geom_line(data=subset(soil_wide,!is.na(Versuch)),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA),col=""),linetype=2)+
+  geom_ribbon(data=subset(soil_wide,!is.na(Versuch)),aes(x=date,ymin=R_min,ymax=R_max,fill=""),alpha=0.15)+
+  scale_color_manual("T & SWC model",values=grey(0.3))+
+  scale_fill_manual("T & SWC model",values=grey(0.3))+
   ggnewscale::new_scale_color()+
   ggnewscale::new_scale_fill()+
   #geom_line(data=subset(F_df,Versuch != "1"),aes(date,Fz,col="0-10 cm"),alpha=0.3)+
@@ -486,7 +521,7 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
   geom_col(data=subset(F_long)[1,],aes(date,P,fill=tiefe2,alpha=""),width=3600, show.legend = FALSE)+
   geom_col(data=subset(F_long)[2,],aes(date,P,fill=tiefe2,alpha=" "),width=3600, show.legend = FALSE)+
   geom_col(data=subset(F_long,date %in% calm_dates),aes(date,P,fill=tiefe2,alpha="calm"),width=3600)+
-  geom_line(data=subset(soil_wide,date<= "2020-07-24 08:20:00 UTC"),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA)),col=grey(0.3),linetype=2)+
+  geom_line(data=subset(soil_wide,!is.na(Versuch)),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA)),col=grey(0.3),linetype=2)+
   
   scale_alpha_manual(values=c(0.6,0.35,0.6,0.35))+
   guides(col=F,fill=F,
@@ -494,15 +529,21 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,date < ymd_h("2020.07.17 00")))+
 #  scale_color_manual(values=cols[1:2])+
   #scale_color_manual("gradient method",values=1:2)+
   #xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
-  scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
+  scale_x_datetime(date_label="%b %d",breaks="2 days")+#,limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
   #ylim(range(F_sub[,c("Fz_roll_0_10","Fz_roll_10_17")],na.rm=T))+
   ylim(c(0,5.5))+
+  facet_wrap(~Versuch,scales="free_x")+
   labs(x="",y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
-  geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)
+  geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)+
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank()
+  )+theme(legend.position = "left")
 
 flux_plot
-
-
+soil_wide$period <- soil_wide$Versuch-1
+flux_adj <- adj_grob_size(flux_plot,subset(soil_wide,!is.na(period)),breaks="2 days",date_labels="%b %d",plot=F)
+cowplot::ggdraw()+cowplot::draw_plot(flux_adj)
 #ggplot(PPC)+
 #  geom_col(data=subset(F_long),aes(date,P/10,fill=tiefe2),width=3600, show.legend = FALSE)+
 #  geom_line(aes(date,PPC))+geom_hline(yintercept = 0.071)+ylim(c(0,0.1))
@@ -546,16 +587,16 @@ data$Versuch[data$date > range8[1] & data$date < range8[2]] <- 3
 # Fig6windDS
 # dev.off()
 
-col_labs <- c("DSD0 1" ,"DSD0 1 peak","PPC")
-col_exps <- c(expression(D[eff]/D[0]~1),expression(D[PPE]/D[0]~1),"PPC")
+col_labs <- c("DSD0" ,"DSD0 peak","PPC")
+col_exps <- c(expression(D[eff]/D[0]),expression(D[PPE]/D[0]),"PPC")
 
 
 PPC_DS_plot <- 
   ggplot(subset(data,!is.na(Versuch)))+
   geom_ribbon(data=subset(PPC_DS,date %in% ds_sub$date),aes(x=date,ymax=DSD0_roll,ymin=base,fill="DSD0 1 peak"),alpha=0.2)+
   geom_line(data=subset(PPC_DS,date %in% ds_sub$date),aes(date,PPC,col="PPC"))+
-  geom_line(data=subset(PPC_DS,date %in% ds_sub$date),aes(date,peak,col="DSD0 1 peak"))+
-  geom_line(data=subset(ds_sub,id == "1"),aes(date,DSD0_roll,col="DSD0 1" ))+
+  geom_line(data=subset(PPC_DS,date %in% ds_sub$date),aes(date,peak,col="DSD0 peak"))+
+  geom_line(data=subset(ds_sub,id == "1"),aes(date,DSD0_roll,col="DSD0" ))+
   scale_x_datetime(date_label="%b %d",breaks="1 days",limits = )+
   scale_y_continuous(limits = c(0,0.6),sec.axis = sec_axis(trans=~.,name=expression("PPC [Pa s"^{-1}*"]")))+
   scale_color_manual("",values = c(scales::hue_pal()(1),2,grey(0.2)),labels=col_exps)+
@@ -567,35 +608,50 @@ PPC_DS_plot <-
   #ggsave(paste0(plotpfad_harth,"DS_PPC_Inj1u2.jpg"),width=7,height = 5)
 PPC_DS_plot
 
-cor <- cor(PPC_DS$peak,PPC_DS$PPC,use = "complete")
-DPPE_PPC <- ggplot(subset(PPC_DS,date %in% ds_sub$date))+geom_point(aes(PPC,peak,col=paste(windy,"period")))+annotate("text",x=-Inf,y=0.25,label=paste("r =",round(cor,2)),hjust=-0.1)+
-  labs(y=expression(D[PPE]/D[0]),x=expression("PPC [Pa s"^{-1}*"]"),col="")
-legbox <- get_legend(DS_boxplot)
-legend_box <- as_ggplot(legbox)
-boxplt_scatter <- egg::ggarrange(DS_boxplot+theme(legend.position = "none"),DPPE_PPC,legend_box,nrow=1,widths=c(3,3,1))
-Fig6PPCDS <- egg::ggarrange(PPC_DS_plot,boxplt_scatter,flux_plot,ncol=1,heights = c(1,1,1),draw=F)
-boxgrob <- ggplotGrob(DS_boxplot+theme(legend.position = "none"))
-scattergrob <- ggplotGrob(DPPE_PPC)
-gtable::gtable_col(boxgrob,scattergrob)
-rbind(size="first")
-jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS.jpg"),width=7,height = 7.5,units="in",res=300)
-Fig6PPCDS
-dev.off()
+PPC_DS$peak_rel <- PPC_DS$peak#/PPC_DS$DSD0_1 * 100
 
-p1 <- PPC_DS_plot
-p2 <- DS_box
+fm_PPC_DPPE <- glm(peak_rel~PPC,data=subset(PPC_DS,date %in% ds_sub$date))
+R2 <- 1-(fm_PPC_DPPE$deviance/fm_PPC_DPPE$null.deviance)
+intercept <- fm_PPC_DPPE$coefficients[1]
+slope <- fm_PPC_DPPE$coefficients[2]
+DPPE_PPC <- 
+  ggplot(subset(PPC_DS,date %in% ds_sub$date))+
+  geom_point(aes(PPC,peak_rel,col="0-10 cm"))+
+  #geom_abline(intercept = intercept,slope = slope)+
+  geom_smooth(aes(PPC,peak_rel),method = "glm",se=F,col=1)+
+  annotate("text",x=-Inf,y=0.25,label=paste("R² =",round(R2,2)),hjust=-0.1)+
+  annotate("text",x=-Inf,y=0.29,label=paste("y =",round(slope,2),"x - ",abs(round(intercept,2))),hjust=-0.1)+
+  labs(y=expression(D[PPE]/D[0]),x=expression("PPC [Pa s"^{-1}*"]"),col="")+guides(col=F)
+legbox <- get_legend(DS_boxplot)
+
+# legend_box <- as_ggplot(legbox)
+# boxplt_scatter <- egg::ggarrange(DS_boxplot+theme(legend.position = "none"),DPPE_PPC,legend_box,nrow=1,widths=c(3,3,1))
+# scatter_leg <- egg::ggarrange(DPPE_PPC,legend_box,nrow=1,widths=c(3,1))
+# Fig6PPCDS <- egg::ggarrange(PPC_DS_plot,boxplt_scatter,flux_plot,ncol=1,heights = c(1,1,1),draw=F)
+# boxgrob <- ggplotGrob(DS_boxplot+theme(legend.position = "none"))
+# scattergrob <- ggplotGrob(DPPE_PPC)
+# gtable::gtable_col(boxgrob,scattergrob)
+# rbind(size="first")
+# jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS.jpg"),width=7,height = 7.5,units="in",res=300)
+# Fig6PPCDS
+# dev.off()
+
+p1 <- PPC_DS_plot+theme(legend.position = "left")
+p2 <- DS_boxplot+theme(legend.position = "left")
 p3 <- DPPE_PPC
-p4 <- flux_plot
+p4 <- flux_adj
 g1 <- ggplotGrob(p1)
 g2 <- ggplotGrob(p2)
 g3 <- ggplotGrob(p3)
-g4 <- ggplotGrob(p4)
+
+g4 <- p4
 
 fg2 <- egg::gtable_frame(g2, debug = F)
 fg3 <- egg::gtable_frame(g3, debug = F)
 
+
 fg23 <-
-  egg::gtable_frame(gridExtra::gtable_cbind(fg3, fg2),
+  egg::gtable_frame(gridExtra::gtable_cbind(fg2, fg3),
                width = unit(2, "null"),
                height = unit(1, "null"))
 fg1 <-
