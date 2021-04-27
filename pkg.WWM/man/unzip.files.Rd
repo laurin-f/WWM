@@ -4,7 +4,7 @@
 \alias{unzip.files}
 \title{Funktion um alle .zip dateien in einem Ordner incl. Unterordnern zu entpacken}
 \usage{
-unzip.files(path = ggapfad)
+unzip.files(path)
 }
 \arguments{
 \item{path}{the path that the zip files are in}

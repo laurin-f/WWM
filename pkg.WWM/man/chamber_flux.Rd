@@ -4,12 +4,23 @@
 \alias{chamber_flux}
 \title{function to calculate chamber flux}
 \usage{
-chamber_flux(mess_dir = "Hartheim", messnr = NULL, aggregate = F, ...)
+chamber_flux(
+  messnr = NULL,
+  mess_dir = "Hartheim",
+  aggregate = F,
+  metapath = metapfad,
+  ggapath = ggapfad,
+  sqlpath = sqlpfad,
+  T_deg = NA,
+  p_kPa = NA,
+  return_data = F,
+  ...
+)
 }
 \arguments{
-\item{mess_dir}{directory in which the metadata of the measurements is stored}
-
 \item{messnr}{which measurement should be used from metadata. default is NULL = all measurements are used}
+
+\item{mess_dir}{directory in which the metadata of the measurements is stored}
 }
 \value{
 

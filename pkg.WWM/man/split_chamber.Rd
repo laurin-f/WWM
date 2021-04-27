@@ -6,27 +6,22 @@
 \usage{
 split_chamber(
   data,
-  closing_before = 40,
-  closing_after = 40,
-  opening_after = -10,
-  opening_before = -10,
+  closing_lim = 30,
+  opening_lim = -10,
   t_max = 3,
   t_init = 0.1,
   t_min = 2,
   gas = "CO2",
+  round_intervall = "1 min",
   adj_openings = T
 )
 }
 \arguments{
 \item{data}{data.frame with gas concentrations of several chamber measurements}
 
-\item{closing_before}{maximal concentration-gradient before closing the chamber}
+\item{closing_lim}{maximal concentration-gradient before closing the chamber}
 
-\item{closing_after}{minimal concentration-gradient after closing the chamber}
-
-\item{opening_after}{maximal concentration-gradient after opening the chamber}
-
-\item{opening_before}{minimal concentration-gradient before opening the chamber}
+\item{opening_lim}{minimal concentration-gradient before opening the chamber}
 
 \item{t_max}{maximal measurement time, if time between closing and opening
 exceeds this time the rest of the measurement will not be included for the calculation

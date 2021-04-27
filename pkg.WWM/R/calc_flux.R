@@ -16,7 +16,7 @@
 #'
 #' @examples calc_flux(split,Vol=Vol_ml,tracer_conc = 100)
 calc_flux <- function(data,
-                      group = "Pumpstufe",
+                      group = "kammer",
                       gas = "CO2",
                       Vol,#in cm3
                       Grundfl=NULL,#in cm2
@@ -150,6 +150,8 @@ calc_flux <- function(data,
     #wenn nicht agggegiert wird dann wird hier die Spalte mit group angehängt
     flux[,group] <- gr_id[,1]
   }
+  #der Name des Gases wird am Anfang jeder Spalte mit einer Einheit vorangestellt
+  colnames(flux) <- stringr::str_replace(colnames(flux),"^(?=(ppm|ml|g|mol|mumol))",paste0(gas,"_"))
   #liste als output
   return(list(flux=flux,data=data))
 }

@@ -4,7 +4,7 @@
 #' @param datelim time intervall
 #' @param Pumpstufen verwendete Pumpstufen bei den unterschiedlichen Versuchen
 #' @param group name of the column that should be used for grouping results
-#' @param return_data if T then the function returns a list with the flux as first element and the processed input data as second element 
+#' @param return_data if T then the function returns a list with the flux as first element and the processed input data as second element
 #' @param ... #other parameters parsed to calc_flux
 #'
 #' @return
@@ -21,14 +21,12 @@
 injectionrate <- function(datelim,
                           Pumpstufen,
                           group = "Pumpstufe",
-                          closing_before = 100,
-                          closing_after = 100,
-                          opening_before = 0,
-                          opening_after = 10,
+                          closing_lim = 100,
+                          opening_lim = 0,
                           t_max=6,
-                          t_init = 2,
-                          t_min=3,
-                          T_C = 15,
+                          t_init = 1,
+                          t_min=2,
+                          T_C = NA,
                           spikes_th = 500,
                           difftime_th = 10,
                           all_spikes_NA = F,
@@ -64,10 +62,8 @@ injectionrate <- function(datelim,
   }
   #split_chmaber anwenden
   split <- split_chamber(data,
-                         closing_before = closing_before,
-                         closing_after = closing_after,
-                         opening_before = opening_before,
-                         opening_after = opening_after,
+                         closing_lim = closing_lim,
+                         opening_lim = opening_lim,
                          t_max=t_max,
                          t_init = t_init,
                          t_min=t_min,
@@ -78,7 +74,7 @@ injectionrate <- function(datelim,
     split$Pumpstufe <- NA
     split$Pumpstufe[!is.na(split$messid)] <- Pumpstufen
   }else{
-    split$Pumpstufe <- 
+    split$Pumpstufe <-
       as.character(factor(split$messid,
                                      levels = unique(split$messid),
                                      labels=Pumpstufen))
@@ -89,7 +85,6 @@ injectionrate <- function(datelim,
   #Fluss mit calc_flux bestimmen
   flux <- calc_flux(data = split,
                     Vol = Vol_ml,
-                    tracer_conc = 100,
                     group=group,
                     T_deg = T_C,
                     ...)

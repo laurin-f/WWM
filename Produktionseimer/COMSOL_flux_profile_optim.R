@@ -142,7 +142,7 @@ prod_barplt <-
   geom_col(aes(x=method,y=prod,fill=as.factor(tiefenstufe),col=method),orientation="x",width = 0.4)+
   scale_color_manual(values=c(1,"grey"))+
   facet_grid(. ~ treat2)+
-  labs(y=expression(P[CO2]*" ["~mu*"mol m"^{-2}*s^{-1}*"]"),x="",fill="depth level",col="method")+
+  labs(y=expression(P[sim]*" ["~mu*"mol m"^{-2}*s^{-1}*"]"),x="",fill="depth level",col="method")+
   guides(col=guide_legend(override.aes = list(fill=NA)))+
   scale_fill_manual(values=(cols))+
   theme_minimal()+

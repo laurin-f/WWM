@@ -5,11 +5,12 @@
 \title{Function to get data from a sql database}
 \usage{
 read_GGA(
-  db.name = "GAA.db",
+  db.name = "GGA.db",
   table.name = "micro",
   datelim = NULL,
   cols = "*",
-  sqlpath = sqlpfad
+  sqlpath = sqlpfad,
+  ggapath = ggapfad
 )
 }
 \arguments{

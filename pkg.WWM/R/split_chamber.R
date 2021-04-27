@@ -2,10 +2,8 @@
 #'
 #'
 #' @param data data.frame with gas concentrations of several chamber measurements
-#' @param closing_before maximal concentration-gradient before closing the chamber
-#' @param closing_after minimal concentration-gradient after closing the chamber
-#' @param opening_before minimal concentration-gradient before opening the chamber
-#' @param opening_after maximal concentration-gradient after opening the chamber
+#' @param closing_lim maximal concentration-gradient before closing the chamber
+#' @param opening_lim minimal concentration-gradient before opening the chamber
 #' @param t_max maximal measurement time, if time between closing and opening
 #' exceeds this time the rest of the measurement will not be included for the calculation
 #' of the flux
@@ -27,14 +25,13 @@
 #' t_init=0,
 #' t_min=5)
 split_chamber <- function(data,
-                          closing_before = 40,
-                          closing_after = 40,
-                          opening_after = -10,
-                          opening_before = -10,
+                          closing_lim = 30,
+                          opening_lim = -10,
                           t_max = 3,
                           t_init = 0.1,
                           t_min = 2,
                           gas = "CO2",
+                          round_intervall = "1 min",
                           adj_openings = T) {
   ##############################
   #datensatz aggregieren
@@ -43,7 +40,7 @@ split_chamber <- function(data,
   data <- data[!is.na(data[, gas]) & !is.na(data$date), ]
 
   #spalte mit minutenwerten
-  hourminute <- round_date(data$date, unit = "mins")
+  hourminute <- round_date(data$date, unit = round_intervall)
 
   #nach minutenwerten aggregieren
   data.agg <-
@@ -63,10 +60,10 @@ split_chamber <- function(data,
 
   #Punkte an denen die Schwellenwerte für closing bzw. opening vorliegen
 
-  closing <- which(before / timediff_before < closing_before &
-                     after / timediff_after > closing_after)
-  opening <- which(before / timediff_before > opening_before &
-                     after / timediff_after < opening_after)
+  closing <- which(before / timediff_before < closing_lim &
+                     after / timediff_after > closing_lim)
+  opening <- which(before / timediff_before > opening_lim &
+                     after / timediff_after < opening_lim)
 
 
 
@@ -147,8 +144,8 @@ split_chamber <- function(data,
     #index von closing und opening des nicht aggregierten data.frames
     closingID <- which(data$hourminute %in% closing.time)
     openingID <- which(data$hourminute %in% opening.time)
-    if (length(openingID) == 0) {
-      openingID <- nrow(data)
+    if (length(openingID) < length(closingID)) {
+      openingID[length(closingID)] <- nrow(data)
     }
 
     #zeit und messid an data anfügen
@@ -216,15 +213,11 @@ split_chamber <- function(data,
     )
 
     before_afters <-
-      c(closing_before,
-        closing_after,
-        opening_before,
-        opening_after)
+      c(closing_lim,
+        opening_lim)
     plot(before, xlab = "", ylim = c(min(before_afters) - 10, 2 * max(before_afters)))
-    abline(h = closing_before, col = 3, lty = 2)
-    abline(h = closing_after, col = 3)
-    abline(h = opening_before, col = 2, lty = 2)
-    abline(h = opening_after, col = 2)
+    abline(h = closing_lim, col = 3)
+    abline(h = opening_lim, col = 2)
     abline(v = closing, col = 3)
     abline(v = opening, col = 2)
     lines(after, pch = 3, col = 4)
@@ -247,15 +240,11 @@ split_chamber <- function(data,
     plot(data.agg$date, data.agg[, gas], pch = 20, xlab = "")
 
     before_afters <-
-      c(closing_before,
-        closing_after,
-        opening_before,
-        opening_after)
+      c(closing_lim,
+        opening_lim)
     plot(before, xlab = "", ylim = c(min(before_afters) - 10, 2 * max(before_afters)))
-    abline(h = closing_before, col = 3, lty = 2)
-    abline(h = closing_after, col = 3)
-    abline(h = opening_before, col = 2, lty = 2)
-    abline(h = opening_after, col = 2)
+    abline(h = closing_lim, col = 3)
+    abline(h = opening_lim, col = 2)
     points(after, pch = 3, col = 4)
 
     legend(

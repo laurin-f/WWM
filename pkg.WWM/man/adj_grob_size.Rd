@@ -4,7 +4,14 @@
 \alias{adj_grob_size}
 \title{function to adjust the size of the facets used in \code{leave_NAtime_plot}}
 \usage{
-adj_grob_size(p, data, breaks = "10 hours", ...)
+adj_grob_size(
+  p,
+  data,
+  breaks = "10 hours",
+  date_labels = "\%b \%d",
+  plot = T,
+  ...
+)
 }
 \arguments{
 \item{p}{ggplot object}

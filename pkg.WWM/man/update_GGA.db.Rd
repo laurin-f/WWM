@@ -4,11 +4,7 @@
 \alias{update_GGA.db}
 \title{update the GGA database}
 \usage{
-update_GGA.db(
-  table.name = c("gga", "micro"),
-  path = ggapfad,
-  sqlpath = sqlpfad
-)
+update_GGA.db(table.name = c("gga", "micro"), path, sqlpath)
 }
 \arguments{
 \item{path}{the path that the unzipped and the db_log folder are in}

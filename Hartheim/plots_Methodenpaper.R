@@ -212,8 +212,11 @@ tiefe_plt <-  ggplot(data_sub_agg)+
   geom_line(aes(CO2_roll_ref_mean,tiefe,col=factor(ID,levels = c(1,3,7),labels=c("B","C","D"))))+
   geom_line(aes(CO2_roll_inj_mean,tiefe,col="A"))+
   facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("profile",c("A + B","A + C","A + D"))))+
-  labs(x=expression(CO[2]~"[ppm]"),fill="profile",col="profile",y="depth [cm]")+theme_bw()
-
+  labs(x=expression(CO[2]~"[ppm]"),fill="profile",col="profile",y="depth [cm]")+theme_bw()+
+  scale_color_brewer(palette= 2,type="qual")+
+  scale_fill_brewer(palette= 2,type="qual")
+  
+tiefe_plt
 
 Sys.setlocale("LC_ALL","English")
 
@@ -231,12 +234,20 @@ legend1 <- ggpubr::as_ggplot(leg1)
 
 leg2_adj <- ggpubr::get_legend(time_plt_adj)
 legend2_adj <- ggpubr::as_ggplot(leg2_adj)
-leg_adj <- ggpubr::ggarrange(legend1,legend2_adj,heights = c(1,1.5),ncol=1,align = "v")
+leg_adj <- ggpubr::ggarrange(legend1,legend2_adj,heights = c(1,2),ncol=1)
+leg_adj <- cowplot::ggdraw()+
+  cowplot::draw_plot(legend1,y=0.67,height=0.33,x=-0.15)+
+  cowplot::draw_plot(legend2_adj,height=0.67,x=0.04)
 
 
 no_leg_adj <- ggpubr::ggarrange(tiefe_plt+theme(legend.position = "none"),time_plt_adj+theme(legend.position = "none"),ncol=1,align="v") 
 #ggpubr::ggarrange(no_leg_adj,leg_adj,widths = c(8,2))
-ggpubr::ggarrange(no_leg_adj,leg_adj,widths = c(8,2))+ggsave(paste0(plotpfad_ms,"heterogeneity_adj.jpg"),width=7,height=5)
+heterogeneity_plot <- ggpubr::ggarrange(no_leg_adj,leg_adj,widths = c(8,2))#+ggsave(paste0(plotpfad_ms,"heterogeneity_adj.jpg"),width=7,height=5)
+cowplot::ggdraw()+
+  cowplot::draw_plot(heterogeneity_plot)+
+  cowplot::draw_text("a)",x=0.05,y=0.97)+
+  cowplot::draw_text("b)",x=0.05,y=0.47)+
+  ggsave(paste0(plotpfad_ms,"heterogeneity_adj.jpg"),width=7,height=5)
 Sys.setlocale("LC_ALL","")
 
 
@@ -358,6 +369,7 @@ VWC_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period) & tiefe %in% c(2,5,10,20,
   geom_ribbon(data=subset(data,!is.na(period)),aes(x=date,ymin=0,ymax=Precip_Last24hrs_mm/sec_ax_fac),fill="blue",alpha=0.8)+
   geom_line(aes(date,mean_VWC,col=as.factor(tiefe)))+
   scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_fac,name=expression(P["24h"]*" [mm]")))+
+  theme_bw()+
   theme(
     axis.title.y.right = element_text(color = "blue"),
     axis.text.y.right = element_text(color = "blue"),
@@ -368,7 +380,6 @@ VWC_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period) & tiefe %in% c(2,5,10,20,
   guides(colour = guide_legend(override.aes = list(size = 1.5)))+
   facet_wrap(~period,scales="free_x")+
   scale_x_datetime(date_breaks = "2 days")+
-  theme_bw()+
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank()
@@ -423,31 +434,30 @@ DS_plot <- ggplot(subset(soil_agg_plot,range2 %in% c("0-10","10-20")))+
 soil_agg_plot$date <- round_date(soil_agg_plot$date,"mins")
 ds_soil <- merge(ds_sub[,c("date","range2","Versuch","DSD0_roll","id")],soil_agg_plot) 
 ds_soil$Versuch <- as.numeric(ds_soil$Versuch)
-ds_soil$windy <- factor(ds_soil$Versuch,levels = 2:3,labels=c("windy","calm"))
-PPC_DS$windy <- factor(PPC_DS$Versuch,levels = 2:3,labels=c("windy","calm"))
+ds_soil$windy <- factor(ds_soil$Versuch,levels = 2:3,labels=c("windy period","calm period"))
+PPC_DS$windy <- factor(PPC_DS$Versuch,levels = 2:3,labels=c("windy period","calm period"))
 
 #ds_soil_long <- tidyr::pivot_longer(ds_soil,matches("PTF"),values_to = "DSD0_PTF",names_prefix = "PTF_")
-ggplot()+
-  geom_line(data=ds_soil,aes(date,DSD0_roll,col=id))+
-  geom_line(data=subset(PPC_DS,date %in% ds_soil$date),aes(date,base))
+# ggplot()+
+#   geom_line(data=ds_soil,aes(date,DSD0_roll,col=id))+
+#   geom_line(data=subset(PPC_DS,date %in% ds_soil$date),aes(date,base))
 
-ggplot()+
-  #geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_median_median))+
-  #geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_min_min))+
-  geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_min,col="q25 min"))+
-  geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_median,col="q25 median"))+
-  geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_max,col="q25 max"))
+# ggplot()+
+#   #geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_median_median))+
+#   #geom_line(data=subset(soil_agg,tiefe == 5),aes(date,PTF_min_min))+
+#   geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_min,col="q25 min"))+
+#   geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_median,col="q25 median"))+
+#   geom_line(data=subset(soil_agg_plot,tiefe == 7.5),aes(date,PTF_q25_max,col="q25 max"))
   
-ggplot(subset(ds_soil,id=="1"))+
-  geom_line(aes(date,PTF_min_min,col="min"))+
-  geom_line(aes(date,PTF_min_max,col="max"))
+# ggplot(subset(ds_soil,id=="1"))+
+#   geom_line(aes(date,PTF_min_min,col="min"))+
+#   geom_line(aes(date,PTF_min_max,col="max"))
 ds_soil_agg <- ds_soil %>% group_by(id,windy) %>% summarise_all(mean)
 
 #detach(subset(ds_soil_agg,id=="1"&Versuch==2))
 DS_boxplot <- 
   ggplot()+
-  #geom_boxplot(data=subset(ds_soil_agg,id=="1"),aes("feps",y=c(0,2),middle=1,ymin=0,ymax=2,lower=0.5,upper=1.5))#+facet_wrap(~Versuch)or
-  geom_boxplot(data=subset(ds_soil_agg),aes(x="feps",middle=PTF_median_median,ymin=PTF_min_max,ymax=PTF_max_min,lower=PTF_q25_median,upper=PTF_q75_median,fill=id),stat="identity")+
+  geom_boxplot(data=subset(ds_soil_agg),aes(x="feps",middle=PTF_median_median,ymin=PTF_min_max,ymax=PTF_max_min,lower=PTF_q25_max,upper=PTF_q75_min,fill=id),stat="identity")+
   geom_boxplot(data=subset(ds_soil),aes("in situ",DSD0_roll,fill=id,col=id),alpha=0.5)+
   #geom_boxplot(data=subset(PPC_DS,date %in% ds_soil$date),aes("in situ DS",base,fill=id,col=id),width=0.4,alpha=0.5)+
   scale_x_discrete(labels=c(expression(f(epsilon)),"in situ"))+#expression(D[eff]/D[0]~"")))+
@@ -489,8 +499,6 @@ cols <- scales::hue_pal()(2)
 mindate <- ymd_h("2020-07-06 16")
 calm_dates <- PPC$date[which(PPC$PPC < 0.07)]
 
-range2
-range3
 Kammer_flux_agg$Versuch <- NA
 Kammer_flux_agg$Versuch[Kammer_flux_agg$date > range2[1] - 3600 * 40 & Kammer_flux_agg$date < range2[2]] <- 2
 
@@ -525,7 +533,7 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   
   scale_alpha_manual(values=c(0.6,0.35,0.6,0.35))+
   guides(col=F,fill=F,
-         alpha= guide_legend("0-10   10-20 cm",override.aes = list(fill=rep(cols[1:2],each=2)),ncol=2))+
+         alpha= guide_legend("",override.aes = list(fill=rep(cols[1:2],each=2)),ncol=2))+
 #  scale_color_manual(values=cols[1:2])+
   #scale_color_manual("gradient method",values=1:2)+
   #xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
@@ -538,7 +546,7 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank()
-  )+theme(legend.position = "left")
+  )#+theme(legend.position = "left")
 
 flux_plot
 soil_wide$period <- soil_wide$Versuch-1
@@ -608,20 +616,28 @@ PPC_DS_plot <-
   #ggsave(paste0(plotpfad_harth,"DS_PPC_Inj1u2.jpg"),width=7,height = 5)
 PPC_DS_plot
 
-PPC_DS$peak_rel <- PPC_DS$peak#/PPC_DS$DSD0_1 * 100
+PPC_DS$peak_rel <- PPC_DS$peak#/PPC_DS$base
 
+PPC_DS_sub <- subset(PPC_DS,date %in% ds_sub$date)
+cor(PPC_DS_sub$peak_rel,PPC_DS_sub$PPC,use = "complete")
 fm_PPC_DPPE <- glm(peak_rel~PPC,data=subset(PPC_DS,date %in% ds_sub$date))
 R2 <- 1-(fm_PPC_DPPE$deviance/fm_PPC_DPPE$null.deviance)
 intercept <- fm_PPC_DPPE$coefficients[1]
 slope <- fm_PPC_DPPE$coefficients[2]
 DPPE_PPC <- 
   ggplot(subset(PPC_DS,date %in% ds_sub$date))+
-  geom_point(aes(PPC,peak_rel,col="0-10 cm"))+
   #geom_abline(intercept = intercept,slope = slope)+
   geom_smooth(aes(PPC,peak_rel),method = "glm",se=F,col=1)+
+  geom_point(aes(PPC,peak_rel,col="0-10 cm",fill="0-10 cm"),alpha=0.7)+
   annotate("text",x=-Inf,y=0.25,label=paste("R² =",round(R2,2)),hjust=-0.1)+
   annotate("text",x=-Inf,y=0.29,label=paste("y =",round(slope,2),"x - ",abs(round(intercept,2))),hjust=-0.1)+
-  labs(y=expression(D[PPE]/D[0]),x=expression("PPC [Pa s"^{-1}*"]"),col="")+guides(col=F)
+  labs(y=expression(D[PPE]/D[0]),x=expression("PPC [Pa s"^{-1}*"]"),col="")+
+  scale_color_manual("",limits=c("0-10 cm","10-20 cm"),values=scales::hue_pal()(2))+
+  scale_fill_manual("",limits=c("0-10 cm","10-20 cm"),values=scales::hue_pal()(2))+
+    guides(col = guide_legend(override.aes = list(shape=15,size=8)))
+  
+  #guides(col=F )
+
 legbox <- get_legend(DS_boxplot)
 
 # legend_box <- as_ggplot(legbox)
@@ -636,15 +652,16 @@ legbox <- get_legend(DS_boxplot)
 # Fig6PPCDS
 # dev.off()
 
-p1 <- PPC_DS_plot+theme(legend.position = "left")
-p2 <- DS_boxplot+theme(legend.position = "left")
-p3 <- DPPE_PPC
-p4 <- flux_adj
+p1 <- cowplot::ggdraw()+cowplot::draw_plot(PPC_DS_plot)+cowplot::draw_text("a)",x=0.03,y=0.97)
+p2 <- cowplot::ggdraw()+cowplot::draw_plot(DS_boxplot+theme(legend.position = "none"))+cowplot::draw_text("b)",x=0.05,y=0.97)
+p3 <- cowplot::ggdraw()+cowplot::draw_plot(DPPE_PPC)+cowplot::draw_text("c)",x=0.05,y=0.97)
+p4 <- cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("d)",x=0.03,y=0.97)
 g1 <- ggplotGrob(p1)
 g2 <- ggplotGrob(p2)
 g3 <- ggplotGrob(p3)
+g4 <- ggplotGrob(p4)
 
-g4 <- p4
+#g4 <- p4
 
 fg2 <- egg::gtable_frame(g2, debug = F)
 fg3 <- egg::gtable_frame(g3, debug = F)
@@ -674,11 +691,6 @@ grid::grid.newpage()
 grid::grid.draw(combined)
 dev.off()
 
-combined <- gridExtra::gtable_rbind(fg1, fg2,fg4) 
-jpeg(file=paste0(plotpfad_ms,"Fig_6_boxplot.jpg"),width=7,height = 7.5,units="in",res=300)
-grid::grid.newpage()
-grid::grid.draw(combined)
-dev.off()
 # Fig6PPCDS <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),PPC_DS_plot,flux_plot,ncol=1,heights = c(1,1,1),draw=F)
 # jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS.jpg"),width=7,height = 7.5,units="in",res=300)
 # Fig6PPCDS

@@ -7,11 +7,16 @@
 #' @export
 #'
 #' @examples
-chamber_flux <- function(mess_dir = "Hartheim",
-                         messnr = NULL,
+chamber_flux <- function(messnr = NULL,
+                         mess_dir = "Hartheim",
                          aggregate = F,
-                         p_kPa = 101.3,
-                         T_deg = NULL,
+                         metapath = metapfad,
+                         ggapath = ggapfad,
+                         sqlpath = sqlpfad,
+                         T_deg = NA,
+                         p_kPa = NA,
+                         #wenn return_data == T wird als Output eine Liste mit den bearbeiteten INput Daten ausgegeben
+                         return_data = F,
                          ...) {
   ########################
   #Metadaten laden
@@ -19,10 +24,10 @@ chamber_flux <- function(mess_dir = "Hartheim",
 
   #in den Excelsheets habe ich dolumentiert von wann bis wann ich mit welchem GGA gemessen habe.
   Messungen <-
-    readxl::read_xlsx(paste0(metapfad, mess_dir, "/Kammermessungen.xlsx"))
+    readxl::read_xlsx(paste0(metapath, mess_dir, "/Kammermessungen.xlsx"))
   #in sheet 2 habe ich abgelegt wie hoch die Kragen aus dem Boden ragen
   kragen <-
-    readxl::read_xlsx(paste0(metapfad, mess_dir, "/Kammermessungen.xlsx"), sheet = 2)
+    readxl::read_xlsx(paste0(metapath, mess_dir, "/Kammermessungen.xlsx"), sheet = 2)
 
   #wenn eine spezielle messnr ausgewählt wird werden die Metadaten dementsprechend zugeschnitten
   if (!is.null(messnr)) {
@@ -37,14 +42,14 @@ chamber_flux <- function(mess_dir = "Hartheim",
 
   #im Kammer_Meta.xslsx habe ich das Kammervolumen abgeschätzt
   Kammer <-
-    readxl::read_xlsx(paste0(metapfad, "Kammermessungen/Kammer_Meta.xlsx"),
+    readxl::read_xlsx(paste0(metapath, "Kammermessungen/Kammer_Volumen.xlsx"),
                       sheet = chamber)
   Schlauch_meta <-
-    readxl::read_xlsx(paste0(metapfad, "Kammermessungen/Kammer_Meta.xlsx"),
+    readxl::read_xlsx(paste0(metapath, "Kammermessungen/Kammer_Volumen.xlsx"),
                       sheet = "schlauch_volumen")
   #Hier steht drin welches interne Volumen die GGAs haben
   GGA_Vol <-
-    readxl::read_xlsx(paste0(metapfad, "GGA/Kammervolumen.xlsx"))
+    readxl::read_xlsx(paste0(metapath, "Kammermessungen/GGA_volumen.xlsx"))
 
 
   kragen$height <- kragen$height_cm
@@ -62,7 +67,7 @@ chamber_flux <- function(mess_dir = "Hartheim",
   ###########################
   #Daten laden
   #daten aus Database einlesen
-  data.raw <- read_db("GGA.db", GGA, datelim = c(beginn, ende))
+  data.raw <- read_GGA("GGA.db", GGA, datelim = c(beginn, ende),ggapath=ggapath,sqlpath=sqlpath)
 
   ########################
   #split chamber function um die Zeiträume der einzelmessungen zu bestimmen
@@ -123,13 +128,10 @@ chamber_flux <- function(mess_dir = "Hartheim",
       Vol_GGA#cm3
   }
 
-  ###########
-  #Temperatur
-  ###########
 
-  #in Hartheim sind zusätzliche Klimadaten verfügbar
-  load(file = paste0(klimapfad, "klima_data.RData"))
-  klima_sub <- subset(klima, date > beginn & date < ende)
+  ###########################
+  #Fluss berechnen
+  ###########################
 
   #Liste für Output anlegen
   flux <- list()
@@ -140,15 +142,10 @@ chamber_flux <- function(mess_dir = "Hartheim",
       flux[[i]] <- list(NULL, NULL)
       for (j in seq_along(Vol_schlauch)) {
         #falls klimadaten Vorhanden diese verwenden da interne Temperatur vom microGGA zu hoch ist (siehe Temp_micro_klimaturm.R)
-        if (any(klima_sub$date > beginn_seq[j] &
-                klima_sub$date < ende_seq[j])) {
-          T_deg <- mean(klima_sub$Ta_2m[klima_sub$date > beginn_seq[j] &
-                                          klima_sub$date < ende_seq[j]], na.rm =
-                          T)
-        } else{
-          T_deg <- mean(data$AmbT_C[data$date > beginn_seq[j] &
-                                      data$date < ende_seq[j]], na.rm = T)
-        }
+
+        # T_deg <- mean(data$AmbT_C[data$date > beginn_seq[j] &
+        #                               data$date < ende_seq[j]], na.rm = T)
+
 
         #Fluss mit calc_flux berechnen
         flux_j <-
@@ -170,13 +167,11 @@ chamber_flux <- function(mess_dir = "Hartheim",
   } else{
     #Wenn alle Schlauchlaengen gleich sind
     for (i in c("CO2", "CH4")) {
-      if (any(klima_sub$date > beginn_seq & klima_sub$date < ende_seq)) {
-        T_deg <- mean(klima_sub$Ta_2m[klima_sub$date > beginn_seq &
-                                        klima_sub$date < ende_seq], na.rm = T)
-      } else{
-        T_deg <- mean(data$AmbT_C[data$date > beginn_seq &
-                                    data$date < ende_seq], na.rm = T)
-      }
+      # if(is.na(T_deg)){
+      #T_deg <- mean(data$AmbT_C[data$date > beginn_seq &
+      #                            data$date < ende_seq], na.rm = T)
+      #
+      # }
       flux[[i]] <- calc_flux(
         data = data,
         group = "kammer",
@@ -189,5 +184,11 @@ chamber_flux <- function(mess_dir = "Hartheim",
       )
     }
   }
-  return(flux)
+  data_adj <- merge(flux[["CO2"]][[2]],flux[["CH4"]][[2]])
+  flux_both <- merge(flux[["CO2"]][[1]],flux[["CH4"]][[1]])
+  if(return_data == T){
+    return(list(flux_both,data_adj))
+  }else{
+    return(flux_both)
+  }
 }

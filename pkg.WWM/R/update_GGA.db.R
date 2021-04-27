@@ -9,7 +9,7 @@
 #' @export
 #'
 #' @examples unzip.files("H:/FVA-Projekte/P01677_WindWaldMethan/Daten/Urdaten/GGA/")
-unzip.files<-function(path=ggapfad){
+unzip.files<-function(path){
   #zip files auflisten
   zips<-list.files(path,pattern=".zip$",
                    recursive = T,full.names = T)
@@ -25,7 +25,7 @@ unzip.files<-function(path=ggapfad){
     zip.list<-unzip(zips[i],list=T)
 
     #wenn die Datei nicht im unzipped Ordner steht
-    if(!file.exists(paste0(path,"unzipped/",zip.list$Name))){
+    if(!all(file.exists(paste0(path,"unzipped/",zip.list$Name)))){
       #unzippen
       cat(paste("unzipping file:",zip.list$Name,"\n"))
       unzip(zips[i],exdir = paste0(path,"unzipped"))
@@ -33,7 +33,25 @@ unzip.files<-function(path=ggapfad){
   }#ende for
 }#ende function
 
+##########################
+#function that copies all gga micro_f000x.txt files that are not zipped into the unzip folder
+copy_f000x <- function(path){
+  #alle dateien die f000x.txt im Namen enthalten auflisten
+  files <- list.files(path,pattern="f\\d{4}.txt$",
+                                 recursive = T,full.names = F)
+  #die aus dem unzipped ordner weglassen
+  files <- files[!grepl("unzipped/",files)]
+  #den Ordner weglassen
+  files_short <- stringr::str_remove(files,".+/")
+  #alle schon im unzipped Ordner enthaltenen Datei auflisten
+  unzipped <- list.files(paste0(path,"unzipped"),pattern="f\\d{4}.txt$")
+  #die Neuen sind die die noch nicht im unzipped ordner vorkommen
+  new <- !files_short %in% unzipped
+  
+  #die neuen Dateien in den unzipped Ordner kopieren
+  file.copy(paste0(path,files[new]),paste0(path,"unzipped/",files_short[new]))
 
+}
 
 ######################################
 #read all gga and micro files
@@ -48,17 +66,19 @@ unzip.files<-function(path=ggapfad){
 #' @import lubridate
 #' @import RSQLite
 #' @examples update_GGA.db()
-update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad){
+update_GGA.db<-function(table.name=c("gga","micro"),path,sqlpath){
 
   #unzip Funktion anwenden
-  unzip.files()
+  unzip.files(path)
+  #copy the not zipped files also into the unzipped folder
+  copy_f000x(path)
 
   #Spaltennamen die uns interessieren
   cols<-c("X.CO2._ppm","X.CH4._ppm","X.H2O._ppm","X.CH4.d_ppm",
           "X.CO2.d_ppm","GasP_torr","GasT_C","AmbT_C")
 
   #SPaltennamen wie sie im Datensatz heißen sollen
-  colnames<-str_replace_all(cols,c("(^X|\\.|_ppm$)"="","d"="dry"))
+  colnames<-stringr::str_replace_all(cols,c("(^X|\\.|_ppm$)"="","d"="dry"))
 
   #Query um tabelle in db zu erstellen
   createquery<-paste0("CREATE TABLE IF NOT EXISTS tablename (date_int INTEGER PRIMARY KEY",
@@ -111,6 +131,7 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
 
       #duplikate entfernen
       data<-data[!duplicated(data$date_int),]
+      
       #datum kleiner 2010 entfernen
       date2010 <- as.integer(ymd_h("2010.01.01 00"))
       data <- data[data$date_int > date2010,]
@@ -118,14 +139,14 @@ update_GGA.db<-function(table.name=c("gga","micro"),path=ggapfad,sqlpath=sqlpfad
       #mit db verbinden
       con<-odbc::dbConnect(RSQLite::SQLite(),paste0(sqlpath,"GGA.db"))
       #falls tabelle in db nicht vorhanden wird sie hier erstellt
-      dbExecute(con, str_replace(createquery,"tablename",i))
+      DBI::dbExecute(con, stringr::str_replace(createquery,"tablename",i))
 
       print("appending to Database")
       #tabelle in db aktualisieren
-      dbWriteTable(con,name=i,value=data,append=T)
+      DBI::dbWriteTable(con,name=i,value=data,append=T)
 
       #disconnect Database
-      dbDisconnect(con)
+      DBI::dbDisconnect(con)
 
       if(!dir.exists(paste0(path,"db_log/"))){
         dir.create(paste0(path,"db_log/"))

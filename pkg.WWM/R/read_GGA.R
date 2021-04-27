@@ -22,14 +22,15 @@
 #' #read_db anwenden
 #' dynament_raw<-read_db("dynament.db","dynament_test",datelim,korrektur_dyn=F)
 #' GGA<-read_db("GGA.db","micro",datelim,"CO2,CO2dry")
-read_GGA <- function(db.name="GAA.db", #name der db
+read_GGA <- function(db.name="GGA.db", #name der db
                     table.name="micro", #name der tabelle
                     datelim=NULL, #Zeitrahmen der geladen werden soll
                     cols="*", #Spalten die geladen werden sollen
-                    sqlpath=sqlpfad){
+                    sqlpath = sqlpfad,
+                    ggapath = ggapfad){
   #dbs updaten
   update_fun<-get(paste0("update_",db.name))
-  update_fun(table.name)
+  update_fun(table.name,ggapath,sqlpath)
 
   #db verbinden
   con<-odbc::dbConnect(RSQLite::SQLite(),paste0(sqlpath,db.name))
@@ -52,7 +53,7 @@ read_GGA <- function(db.name="GAA.db", #name der db
   }
 
   #daten abrufen
-  data<-dbGetQuery(con,query)
+  data<-DBI::dbGetQuery(con,query)
   #von db trennen
   odbc::dbDisconnect(con)
   #datum formatieren
