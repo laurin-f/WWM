@@ -18,7 +18,7 @@ kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 aufbereitete_ds<-paste0(hauptpfad,"Daten/aufbereiteteDaten/DS_Labor/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr","png","cowplot","magick","ggforce")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr","png","cowplot","magick","ggforce","latex2exp")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -93,6 +93,7 @@ soil_agg_plot <- subset(soil_agg, tiefe %in% c(5,10,20) & date > range2u3[1] & d
   group_by(date,range) %>% 
   summarise_all(mean)
 soil_agg_plot$id <- as.character(soil_agg_plot$id)
+
 ##################################################################################
 #plots
 ##################################################################################
@@ -160,16 +161,12 @@ resp_plot <- ggplot(subset(respi_wide,Versuch%in%c(5:6)))+
     
 
 #img_respi <- ggpubr::ggarrange(img_plot,resp_plot,widths=c(1,3))
-#egg::ggarrange(resp_plot,mod_obs_plot,ncol = 1,widths=c(2,3))
+#egg::ggarrange(resp_plot,mod_obs_plot,ncol = 1)
 
-cowplt <- cowplot::ggdraw()+cowplot::draw_plot(resp_plot,x=0,y=0.5,height=0.5,width=0.82)+cowplot::draw_plot(mod_obs_plot,height=0.5)+
-  cowplot::draw_text("b)",x=0.,y=0.95,hjust=0)+
-  cowplot::draw_text("c)",x=0.,y=0.45,hjust=0)
-#cowplt
-ggpubr::ggarrange(img_plot,cowplt,widths = c(1,3))+
-  ggsave(paste0(plotpfad_ms,"Fig_2_COMSOL_mod_obs_prod.jpg"),width = 7,height=4)
 
-cowplt <- cowplot::ggdraw()+cowplot::draw_plot(resp_plot,x=0,y=0.5,height=0.5,width=0.82)+cowplot::draw_plot(mod_obs_plot,height=0.5)+
+cowplot::ggdraw()+
+  cowplot::draw_plot(resp_plot,x=0,y=0.5,height=0.5,width=0.77)+
+  cowplot::draw_plot(mod_obs_plot,height=0.5)+
   cowplot::draw_text("a)",x=0.01,y=0.95,hjust=0)+
   cowplot::draw_text("b)",x=0.01,y=0.45,hjust=0)+
   ggsave(paste0(plotpfad_ms,"Fig_2_COMSOL_mod_obs_prod.jpg"),width = 7,height=5)
@@ -178,14 +175,6 @@ cowplt <- cowplot::ggdraw()+cowplot::draw_plot(resp_plot,x=0,y=0.5,height=0.5,wi
 # Figure 4 heterogeneity
 #############################
 
-#ggplot(subset(data,tiefe==-24.5 & !is.na(Position)))+
-#  geom_vline(data=subset(Pumpzeiten,!is.na(bemerkung)),aes(xintercept=start))+
-#  geom_text(data=subset(Pumpzeiten,!is.na(bemerkung)),aes(x=start,y=7000+300*1:9,label=bemerkung),hjust=0)+
-#  geom_line(aes(date,CO2_roll_inj,col=as.factor(Position)))+
-#  geom_line(aes(date,CO2_roll_ref,col="ref"))+
-#  geom_vline(xintercept = ymd_h("2020.07.09 00"),col=2)+
-#  xlim(ymd_h("2020.07.09 00")+c(-10,10)*3600*24)
-#dates <- ymd_h(c("2020.05.20 00","2020.06.20 00","2020.06.25 00","2020.07.09 15"))
 
 Pump_sub <- subset(Pumpzeiten,Pumpstufe==0 & !grepl("regen|tauscht",Pumpzeiten$bemerkung))
 
@@ -417,6 +406,11 @@ h_steady <- 32
 ds_sub <- subset(DS_long_roll, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
 F_sub <- subset(F_df, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
 
+range(subset(ds_sub,id==1)$DSD0_roll,na.rm = T)
+range(subset(ds_sub,id==2)$DSD0_roll,na.rm = T)
+range(subset(ds_sub,id==3)$DSD0_roll,na.rm = T)
+mean(F_sub$Fz_roll_10_17/F_sub$Fz_roll_0_10,na.rm=T)
+
 y_fac_ds <- 1/20
 DS_plot <- ggplot(subset(soil_agg_plot,range2 %in% c("0-10","10-20")))+
   geom_ribbon(aes(x=date,ymin=DSD0_PTF_min,ymax=DSD0_PTF_max,fill=as.factor(range2)),alpha=0.15)+
@@ -533,7 +527,7 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   
   scale_alpha_manual(values=c(0.6,0.35,0.6,0.35))+
   guides(col=F,fill=F,
-         alpha= guide_legend("",override.aes = list(fill=rep(cols[1:2],each=2)),ncol=2))+
+         alpha= guide_legend(bquote("gradient method\n ",font=5),override.aes = list(fill=rep(cols[1:2],each=2)),ncol=2))+
 #  scale_color_manual(values=cols[1:2])+
   #scale_color_manual("gradient method",values=1:2)+
   #xlim(ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC")))+
@@ -549,13 +543,17 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   )#+theme(legend.position = "left")
 
 flux_plot
+
+TeX("test$\\small{test}$",output="character")
+TeX("test$\\fontsize{10}{12}\\selectfont$")
+check.packages("ggtext")
 soil_wide$period <- soil_wide$Versuch-1
 flux_adj <- adj_grob_size(flux_plot,subset(soil_wide,!is.na(period)),breaks="2 days",date_labels="%b %d",plot=F)
-cowplot::ggdraw()+cowplot::draw_plot(flux_adj)
+cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("0-10    10-20cm",x=0.9,y=0.7,size=10)
 #ggplot(PPC)+
 #  geom_col(data=subset(F_long),aes(date,P/10,fill=tiefe2),width=3600, show.legend = FALSE)+
 #  geom_line(aes(date,PPC))+geom_hline(yintercept = 0.071)+ylim(c(0,0.1))
-
+t <- seq(0,1,0.1)
 
 #F_long <- tidyr::pivot_longer(F_sub[,c("date","Fz_roll_0_10","Fz_roll_10_17")],matches("Fz_roll_(0_10|10_17)"),names_to = "range",values_to = "Fz",names_prefix = "Fz_roll_")
 
@@ -626,9 +624,8 @@ intercept <- fm_PPC_DPPE$coefficients[1]
 slope <- fm_PPC_DPPE$coefficients[2]
 DPPE_PPC <- 
   ggplot(subset(PPC_DS,date %in% ds_sub$date))+
-  #geom_abline(intercept = intercept,slope = slope)+
-  geom_smooth(aes(PPC,peak_rel),method = "glm",se=F,col=1)+
-  geom_point(aes(PPC,peak_rel,col="0-10 cm",fill="0-10 cm"),alpha=0.7)+
+  geom_point(aes(PPC,peak_rel,col="0-10 cm",fill="0-10 cm"),alpha=0.8)+
+  geom_smooth(aes(PPC,peak_rel),method = "glm",se=F,col=1,lwd=0.6,linetype="dashed")+
   annotate("text",x=-Inf,y=0.25,label=paste("R² =",round(R2,2)),hjust=-0.1)+
   annotate("text",x=-Inf,y=0.29,label=paste("y =",round(slope,2),"x - ",abs(round(intercept,2))),hjust=-0.1)+
   labs(y=expression(D[PPE]/D[0]),x=expression("PPC [Pa s"^{-1}*"]"),col="")+
@@ -638,7 +635,7 @@ DPPE_PPC <-
   
   #guides(col=F )
 
-legbox <- get_legend(DS_boxplot)
+
 
 # legend_box <- as_ggplot(legbox)
 # boxplt_scatter <- egg::ggarrange(DS_boxplot+theme(legend.position = "none"),DPPE_PPC,legend_box,nrow=1,widths=c(3,3,1))
@@ -655,7 +652,9 @@ legbox <- get_legend(DS_boxplot)
 p1 <- cowplot::ggdraw()+cowplot::draw_plot(PPC_DS_plot)+cowplot::draw_text("a)",x=0.03,y=0.97)
 p2 <- cowplot::ggdraw()+cowplot::draw_plot(DS_boxplot+theme(legend.position = "none"))+cowplot::draw_text("b)",x=0.05,y=0.97)
 p3 <- cowplot::ggdraw()+cowplot::draw_plot(DPPE_PPC)+cowplot::draw_text("c)",x=0.05,y=0.97)
-p4 <- cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("d)",x=0.03,y=0.97)
+p4 <- cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("d)",x=0.03,y=0.97)+cowplot::draw_text("0-10    10-20 cm",x=0.82,y=0.92,size=9,hjust=0,vjust=0)#+
+  #rel_grid(0.01,color="grey")+
+  #rel_grid(0.1)
 g1 <- ggplotGrob(p1)
 g2 <- ggplotGrob(p2)
 g3 <- ggplotGrob(p3)
@@ -691,6 +690,29 @@ grid::grid.newpage()
 grid::grid.draw(combined)
 dev.off()
 
+rel_grid <- function(size=0.1,...) {
+  seq01 <- seq(0,1,size)
+  seqNA_ls <- lapply(seq01,c,NA)
+  seqNA <- do.call(c,seqNA_ls) 
+  length(seqNA)
+  length(seq01)
+  seq1 <- rep(seqNA,each=length(seqNA))
+  seq2 <- rep(c(seq01,seq01),length(seqNA))
+  
+  return(
+  cowplot::draw_line(x=c(seq2,seq1),y=c(seq1,seq2),...)
+  )
+}
+seq01 <- seq(0,1,0.1)
+seqNA_ls <- lapply(seq01,c,NA)
+seqNA <- do.call(c,seqNA_ls) 
+length(seqNA)
+length(seq01)
+seq1 <- rep(seqNA,each=length(seqNA))
+seq2 <- rep(c(seq01,seq01),length(seqNA))
+cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("d)",x=0.03,y=0.97)+cowplot::draw_text("0-10    10-20cm",x=0.88,y=0.9,size=10)+
+  rel_grid(0.05)
+cowplot::draw_line(x=seq2,y=seq1)
 # Fig6PPCDS <- egg::ggarrange(DS_plot+ labs(x="")  +scale_x_datetime(date_label="%b %d",breaks="2 days",limits = ymd_hms(c("2020-07-06 11:00:00 UTC", "2020-07-24 08:20:00 UTC"))),PPC_DS_plot,flux_plot,ncol=1,heights = c(1,1,1),draw=F)
 # jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS.jpg"),width=7,height = 7.5,units="in",res=300)
 # Fig6PPCDS
