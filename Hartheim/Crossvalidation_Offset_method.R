@@ -18,6 +18,8 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 
 data$ymd <- as_date(data$date)
 data$hm <- hour(data$date)*60+minute(data$date)
+data$Position[data$date > ymd_h("2020.07.29 12") & data$date < Pumpzeiten$ende[18]] <- 8
+
 data_sub <- subset(data, Position == 8 & !ymd %in% ymd("2020-07-24","2020-07-25"))
 data_PSt0 <- subset(data_sub, Pumpstufe == 0)
 
@@ -115,6 +117,7 @@ ggplot(data_agg)+geom_col(aes(func,rmse,fill=as.factor(tiefe)),position = "stack
 
 agg <- data_agg %>% group_by(func,cv) %>% summarise_at(c("R2","rmse"),list(min=min,max=max,mean=mean),na.rm=T)
 
+agg[,c("func","cv","R2_mean")]
 range(subset(data,Position %in% 7:8 & tiefe > -10)$CO2_tracer_drift,na.rm = T)
 
 

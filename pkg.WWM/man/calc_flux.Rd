@@ -6,7 +6,7 @@
 \usage{
 calc_flux(
   data,
-  group = "Pumpstufe",
+  group = "kammer",
   gas = "CO2",
   Vol,
   Grundfl = NULL,
