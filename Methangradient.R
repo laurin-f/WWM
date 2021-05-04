@@ -14,16 +14,7 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","readxl","egg","dplyr")
 check.packages(packages)
 flux <- list()
-datelim <- ymd_h(c("2021.04.26 11","2021.04.26 12"))
-data <- read_GGA(datelim=datelim)
+datelim1 <- ymd_hm(c("2021.04.26 11:00","2021.04.26 11:30"))
+datelim2 <- ymd_hm(c("2021.05.04 11:00","2021.05.04 11:30"))
+data <- read_GGA(datelim=datelim2)
 ggplot(data)+geom_line(aes(date,CO2))
-flux <- chamber_flux(mess_dir = "FVA_Garten",aggregate = F,closing_lim=20,t_min=1,messnr = 1:2,t_max=1.5,t_init=0.5)
-
-flux_agg <- flux %>% mutate(day = format(date,"%y-%m-%d")) %>% 
-    group_by(day,kammer) %>% 
-    summarise_all(mean)
-
-ggplot(flux)+
-    geom_point(aes(date,CO2_ml_per_min,col=kammer))+
-  geom_line(data=flux_agg,aes(date,CO2_ml_per_min,col=kammer))
-  
