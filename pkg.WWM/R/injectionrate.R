@@ -32,6 +32,7 @@ injectionrate <- function(datelim,
                           all_spikes_NA = F,
                           data = NULL,
                           return_data=F,
+                          colname = "CO2",
                           ...){
 
   ########################
@@ -47,10 +48,10 @@ injectionrate <- function(datelim,
     data <- read_db("dynament.db","dynament_test",datelim = datelim)
   }
   #Spaltenname anpassen
-  colnames(data) <- str_replace(colnames(data),"(?<=CO2).*","_raw")
+  data$CO2_raw <- data[,colname]
   data$CO2 <- data$CO2_raw
   data$CO2[which(data$CO2 < 0)] <- NA
-  data <- na.omit(data)
+  data <- subset(data,!is.na(CO2))
   ##########################
   #postprocessing
   #############################

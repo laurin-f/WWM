@@ -72,6 +72,11 @@ calc_flux <- function(data,
   ppm_per_min <- sapply(fm_list,"[[","coefficients")[2,]#ppm/min
 
 
+  if(is.character(T_deg)){
+    messid_char <- "messid"
+    T_df <- data %>% group_by_at(c("messid",group_messid)) %>% filter(!is.na(messid)) %>% summarise_at(T_deg,list(~mean(.,na.rm=T))) %>% as.data.frame()
+    T_deg <- T_df[,T_deg]
+  }
   #######################################
   #Konstanten um Einheiten umzurechnen
   #######################################

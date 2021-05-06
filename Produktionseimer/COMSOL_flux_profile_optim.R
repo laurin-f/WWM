@@ -169,14 +169,14 @@ R2_tiefen <- R2(prod$prod,prod$prod_comsol)
 R2_ges <- R2(prod_agg$prod,prod_agg$prod_comsol)
 
 mod_obs <- ggplot(prod)+
-  geom_point(data=prod_agg,aes(prod_comsol,prod,col="total"))+
+  geom_point(data=prod_agg,aes(x=prod,y=prod_comsol,col="total"))+
   #scale_color_manual(expression(P[CO2]~"total"),values=1)+
   #ggnewscale::new_scale_color()+
-  geom_point(aes(prod_comsol,prod,col=as.factor(tiefenstufe)))+geom_abline(slope=1)+
+  geom_point(aes(x=prod,y=prod_comsol,col=as.factor(tiefenstufe)))+geom_abline(slope=1)+
   #guides(col=F)+
   scale_color_manual(values=c(cols,1))+
   annotate("text",x=0,y=3,label=paste("R² depths",round(R2_tiefen,2),"\nR² total",round(R2_ges,2)),hjust=0)+
-  labs(y=expression("inj ["~mu*"mol m"^{-2}*s^{-1}*"]"),x=expression("mod ["~mu*"mol m"^{-2}*s^{-1}*"]"),col="depth")+
+  labs(x=expression("inj ["~mu*"mol m"^{-2}*s^{-1}*"]"),y=expression("mod ["~mu*"mol m"^{-2}*s^{-1}*"]"),col="depth")+
   theme_classic()+
   theme(legend.position = "left")+
   ggsave(paste0(plotpfad_prod,"prod_mod_obs_left",cal,".png"),width=4,height=3)

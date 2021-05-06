@@ -18,7 +18,7 @@ kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 aufbereitete_ds<-paste0(hauptpfad,"Daten/aufbereiteteDaten/DS_Labor/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr","png","cowplot","magick","ggforce","latex2exp")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","ggpubr","png","cowplot","magick","ggforce","latex2exp","imputeTS")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -75,6 +75,22 @@ soil_agg_plot <- subset(soil_agg, tiefe %in% c(5,10,20) & date > range2u3[1] & d
   summarise_all(mean)
 soil_agg_plot$id <- as.character(soil_agg_plot$id)
 
+# colnames(F_sub)
+# PPC_DS_2 <- PPC_DS %>% rename(DPPED0 = peak, DSD0_1 = base,DeffD0_1 = DSD0_1) %>% 
+#   select(date,DPPED0,DSD0_1,DeffD0_1,Versuch) %>% subset(., (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+# F_sub_2 <- F_sub %>% 
+#   select(date,DSD0_roll_2,Fz_roll_0_10,Fz_roll_10_17,Versuch) %>% 
+#   rename(DSD0_2 = DSD0_roll_2,FCO2_1 = Fz_roll_0_10,FCO2_2 = Fz_roll_10_17)
+#   
+# 
+# 
+# 
+# PPC_DS_F <- merge(PPC_DS_2,F_sub_2,all=T) %>% 
+#   mutate_at(c("DSD0_2","FCO2_1","FCO2_2"),list(~imputeTS::na_interpolation(.,maxgap=1)))
+# 
+# PPC_DS_F$Versuch <- PPC_DS_F$Versuch -1
+# 
+# write.csv(PPC_DS_F,paste0(datapfad_harth,"DS_FCO2_Hartheim_2020_07.txt"),row.names = F)
 
 ##################################################################################
 #plots
@@ -440,8 +456,13 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank()
-  )
+  )+
+  geom_vline(data=data.frame(x=c(max(subset(soil_wide,Versuch==2)$date),min(subset(soil_wide,Versuch==3)$date)),Versuch=2:3),aes(xintercept=x),linetype="dashed")
 
+
+flux_plot
+  #theme(panel.border = element_rect(fill=NA))
+  geom_vline(data=data.frame(x=c(max(subset(soil_wide,Versuch==2)$date),min(subset(soil_wide,Versuch==3)$date)),Versuch=2:3),aes(xintercept=x),linetype="dashed")
 soil_wide$period <- soil_wide$Versuch-1
 flux_adj <- adj_grob_size(flux_plot,subset(soil_wide,!is.na(period)),breaks="2 days",date_labels="%b %d",plot=F)
 #cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("0-10    10-20cm",x=0.9,y=0.7,size=10)
@@ -467,18 +488,18 @@ col_exps <- c(expression(D[eff]/D[0]),expression(D[PPE]/D[0]),"PPC")
 
 PPC_DS_plot <- 
   ggplot(subset(data,!is.na(Versuch)))+
-  geom_ribbon(data=subset(PPC_DS,date %in% ds_sub$date),aes(x=date,ymax=DSD0_roll,ymin=base,fill="DSD0 1 peak"),alpha=0.2)+
+  geom_ribbon(data=subset(PPC_DS,date %in% ds_sub$date),aes(x=date,ymax=DSD0_roll,ymin=base,fill="DSD0 peak"),alpha=0.2)+
   geom_line(data=subset(PPC_DS,date %in% ds_sub$date),aes(date,PPC,col="PPC"))+
   geom_line(data=subset(PPC_DS,date %in% ds_sub$date),aes(date,peak,col="DSD0 peak"))+
   geom_line(data=subset(ds_sub,id == "1"),aes(date,DSD0_roll,col="DSD0" ))+
   scale_x_datetime(date_label="%b %d",breaks="1 days",limits = )+
   scale_y_continuous(limits = c(0,0.6),sec.axis = sec_axis(trans=~.,name=expression("PPC [Pa s"^{-1}*"]")))+
-  scale_color_manual("",values = c(scales::hue_pal()(1),2,grey(0.2)),labels=col_exps)+
   scale_fill_manual("",limits=col_labs,values = c(NA,2,NA),labels=col_exps)+
+  scale_color_manual("",values = c(scales::hue_pal()(1),2,grey(0.2)),labels=col_exps)+
   facet_wrap(~factor(Versuch,levels=c("2","3"),labels = c("windy period","calm period")),scales="free_x")+
   labs(y="exchange coefficient",x="")+
 
-    theme(legend.text.align = 0)#+
+    theme(legend.text.align = 0,panel.border = element_rect(fill=NA))#+
   #ggsave(paste0(plotpfad_harth,"DS_PPC_Inj1u2.jpg"),width=7,height = 5)
 PPC_DS_plot
 
@@ -546,3 +567,20 @@ grid::grid.draw(combined)
 dev.off()
 
 #######################################################
+
+PPC_DS_plot+ggsave(file=paste0(plotpfad_ms,"PPC_DS_plot.jpg"),width=7,height = 3.5)
+PPC_DS_plot+ggsave(file=paste0(plotpfad_ms,"PPC_DS_plot.jpg"),width=7,height = 3.5)
+
+
+
+DS_boxplot+ggsave(file=paste0(plotpfad_ms,"DS_box.jpg"),width=4,height =3)
+DS_boxplot+ggsave(file=paste0(plotpfad_ms,"DS_box.jpg"),width=4,height =3)
+
+
+DPPE_PPC+theme(legend.position = "none")+ggsave(file=paste0(plotpfad_ms,"DS_scatter.jpg"),width=3,height =3)
+DPPE_PPC+theme(legend.position = "none")+ggsave(file=paste0(plotpfad_ms,"DS_scatter.jpg"),width=3,height =3)
+
+
+
+cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+ggsave(file=paste0(plotpfad_ms,"flux_plot.jpg"),width=7,height = 4)
+
