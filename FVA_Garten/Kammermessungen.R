@@ -15,10 +15,12 @@ packages<-c("lubridate","stringr","ggplot2","readxl","egg","dplyr")
 check.packages(packages)
 flux <- list()
 datelim <- ymd_h(c("2021.04.26 11","2021.04.26 12"))
+datelim <- ymd_hm(c("2021.05.10 10:00","2021.05.10 10:50"))
 data <- read_GGA(datelim=datelim)
 ggplot(data)+geom_line(aes(date,CO2))
-flux <- chamber_flux(mess_dir = "FVA_Garten",aggregate = F,closing_lim=20,t_min=1,messnr = 1:2,t_max=1.5,t_init=0.5)
-
+flux_ls <- chamber_flux(mess_dir = "FVA_Garten",aggregate = F,closing_lim=20,t_min=1,messnr = 1:3,t_max=1.5,t_init=0.5,adj_openings=T,return_data = T)
+flux <- flux_ls[[1]]
+ggplot(flux_ls[[2]])+geom_line(aes(zeit,CO2_tara,col=as.factor(messid)))
 flux_agg <- flux %>% mutate(day = format(date,"%y-%m-%d")) %>% 
     group_by(day,kammer) %>% 
     summarise_all(mean)

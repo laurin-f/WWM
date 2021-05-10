@@ -44,7 +44,8 @@ data <- do.call(rbind,data_j)
 data$date <- dmy_hms(data$Time)
 
 data[,grep("SWC",colnames(data))] <- sapply(data[,grep("SWC",colnames(data))],as.numeric)
-data$plot <- factor(as.numeric(data$sample),levels = 1:8,labels=rep(c("A","B","C","D"),2))
+data$ID <- as.numeric(data$sample) %% 4
+data$plot <- factor(data$ID,levels = 0:3,labels=c("D","A","B","C"))
 data_long <- tidyr::pivot_longer(data,matches("SWC"),values_to = "SWC",names_to = "tiefe",names_prefix = "SWC_")
 ggplot(data_long)+geom_point(aes(date,SWC,col=tiefe,shape=plot))
 

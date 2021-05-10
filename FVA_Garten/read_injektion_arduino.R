@@ -27,35 +27,51 @@ data$CO2[ data$CO2 < 300| data$CO2 > 9000] <- NA
 
 
 range(data$date,na.rm=T)
-daterange <- ymd_h(c("21/04/22 12", "21/05/04 12"))
-#daterange <- ymd_h(c("21/05/04 10", "21/05/04 12"))
+daterange <- vector("list")
+daterange[[1]] <- ymd_h(c("21/04/22 12", "21/05/04 00"))
+daterange[[2]] <- ymd_h(c("21/05/04 00", "21/05/04 13"))
+daterange[[3]] <- ymd_h(c("21/05/04 13", "21/05/10 12"))
+#daterange[[1]] <- c(ymd_h("21/04/22 12"),now())
+daterange_ges <-range(do.call(c,daterange)) 
+#
+smp1u2 <- read_sampler(datelim=daterange_ges,format="wide",cols="T_C") 
 
-smp1u2 <- read_sampler(datelim=daterange,format="wide",cols="T_C") 
-
-data$min10 <- round_date(data$date,"10mins")
-T_C_df <- smp1u2 %>% 
-  mutate(min10 = round_date(date,"10mins")) %>% 
-  group_by(min10) %>% 
-  summarise(T_C = mean(T_C,na.rm=T))
-
-data_merge <- merge(data,T_C_df,all.x = T)
-data_sub <- subset(data_merge, date >= min(daterange) & date <= max(daterange)) 
-
+#data$min10 <- round_date(data$date,"10mins")
+#T_C_df <- smp1u2 %>% 
+  # mutate(min10 = round_date(date,"10mins")) %>% 
+  # group_by(min10) %>% 
+  # summarise(T_C = mean(T_C,na.rm=T))
 
 
 ggplot(data_sub)+geom_line(aes(date,CO2))
-ggplot(data_sub)+geom_point(aes(date,T_C))+
+ggplot(smp1u2)+geom_point(aes(date,T_C))+
   geom_line(data=smp1u2,aes(date,T_C))
+inj_ls <- vector("list",length(daterange))
+inj_data_ls <- vector("list",length(daterange))
+closing_lim_i <- c(100,250,100)
+for(i in seq_along(daterange)){
+data_sub <- subset(data, date >= min(daterange[[i]]) & date <= max(daterange[[i]])) 
 
-inj <- injectionrate(data=data_sub,closing_lim = 20,t_min=2,t_init = 1,Pumpstufen = 1,T_C="T_C")
 
-colnames(inj)
-inj_plot <- ggplot(inj)+
-  geom_line(aes(date,CO2_ml_per_min))
-inj_plot <- ggplot(inj)+
-  geom_line(aes(date,CO2_mumol_per_s))
+inj_ls_i <- injectionrate(data=data_sub,closing_lim = closing_lim_i[i],t_min=2,t_init = 1,Pumpstufen = 1,return_data = T,t_max=4,adj_openings=T)
+inj_ls[[i]] <- inj_ls_i[[1]]
+inj_data_ls[[i]] <- inj_ls_i[[2]]
+inj_ls[[i]]$Versuch <- as.character(i)
+inj_data_ls[[i]]$Versuch <- as.character(i)
+}
+inj <- do.call(rbind,inj_ls)
+inj_data <- do.call(rbind,inj_data_ls)
+
+ggplot(inj_data)+geom_line(aes(zeit,CO2_tara,col=Versuch,linetype=as.factor(messid)))+guides(linetype=F)
+
+
+inj_plot <- 
+  ggplot(inj)+
+  geom_line(aes(date,CO2_ml_per_min,col=Versuch))
 T_plt <- ggplot()+
     geom_line(data=smp1u2,aes(date,T_C))+
   xlim(range(inj$date))
 egg::ggarrange(inj_plot,T_plt)
+
+
 save(inj,file = paste(datapfad_FVAgarten,"injectionrates.RData"))

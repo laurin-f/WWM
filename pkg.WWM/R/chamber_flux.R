@@ -57,18 +57,22 @@ chamber_flux <- function(messnr = NULL,
   ###########################
   #Datum formatieren
   #anfang und ende der Messungen als date
-  beginn_seq <-
+  beginn <-
     ymd_hm(paste(Messungen$Datum, format(Messungen$beginn, "%H:%M")))
-  beginn <- min(beginn_seq)
-  ende_seq <-
+  #beginn <- min(beginn_seq)
+  ende <-
     ymd_hm(paste(Messungen$Datum, format(Messungen$ende, "%H:%M")))
-  ende <- max(ende_seq)
+  #ende <- max(ende_seq)
 
   ###########################
   #Daten laden
   #daten aus Database einlesen
-  data.raw <- read_GGA("GGA.db", GGA, datelim = c(beginn, ende),ggapath=ggapath,sqlpath=sqlpath)
-
+  data_ls <- vector("list",length(messnr))
+  
+  for(i in seq_along(messnr)){
+  data_ls[[i]] <- read_GGA("GGA.db", GGA, datelim = c(beginn[i], ende[i]),ggapath=ggapath,sqlpath=sqlpath)
+  }
+  data.raw <- do.call(rbind,data_ls)
   ########################
   #split chamber function um die Zeiträume der einzelmessungen zu bestimmen
   data <- split_chamber(data = data.raw,

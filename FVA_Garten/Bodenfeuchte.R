@@ -33,5 +33,5 @@ colnames(data) <- c("date",paste("bf_",c("1a","1b","2a","2b","3a")))
 data <- subset(data, date > ymd("2021.04.01"))
 range(data$date)
 data_long <- tidyr::pivot_longer(data,matches("bf"),names_to = "tiefe",values_to = "bf",names_prefix = "bf_")
-ggplot(data_long)+
+bf_plot <- ggplot(data_long)+
   geom_line(aes(date,bf,col=tiefe))

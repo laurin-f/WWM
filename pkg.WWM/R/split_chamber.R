@@ -78,7 +78,7 @@ split_chamber <- function(data,
         opening <- c(opening, nrow(data.agg))
       }
       while (opening[1] <= closing[1]) {
-        opening <- opening[-1]
+          closing <- c(1,closing)
       }
       if (length(closing) > 1) {
         #alle weiteren Werte von closing werden iterativ getestet
@@ -112,14 +112,25 @@ split_chamber <- function(data,
 
     #differenz der längen opening und closing
     open_close <- length(opening) - length(closing)
+    while(open_close != 0){
     #wenn closing länger ist wird am ende von opening nrow(data.agg) angehängt
     if (open_close < 0) {
-      opening <- c(opening, rep(nrow(data.agg), abs(open_close)))
+      if(tail(opening,1) < tail(closing,1)){
+      opening <- c(opening, nrow(data.agg))
+      }else{
+      closing <- closing[-length(closing)]
+      }
       #wenn opening länger ist wird das ende von opening abgeschnitten
     } else if (open_close > 0) {
-      opening <- opening[1:(length(opening) - open_close)]
+      if(opening[1] < closing[1]){
+      closing <- c(1,closing)
+      }else{
+      opening <- opening[-length(opening)]
     }
-
+    }
+    open_close <- length(opening) - length(closing)
+    }
+    
     #nur die closing opening perioden die mindestens
     #t_min minutenwerte enthalten wählen
     diff_open_close <- (opening - closing) > t_min

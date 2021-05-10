@@ -6,6 +6,17 @@
 #' @param group name of the column that should be used for grouping results
 #' @param return_data if T then the function returns a list with the flux as first element and the processed input data as second element
 #' @param ... #other parameters parsed to calc_flux
+#' @param closing_lim
+#' @param opening_lim
+#' @param t_max
+#' @param t_init
+#' @param t_min
+#' @param T_C either a numeric value for one Temperature or the name of the Temperture column as character
+#' @param spikes_th
+#' @param difftime_th
+#' @param all_spikes_NA
+#' @param data
+#' @param colname name of the CO2 column in the df
 #'
 #' @return
 #' @export
@@ -33,6 +44,7 @@ injectionrate <- function(datelim,
                           data = NULL,
                           return_data=F,
                           colname = "CO2",
+                          adj_openings=T,
                           ...){
 
   ########################
@@ -68,7 +80,7 @@ injectionrate <- function(datelim,
                          t_max=t_max,
                          t_init = t_init,
                          t_min=t_min,
-                         adj_openings = T)
+                         adj_openings = adj_openings)
 
   #Pumpstufen den messid's zuordnen
   if(length(Pumpstufen) == 1){

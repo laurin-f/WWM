@@ -34,5 +34,6 @@ smp2 <- ggplot(data_sampler1u2)+
   geom_line(aes(date,CO2_smp2,col=as.factor(tiefe)))
 smp3 <- ggplot(data)+
   geom_line(aes(date,CO2_smp3,col=as.factor(tiefe)))+guides(col=F)
-
+range(data$date,na.rm = T)
 egg::ggarrange(smp1,smp2,smp3,ncol=1)
+egg::ggarrange(smp1,smp2,bf_plot+xlim(range(data$date)),ncol=1)
