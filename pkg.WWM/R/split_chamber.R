@@ -12,6 +12,7 @@
 #' @param gas name of the gas as character
 #' @param adj_openings logical; if \code{TRUE} opening times will be adjusted
 #' to never be smaller than closing times
+#' @param round_intervall
 #'
 #' @return input data.frame with colums messid (number of the measurement) and zeit (time in minutes after closing) added
 #' @export
@@ -72,12 +73,13 @@ split_chamber <- function(data,
   #adj openings bedeutet opening wird so umgeschrieben das immer closing und opening im Wechsel vorkommen
   if (length(opening) > 0 & length(closing) > 0) {
     if (adj_openings == T) {
-      #solange der erste wert bei opening kleiner ist als bei closing
-      #wird solange der erste opening-wert gelöscht bis dies nicht mehr der fall ist
+      #wenn der letzte Wert von Opening kleiner ist als bei closing wird bei Opening nrow hinzugefügt
       if (max(opening) < max(closing)) {
         opening <- c(opening, nrow(data.agg))
       }
-      while (opening[1] <= closing[1]) {
+      #solange der erste wert bei opening kleiner ist als bei closing
+      #wird bei closing 1 als erster Wert hinzugefügt
+      if (opening[1] < closing[1]) {
           closing <- c(1,closing)
       }
       if (length(closing) > 1) {
@@ -106,31 +108,86 @@ split_chamber <- function(data,
             }#ende if
           }#ende while
         }#ende for
+        if (length(opening) > length(closing)) {
+            opening <- opening[-length(opening)]
+          }
       }#ende if
 
     }#ende adj_openings
 
     #differenz der längen opening und closing
-    open_close <- length(opening) - length(closing)
-    while(open_close != 0){
-    #wenn closing länger ist wird am ende von opening nrow(data.agg) angehängt
-    if (open_close < 0) {
-      if(tail(opening,1) < tail(closing,1)){
-      opening <- c(opening, nrow(data.agg))
-      }else{
-      closing <- closing[-length(closing)]
-      }
-      #wenn opening länger ist wird das ende von opening abgeschnitten
-    } else if (open_close > 0) {
-      if(opening[1] < closing[1]){
-      closing <- c(1,closing)
-      }else{
-      opening <- opening[-length(opening)]
-    }
-    }
-    open_close <- length(opening) - length(closing)
-    }
-    
+    if(length(opening) != length(closing)){
+
+      #plot
+
+      #spalte mit opening und closing punkten
+      data.agg$change <- ""
+      data.agg$change[opening] <- "opening"
+      data.agg$change[closing] <- "closing"
+
+      #messidspalte
+      data.agg$messid <- NA
+      data.agg$messid[opening] <- seq_along(opening)
+      data.agg$messid[closing] <- seq_along(closing)
+
+      #Farben für plot
+      #kein ggplot da funktion dann schneller ist
+      messid_cols <-
+        scales::hue_pal()(max(data.agg$messid, na.rm = T))[data.agg$messid]
+
+      par(mfrow = c(2, 1), mar = c(1, 3, 1, 1))
+      plot(
+        data.agg$date,
+        data.agg[, gas],
+        col = ifelse(data.agg$change == "", 1, NA),
+        pch = 20,
+        xlab = ""
+      )
+
+      points(
+        data.agg$date,
+        data.agg[, gas],
+        col = ifelse(
+          data.agg$change == "",
+          NA,
+          ifelse(data.agg$change == "opening", 2, 3)
+        ),
+        pch = as.character(data.agg$messid)
+      )
+
+      legend(
+        "topleft",
+        c("opening", "closing", unique(data.agg$messid)),
+        pch = 20,
+        bty = "n"
+      )
+
+      before_afters <-
+        c(closing_lim,
+          opening_lim)
+      plot(before, xlab = "", ylim = c(min(before_afters) - 10, 2 * max(before_afters)))
+      abline(h = closing_lim, col = 3)
+      abline(h = opening_lim, col = 2)
+      abline(v = closing, col = 3)
+      abline(v = opening, col = 2)
+      lines(after, pch = 3, col = 4)
+
+      legend(
+        "bottomleft",
+        c("before", "after", "closing", "opening"),
+        col = c(1, 4, 3, 2),
+        pch = c(1, 3, NA, NA),
+        lty = c(NA, NA, 1, 1),
+        bty = "n"
+      )
+      par(mfrow = c(1, 1))
+      if(adj_openings == F){
+      stop("length(opening) != length(closing) \ntry adj_openings = T")
+        }else{
+      stop("length(opening) != length(closing) \nchange input parameters")
+          }
+    }else{
+
     #nur die closing opening perioden die mindestens
     #t_min minutenwerte enthalten wählen
     diff_open_close <- (opening - closing) > t_min
@@ -244,9 +301,9 @@ split_chamber <- function(data,
     par(mfrow = c(1, 1))
 
 
-  } else{
+  }
+    }else{
     #ende if length opening/closing > 1
-    print("no openings and closings found")
     par(mfrow = c(2, 1), mar = c(1, 3, 1, 1))
     plot(data.agg$date, data.agg[, gas], pch = 20, xlab = "")
 
@@ -267,6 +324,7 @@ split_chamber <- function(data,
       bty = "n"
     )
     par(mfrow = c(1, 1))
+    stop("no openings and closings found")
 
   }
   return(data)

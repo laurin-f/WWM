@@ -41,7 +41,8 @@ smp1u2 <- read_sampler(datelim=daterange_ges,format="wide",cols="T_C")
   # mutate(min10 = round_date(date,"10mins")) %>% 
   # group_by(min10) %>% 
   # summarise(T_C = mean(T_C,na.rm=T))
-
+data_sub <- subset(data, date >= min(daterange[[2]]) & date <= max(daterange[[2]])) 
+inj_ls_i <- injectionrate(data=data_sub,closing_lim = 250,t_min=2,t_init = 1,Pumpstufen = 1,return_data = T,t_max=4,adj_openings=T)
 
 ggplot(data_sub)+geom_line(aes(date,CO2))
 ggplot(smp1u2)+geom_point(aes(date,T_C))+

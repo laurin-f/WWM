@@ -29,3 +29,5 @@ ggplot(flux)+
     geom_point(aes(date,CO2_ml_per_min,col=kammer))+
   geom_line(data=flux_agg,aes(date,CO2_ml_per_min,col=kammer))
   
+
+devtools::install_github("laurin-f/WWM/pkg.WWM")

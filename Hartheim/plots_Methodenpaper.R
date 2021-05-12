@@ -582,5 +582,8 @@ DPPE_PPC+theme(legend.position = "none")+ggsave(file=paste0(plotpfad_ms,"DS_scat
 
 
 
-cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+ggsave(file=paste0(plotpfad_ms,"flux_plot.jpg"),width=7,height = 4)
+cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+
+  rel_grid(0.01,col="grey",lwd=0.2)+
+  rel_grid()+
+  cowplot::draw_text("0-10    10-20 cm",x=0.82,y=0.77,size=9,hjust=0,vjust=0)+ggsave(file=paste0(plotpfad_ms,"flux_plot.jpg"),width=7,height = 4)
 
