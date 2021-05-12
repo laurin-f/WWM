@@ -31,3 +31,5 @@ ggplot(flux)+
   
 
 devtools::install_github("laurin-f/WWM/pkg.WWM")
+
+update.packages(ask=F)
