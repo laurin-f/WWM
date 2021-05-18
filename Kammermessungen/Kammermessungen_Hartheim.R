@@ -16,11 +16,11 @@ check.packages(packages)
 flux <- list()
 
 for(i in c(1:3,6:7,9)){
-flux[[i]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=30,closing_after=30,messnr = i,t_max=3)
+flux[[i]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_lim=30,messnr = i,t_max=3)
 }
-flux[[4]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=45,closing_after=45,messnr = 4,adj_openings=T,t_max=3)
-flux[[5]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=20,closing_after=20,messnr = 5,adj_openings=T,t_max=3)
-flux[[8]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_before=15,closing_after=15,messnr = 8,adj_openings=T,t_max=3)
+flux[[4]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_lim=45,messnr = 4,adj_openings=T,t_max=3)
+flux[[5]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_lim=20,messnr = 5,adj_openings=T,t_max=3)
+flux[[8]] <- chamber_flux(mess_dir = "Hartheim",aggregate = F,closing_lim=15,messnr = 8,adj_openings=T,t_max=3)
 
 CO2_flux_list <- lapply(flux, function(x) x[["CO2"]][[1]])
 CH4_flux_list <- lapply(flux, function(x) x[["CH4"]][[1]])
