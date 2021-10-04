@@ -34,6 +34,7 @@ colnames(swc) <- c("date",paste("swc_",c("1a","1b","2a","2b","3a")))
 swc <- subset(swc, date > ymd("2021.04.01"))
 
 swc_long <- tidyr::pivot_longer(swc,matches("swc"),names_to = "tiefe",values_to = "swc",names_prefix = "swc_")
+swc_long$swc[which(swc_long$swc < -1)] <- NA
 swc_plot <- ggplot(swc_long)+
   geom_line(aes(date,swc,col=tiefe))
 
