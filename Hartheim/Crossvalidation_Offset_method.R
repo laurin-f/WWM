@@ -8,7 +8,7 @@ metapfad_harth<- paste0(metapfad,"Hartheim/")
 plotpfad_harth <- paste0(hauptpfad,"Dokumentation/Berichte/plots/hartheim/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr")
+packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr","directlabels")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -19,9 +19,17 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 data$ymd <- as_date(data$date)
 data$hm <- hour(data$date)*60+minute(data$date)
 data$Position[data$date > ymd_h("2020.07.29 12") & data$date < Pumpzeiten$ende[18]] <- 8
-
+data <- data %>% 
+  group_by(tiefe) %>% 
+  mutate(
+    VWC_roll = RcppRoll::roll_mean(VWC,n=50,fill=NA),
+    
+  ) %>% 
+  ungroup() %>% 
+  as.data.frame()
 data_sub <- subset(data, Position == 8 & !ymd %in% ymd("2020-07-24","2020-07-25"))
 data_PSt0 <- subset(data_sub, Pumpstufe == 0)
+
 
 
 data_PSt0$offset <-  data_PSt0$CO2_inj - data_PSt0$CO2_ref
@@ -42,8 +50,30 @@ data_PSt0$offset <-  data_PSt0$CO2_inj - data_PSt0$CO2_ref
 data_PSt0$preds_cv_gam <- NA
 data_PSt0$preds_cv_drift <- NA
 data_PSt0$preds_cv_no_ref <- NA
+data_PSt0$preds_cv_SWC_T <- NA
+data_PSt0$preds_cv_SWC_T_gam <- NA
+
+
 #data_PSt0$offset_cv <- NA
 days<-unique(data_PSt0$ymd)
+
+data_PSt0$preds_SWC_T <- NA
+data_PSt0$preds_SWC_T_gam <- NA
+
+for(i in (1:7)*-3.5){
+    fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0,tiefe==i))
+    fm_SWC_T <- glm(CO2_roll_inj ~ poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i))
+    fm_SWC_T_gam <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i))
+    
+    ID <- which(data_PSt0$tiefe==i & !is.na(data_PSt0$CO2_roll_ref))
+    
+    data_PSt0$preds_drift[ID] <- data_PSt0[ID,]$CO2_roll_ref + predict(fm_drift,newdata = data_PSt0[ID,])
+    
+    data_PSt0$preds_SWC_T[ID] <- predict(fm_SWC_T,newdata = data_PSt0[ID,])
+    data_PSt0$preds_SWC_T_gam[ID] <- predict(fm_SWC_T_gam,newdata = data_PSt0[ID,])
+
+  }
+data_PSt0$preds_SWC_T[is.na(data_PSt0$preds_drift)] <- NA
 
 method <- "LOOCV"
 #method <- "k-fold CV"
@@ -84,17 +114,22 @@ for(j in 1:ncv){
       
       #fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
+      fm_SWC_T <- glm(CO2_roll_inj ~  poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
+      fm_SWC_T_gam <- mgcv::gam(CO2_roll_inj ~  poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       
       #fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,3) + poly(hour,4) ,data=subset(data_PSt0,tiefe==i& ymd %in% fitdays))
       fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
-      fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
+      #fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       
       ID <- which(data_PSt0$tiefe==i & !is.na(data_PSt0$CO2_roll_ref) & !data_PSt0$ymd %in% fitdays)
       
       #data_PSt0$preds_cv_glm[ID] <- predict(fm,newdata = data_PSt0[ID,])
+
       data_PSt0$preds_cv_drift[ID] <- data_PSt0[ID,]$CO2_roll_ref + predict(fm_drift,newdata = data_PSt0[ID,])
       data_PSt0$preds_cv_no_ref[ID] <- predict(fm_no_ref,newdata = data_PSt0[ID,])
-      data_PSt0$preds_cv_gam[ID] <- predict(fm_gam,newdata = data_PSt0[ID,])
+      data_PSt0$preds_cv_SWC_T[ID] <- predict(fm_SWC_T,newdata = data_PSt0[ID,])
+      data_PSt0$preds_cv_SWC_T_gam[ID] <- predict(fm_SWC_T_gam,newdata = data_PSt0[ID,])
+      #data_PSt0$preds_cv_gam[ID] <- predict(fm_gam,newdata = data_PSt0[ID,])
       
       
       count <-  count +1
@@ -104,39 +139,110 @@ for(j in 1:ncv){
 }
 
 
-data_agg <- data_PSt0 %>% 
+data_PSt0_2 <- subset(data_PSt0, Pumpstufe == 0 & !is.na(preds_drift)& !is.na(preds_cv_drift))
+
+data_agg <- data_PSt0_2 %>% 
   group_by(tiefe) %>% 
   summarise_at(vars(matches("preds_")),list(R2=~R2(.,CO2_roll_inj),rmse=~RMSE(.,CO2_roll_inj))) %>% 
   tidyr::pivot_longer(matches("preds"),names_pattern = "preds_(cv)?_?(.+)_(R2|rmse)$",names_to = c("cv","func",".value"))
 
 data_agg$cv[is.na(data_agg$cv)] <- "full"
+data_agg$cv[nchar(data_agg$cv)==0] <- "full"
 
 
-ggplot(data_agg)+geom_col(aes(func,rmse,fill=as.factor(tiefe)),position = "dodge")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))
-ggplot(data_agg)+geom_col(aes(func,rmse,fill=as.factor(tiefe)),position = "stack")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))+ggsave(paste0(plotpfad_harth,"cv_barplot.jpg"),width=7,height=5)
+#ggplot(data_agg)+geom_col(aes(func,R2,fill=as.factor(tiefe)),position = "dodge")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))
+ggplot(data_agg)+geom_col(aes(func,1-R2,fill=as.factor(tiefe)),position = "stack")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))+ggsave(paste0(plotpfad_harth,"cv_barplot.jpg"),width=7,height=5)
 
-agg <- data_agg %>% group_by(func,cv) %>% summarise_at(c("R2","rmse"),list(min=min,max=max,mean=mean),na.rm=T)
+agg <- data_agg %>% group_by(func,cv) %>% summarise_at(c("R2"),list(min=min,max=max,mean=mean),na.rm=T)
 
-agg[,c("func","cv","R2_mean")]
+agg
+agg[agg$func %in% c("drift","SWC_T_gam"),]
+agg[agg$func %in% c("drift","SWC_T_gam"),c("func","cv","mean")]
 range(subset(data,Position %in% 7:8 & tiefe > -10)$CO2_tracer_drift,na.rm = T)
 
 
+
+data_PSt0_3 <- subset(data_PSt0, Pumpstufe == 0 & date > ymd("2020-07-24") & date < ymd("2020-07-30") )
 #gam
-ggplot(data_PSt0)+
-  geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"))+
-  geom_line(aes(date,preds_cv_gam,linetype=as.factor(tiefe),col="gam"))+
-  scale_linetype_manual(values = rep(1,8))
-#no_ref
-ggplot(data_PSt0)+
-  geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"))+
-  geom_line(aes(date,preds_cv_no_ref,linetype=as.factor(tiefe),col="no_ref"))+
-  scale_linetype_manual(values = rep(1,8))
+# ggplot(data_PSt0)+
+#   geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"))+
+#   geom_line(aes(date,preds_cv_gam,linetype=as.factor(tiefe),col="gam"))+
+#   scale_linetype_manual(values = rep(1,8))
+# #no_ref
+# ggplot(data_PSt0)+
+#   geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"))+
+#   geom_line(aes(date,preds_cv_no_ref,linetype=as.factor(tiefe),col="no_ref"))+
+#   scale_linetype_manual(values = rep(1,8))
 #drift
+
+col <- scales::hue_pal()(4)
+cv_plt <- 
+  ggplot(data_PSt0_3)+
+  geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"),lwd=1)+
+  geom_line(aes(date,preds_cv_drift,linetype=as.factor(tiefe),col="ref adj"))+
+  #geom_line(aes(date,preds_cv_no_ref,linetype=as.factor(tiefe),col="gam"))+
+  geom_line(aes(date,preds_cv_SWC_T,linetype=as.factor(tiefe),col="SWC T glm"))+
+  geom_line(aes(date,preds_cv_SWC_T_gam,linetype=as.factor(tiefe),col="SWC T gam"))+
+  scale_linetype_manual(values = rep(1,8))+
+  scale_color_manual(values = c(1,col))+
+  scale_x_datetime(expand=expansion(add=c(0,3600*17)))+
+  guides(linetype=F)+
+  labs(title="Cross Validation",y="",col="")+
+  directlabels::geom_dl(aes(date,CO2_roll_inj,label=paste(-tiefe,"cm")),method = list(dl.trans(x = x + 0.1), "last.points", cex = 0.8))
+
+full_plt <- ggplot(data_PSt0_3)+
+  geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"),lwd=1)+
+  geom_line(aes(date,preds_drift,linetype=as.factor(tiefe),col="ref adj"))+
+  #geom_line(aes(date,preds_no_ref,linetype=as.factor(tiefe),col="gam"))+
+  geom_line(aes(date,preds_SWC_T,linetype=as.factor(tiefe),col="SWC T glm"))+
+  geom_line(aes(date,preds_SWC_T_gam,linetype=as.factor(tiefe),col="SWC T gam"))+
+  scale_linetype_manual(values = rep(1,8))+
+  scale_color_manual(values = c(1,col))+
+  scale_x_datetime(expand=expansion(add=c(0,3600*18)))+
+  guides(linetype=F,col=F)+
+  labs(title="full fit",y=expression(CO[2]*" [ppm]"))+
+  directlabels::geom_dl(aes(date,CO2_roll_inj,label=paste(-tiefe,"cm")),method = list(dl.trans(x = x + 0.1), "last.points", cex = 0.8))
+
+ggpubr::ggarrange(full_plt,cv_plt,ncol=2,common.legend = T,legend="top")+ggsave(paste0(plotpfad_harth,"SWC_T_gam.jpg"),width = 8,height = 6)
+
+
 ggplot(data_PSt0)+
   geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"))+
-  geom_line(aes(date,preds_cv_drift,linetype=as.factor(tiefe),col="drift"))+
+  geom_line(aes(date,preds_cv_SWC_T,linetype=as.factor(tiefe),col="SWC_T"))+
   scale_linetype_manual(values = rep(1,8))
 
+ggplot(data_PSt0)+geom_point(aes(CO2_roll_inj, T_soil, col=as.factor(tiefe)))
+ggplot(data_PSt0)+geom_point(aes(CO2_roll_inj, VWC, col=as.factor(tiefe)))
+ggplot(data_PSt0)+geom_point(aes(CO2_roll_inj, CO2_roll_ref, col=as.factor(tiefe)))
+ggplot(data_PSt0)+geom_point(aes(CO2_roll_inj, VWC, col=T_soil))+facet_wrap(~tiefe)
+
+###########################
+#correlation between CO2_inj and ref VWC and T
+cor_mat <- data_PSt0 %>% 
+  group_by(tiefe) %>% 
+  summarise(cor_ref = cor(CO2_roll_inj,CO2_roll_ref,use="na.or.complete"),
+            cor_preds = cor(CO2_roll_inj,preds_drift,use="na.or.complete"),
+            cor_VWC = cor(CO2_roll_inj,VWC,use="na.or.complete"),
+            cor_T = cor(CO2_roll_inj,T_soil,use="na.or.complete")
+            )
+
+
+ggplot(cor_mat)+
+  geom_point(aes(tiefe,cor_preds,col="preds"))+
+  geom_point(aes(tiefe,cor_ref,col="ref"))+
+  geom_point(aes(tiefe,cor_VWC,col="VWC"))#+
+  geom_point(aes(tiefe,cor_T,col="T"))
+#############################################################
+  #ref has higher pearson r than VWC
+  
+
+VWC_p <- ggplot(data_PSt0)+geom_line(aes(date, VWC, col=as.factor(tiefe)))
+T_p <- ggplot(data_PSt0)+geom_line(aes(date, T_soil, col=as.factor(tiefe)))
+W_p <- ggplot(data_PSt0)+geom_line(aes(date,WindVel_30m_ms , col=as.factor(tiefe)))
+CO2_p <- ggplot(data_PSt0)+geom_line(aes(date, CO2_roll_inj, col=as.factor(tiefe)))
+
+
+egg::ggarrange(VWC_p,T_p,CO2_p)
 
 #######################
 #(RMSE / SD)^2 == R2

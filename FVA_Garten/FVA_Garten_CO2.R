@@ -20,6 +20,9 @@ load(file = paste(datapfad_FVAgarten,"injectionrates.RData"))
 load(file = paste(datapfad_FVAgarten,"swc_long.RData"))
 load(file=paste(datapfad_FVAgarten,"chamber_flux.RData"))
 
+################
+#daten einlesen
+#################
 datelim <- ymd_h("2021.03.30 15")
 
 range1 <- ymd_h(c("2021.04.19 01","2021.04.28 00"))
@@ -45,6 +48,7 @@ data <- merge(data_probe1u2,data_probe3,all.x=T)
 range(inj$date)
 inj$date <- inj$date - 3600
 range(inj$date)
+
 
 timediff_inj <- which(difftime(inj$date[-1],inj$date[-nrow(inj)],units= "hours") > 12)
 inj_periods <- data.frame(
