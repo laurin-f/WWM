@@ -11,6 +11,7 @@ datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/")
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
+datapfad_FVAgarten <- paste0(hauptpfad,"Daten/aufbereiteteDaten/FVA_Garten/") 
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr")
@@ -46,6 +47,7 @@ data$date <- dmy_hms(data$Time)
 data[,grep("SWC",colnames(data))] <- sapply(data[,grep("SWC",colnames(data))],as.numeric)
 data$ID <- as.numeric(data$sample) %% 4
 data$plot <- factor(data$ID,levels = 0:3,labels=c("D","A","B","C"))
-data_long <- tidyr::pivot_longer(data,matches("SWC"),values_to = "SWC",names_to = "tiefe",names_prefix = "SWC_")
-ggplot(data_long)+geom_point(aes(date,SWC,col=tiefe,shape=plot))
-
+HH2_long <- tidyr::pivot_longer(data,matches("SWC"),values_to = "SWC",names_to = "tiefe_mm",names_prefix = "SWC_")
+HH2_long$tiefe <- as.numeric(HH2_long$tiefe_mm) / -10
+ggplot(HH2_long)+geom_point(aes(date,SWC,col=as.factor(tiefe),shape=plot))
+save(HH2_long,file = paste(datapfad_FVAgarten,"HH2_long.RData"))

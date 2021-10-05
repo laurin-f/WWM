@@ -18,8 +18,11 @@ check.packages(packages)
 load(file = paste(datapfad_FVAgarten,"injectionrates.RData"))
 load(file = paste(datapfad_FVAgarten,"swc_long.RData"))
 load(file=paste(datapfad_FVAgarten,"chamber_flux.RData"))
-selectDWD("Freiburg")
 
+
+
+#meta_link <- selectDWD("Freiburg",res="10_minutes",var=c("wind","precipitation"),per="meta_data")
+#meta<-lapply(meta_link,dataDWD,dir=datapfad_FVAgarten,read=F)
 
 link <- selectDWD("Freiburg",res="10_minutes",var=c("wind","precipitation"),per="recent")
 
