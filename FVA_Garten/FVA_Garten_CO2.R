@@ -51,13 +51,15 @@ data <- merge(data_probe1u2,data_probe3,all.x=T)
 range(inj$date)
 inj$date <- inj$date - 3600
 range(inj$date)
-
+inj <- inj[order(inj$date),]
 #Injection periods identifizieren aus den Zeitpunkten bei denen länger als 12h keine Injectionrate gemessen wurde.
 timediff_inj <- which(difftime(inj$date[-1],inj$date[-nrow(inj)],units= "hours") > 12)
 inj_periods <- data.frame(
   start=inj$date[c(1,timediff_inj + 1)],
   stop=inj$date[c(timediff_inj, nrow(inj))]
 )
+inj_periods$start[1] <- ymd_h("2021.04.12 17")
+
 
 flux_agg$date
 #Spalte injection 0 und 1
@@ -65,6 +67,7 @@ data$injection <- 0
 for(i in 1:nrow(inj_periods)){
   data$injection[data$date > inj_periods$start[i] & data$date < inj_periods$stop[i]] <- 1
 }
+inj$CO2_ml_per_min
 
 #kurven glätten mit rollapply
 data <- data %>% 
@@ -98,18 +101,20 @@ ggplot(data)+
 
 ######################################
 #adjustment
-data$Versuch <- NA
-range1 <- ymd_h(c("2021.04.19 00","2021.04.28 00"))
-range2 <- ymd_h(c("2021.04.29 00","2021.05.16 00"))
-
+range1 <- ymd_h(c("2021.04.01 00","2021.04.20 00"))
+range2 <- ymd_h(c("2021.04.19 00","2021.04.28 00"))
+#range1 <- ymd_h(c("2021.04.16 00","2021.04.28 16"))
+range3 <- ymd_h(c("2021.04.29 00","2021.05.16 00"))
 daterange <- function(dates,range) {
   dates_in_range <- which(dates >= min(range) & dates <= max(range))
   return(dates_in_range)
 }
 
+data$Versuch <- NA
 data$hm <- as.numeric(paste(format(data$date,"%H%M")))
 data$Versuch[daterange(data$date,range1)] <- 1
 data$Versuch[daterange(data$date,range2)] <- 2
+data$Versuch[daterange(data$date,range3)] <- 3
 data$CO2_ref_drift <- NA
 data$CO2_ref_gam <- NA
 data$CO2_ref_amp <- NA
@@ -123,8 +128,9 @@ data_swc <- variable_to_depths("swc",df=data_swc)
 
 data <- data_swc[,!grepl("_\\d+$",colnames(data_swc))]
 
+test <- adj_periods[[3]]
 adj_periods <- lapply(na.omit(unique(data$Versuch)),function(x) subset(data, inj_ml_min == 0 & Versuch == x))
-
+names(adj_periods)
 for(j in seq_along(adj_periods)){
 
   for(i in (1:7)*-3.5){
@@ -139,47 +145,90 @@ for(j in seq_along(adj_periods)){
     data$CO2_ref_drift[ID] <- data$CO2_ref[ID] + data$offset_drift[ID]
     data$CO2_ref_gam[ID] <- data$CO2_ref[ID] + data$offset_gam[ID]
     ID2 <- which(data$tiefe==i & !is.na(data$CO2_ref_drift) & data$Versuch == j)
-    fm_amp <- glm(CO2_inj ~ poly(CO2_ref_drift,2),data=subset(data[ID2,],injection== 0))
+    fm_amp <- glm(CO2_inj ~ poly(CO2_ref_drift,1),data=subset(data[ID2,],injection== 0))
     data$CO2_ref_amp[ID2] <- predict(fm_amp,newdata = data[ID2,])
 
     
   }
 }
-range(swc_wide$date)
-range(data_PSt0$date)
+
+#data_V_1$day <- as.Date(data_V_1$date)
+#daily_peaks <- data_V_1 %>% filter(tiefe == -14) %>% group_by(day) %>% summarise_at(c("CO2_ref","CO2_inj"),list(min=~date[which.min(.)],max=~date[which.max(.)]))
+#range(swc_wide$date)
+#range(data_PSt0$date)
 data$CO2_tracer_drift <- data$CO2_inj - data$CO2_ref_drift
 data$CO2_tracer_amp <- data$CO2_inj - data$CO2_ref_amp
 data$CO2_tracer_gam <- data$CO2_inj - data$CO2_ref_gam
 
-data_PSt0 <- subset(data,Versuch==1 & injection==0 & !is.na(CO2_tracer_amp))
-data_V_2 <- subset(data,Versuch==2 )
-R2(data_PSt0$CO2_inj,data_PSt0$CO2_ref_amp)
-R2(data_PSt0$CO2_inj,data_PSt0$CO2_ref_drift)
-R2(data_PSt0$CO2_inj,data_PSt0$CO2_ref_gam)
-RMSE(data_PSt0$CO2_inj,data_PSt0$CO2_ref_amp)
-RMSE(data_PSt0$CO2_inj,data_PSt0$CO2_ref_drift)
-RMSE(data_PSt0$CO2_inj,data_PSt0$CO2_ref_gam)
-ggplot(data_PSt0)+
+data_PSt0 <- subset(data,Versuch==2 & injection==0 & !is.na(CO2_tracer_amp))
+data_V_1 <- subset(data,Versuch==1 )
+data_V_2 <- subset(data,Versuch==2 & !is.na(CO2_tracer_amp))
+data_V_3 <- subset(data,Versuch==3)
+#R2(data_PSt0$CO2_inj,data_PSt0$CO2_ref_amp)
+#R2(data_PSt0$CO2_inj,data_PSt0$CO2_ref_drift)
+# R2(data_PSt0$CO2_inj,data_PSt0$CO2_ref_gam)
+# RMSE(data_PSt0$CO2_inj,data_PSt0$CO2_ref_amp)
+# RMSE(data_PSt0$CO2_inj,data_PSt0$CO2_ref_drift)
+# RMSE(data_PSt0$CO2_inj,data_PSt0$CO2_ref_gam)
+
+ggplot(subset(data_V_2,tiefe==-3.5))+
+  geom_line(aes(date,CO2_inj,linetype=as.factor(-tiefe)))+
+  geom_line(aes(date,CO2_ref_amp,col="ref",linetype=as.factor(-tiefe)))+
+  
+#  geom_vline(data=daily_peaks,aes(xintercept = CO2_ref_min,col="ref"))+
+ # geom_vline(data=daily_peaks,aes(xintercept = CO2_inj_min))+
+  #geom_vline(data=daily_peaks,aes(xintercept = CO2_inj_max))+
+  #geom_vline(data=daily_peaks,aes(xintercept = CO2_ref_max,col="ref"))+
+  scale_linetype_manual(values=rep(1,7))
+ggplot(subset(data_V_2,tiefe %in% (4:7*-3.5)))+
   geom_line(aes(date,CO2_inj,linetype=as.factor(-tiefe)))+
   geom_line(aes(date,CO2_ref_amp,col="amp",linetype=as.factor(-tiefe)))+
   geom_line(aes(date,CO2_ref_drift,col="drift",linetype=as.factor(-tiefe)))+
-  geom_line(aes(date,CO2_ref_gam,col="gam",linetype=as.factor(-tiefe)))+
+  #geom_line(aes(date,CO2_ref_gam,col="gam",linetype=as.factor(-tiefe)))+
   #geom_line(aes(date,CO2_ref,col="ref",linetype=as.factor(-tiefe)))+
   scale_linetype_manual(values=rep(1,7))
-ggplot(data_V_2)+
+ggplot(data_V_3)+
   geom_line(aes(date,CO2_inj,linetype=as.factor(injection)))+
   geom_line(aes(date,CO2_ref_amp,col="amp"))+
   geom_line(aes(date,CO2_ref_drift,col="drift"))+
   geom_line(aes(date,CO2_ref_gam,col="gam"))+
   facet_wrap(~tiefe,scales="free")
+ggplot(subset(data_V_1))+
+  geom_line(aes(date,CO2_inj,linetype=as.factor(-tiefe)))+
+  #geom_line(aes(date,CO2_ref,col="ref",linetype=as.factor(-tiefe)))+
+  geom_line(aes(date,CO2_ref_amp,col="amp",linetype=as.factor(-tiefe)))+
+  geom_line(aes(date,CO2_ref_drift,col="drift",linetype=as.factor(-tiefe)))+
+  #geom_line(aes(date,CO2_ref_gam,col="gam",linetype=as.factor(-tiefe)))+
+  scale_linetype_manual(values=rep(1,8))
 
-data_sub <- subset(data,Versuch==1 & injection==1 & !is.na(CO2_tracer_amp))
 colnames(data_sub)
 
 ggplot(data_sub)+geom_line(aes(date,CO2_inj,col=as.factor(-tiefe)))
 
+#Bei Versuch 1 wurde inj nicht am anfang gemessen es wird jetzt konstant gesetzt
+data_V_1$inj_mol_m2_s[is.na(data_V_1$inj_mol_m2_s)] <- mean(data_V_1$inj_mol_m2_s[which(as.numeric(data_V_1$inj_mol_m2_s) > 0)])
+
+
+
 ###################
-#COMSOL
+#COMSOL V1
+data_sub_1 <- subset(data_V_1,injection==1 & !is.na(CO2_tracer_amp))
+mod_dates_1 <- unique(round_date(data_sub_1$date,"60 minutes"))[-1]
+
+comsol_out_1 <- run_comsol(data=data_sub_1,mod_dates = mod_dates_1,offset_method = "amp",read_all = F)
+
+Deff_1 <- subset(comsol_out_1,date > min(comsol_out$date) + 10*3600)
+
+ggplot(Deff_1)+
+  geom_line(aes(date,DSD01,col="0-10 cm"))+
+  geom_line(aes(date,DSD02,col="10-20 cm"))+
+  geom_line(aes(date,DSD03,col="ab 20 cm"))+
+  labs(y=expression(D[eff]/D[0]),col="tiefe")#+
+  #ggsave(paste0(plotpfad_FVAgarten,"Deff_V1.png"),width=7,height=5,units = "in")
+
+###################
+#COMSOL V2
+data_sub <- subset(data,Versuch==2 & injection==1 & !is.na(CO2_tracer_amp))
 
 mod_dates <- unique(round_date(data_sub$date,"30 minutes"))[-1]
 colnames(data_sub)
@@ -245,9 +294,9 @@ data$T_soil[data$tiefe == 0] <- data$T_soil[data$tiefe == -3.5]
 
 data$CO2_ref_mol_m3 <- ppm_to_mol(data$CO2_ref_amp,"ppm",out_class = "units",T_C = data$T_soil)
 
-data_wide_CO2 <- tidyr::pivot_wider(data[data$date %in% Deff$date,],date,names_from=tiefenstufe,values_from = CO2_ref_mol_m3,names_prefix = "CO2_ref_")
+data_wide_CO2 <- tidyr::pivot_wider(data[data$date %in% Deff_wind$date,],date,names_from=tiefenstufe,values_from = CO2_ref_mol_m3,names_prefix = "CO2_ref_")
 
-F_df <- merge(Deff,data_wide_CO2)
+F_df <- merge(Deff_wind,data_wide_CO2,all.x=T)
 
 dC_dz_mol_0_10 <- rowMeans(cbind(F_df$CO2_ref_0 - F_df$CO2_ref_1,F_df$CO2_ref_1 - F_df$CO2_ref_2,F_df$CO2_ref_2 - F_df$CO2_ref_3)/-3.5)
 
@@ -260,11 +309,12 @@ dC_dz_mol_ab20 <- rowMeans(cbind(F_df$CO2_ref_5 - F_df$CO2_ref_6,F_df$CO2_ref_6 
 #Fz_mumol_per_s_m2 <- F_df$DS_1[k]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
 
 F_df$Fz_0_10 <- F_df$DS1   * dC_dz_mol_0_10 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
+F_df$Fz_0_10_preds <- F_df$DSD01_preds* D0_T_p(F_df$T_soil,gas="CO2",unit="m^2/s")   *imputeTS::na_interpolation(dC_dz_mol_0_10) * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
 F_df$Fz_10_17 <- F_df$DS2   * dC_dz_mol_10_17 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
 F_df$Fz_ab20 <- F_df$DS3   * dC_dz_mol_ab20 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
 
 flux_agg_2 <- merge(flux_agg,data_probe3[data_probe3$tiefe == -3.5,],all.x = T)
-ggplot(F_df)+
+ggplot(subset(F_df,!is.na(Fz_0_10)))+
   geom_line(aes(date,Fz_0_10,col="in situ"))+
   geom_point(data=flux_agg[1:2,],aes(date,CO2_mumol_per_s_m2,col="kammer"))
 flux_agg$CO2_mumol_per_s_m2
@@ -276,10 +326,10 @@ CH4_gradient$date <- round_date(CH4_gradient$date,"10 mins")
 range(Deff$date)
 data_CH4 <- merge(data[data$tiefe == -3.5,],CH4_gradient)
 CH4_mol <- ppm_to_mol(data_CH4$CH4_d[1],T_C = data_CH4$T_soil[1])#einheit in mol / m3
-dz <- 10.5 *100 #m
+dz <- 10.5 /100 #m
 dC_dz_CH4 <- CH4_mol / dz # mol/m4
-F_CH4_preds <- - Deff_wind$DSD01_preds* D0_T_p(data_CH4$T_soil[1],gas="CH4")* dC_dz_CH4 *10^6#m2/s * mol/m4 = mumol/s/m2
-F_CH4 <- - Deff_wind$DSD01* D0_T_p(data_CH4$T_soil[1],gas="CH4")* dC_dz_CH4 *10^6#m2/s * mol/m4 = mumol/s/m2
+F_CH4_preds <- - Deff_wind$DSD01_preds* D0_T_p(data_CH4$T_soil[1],gas="CH4",unit="m^2/s")* dC_dz_CH4 *10^6#m2/s * mol/m4 = mumol/s/m2
+F_CH4 <- - Deff_wind$DSD01* D0_T_p(data_CH4$T_soil[1],gas="CH4",unit="m^2/s")* dC_dz_CH4 *10^6#m2/s * mol/m4 = mumol/s/m2
 F_CH4_df <- data.frame(date=Deff_wind$date,F_CH4,F_CH4_preds)
  
 
@@ -297,19 +347,30 @@ F_CH4
 
 ##########################
 #CO2flux
-ggplot(F_df)+
-  geom_line(aes(date,Fz_0_10,col="in situ"))+
-  geom_point(data=flux_agg[1:2,],aes(date,CO2_mumol_per_s_m2,col="kammer"))
+col_char <- c("in situ","Wind prediction","Kammer")
+col_labs <- factor(col_char,levels = col_char)
+ggplot()+
+  geom_line(data=subset(F_df,!is.na(Fz_0_10)) ,aes(date,Fz_0_10,col="in situ"))+
+  geom_line(data=subset(F_df,date >= min(Deff$date) & date <= flux_agg$date[2]+12*3600) ,aes(date,Fz_0_10_preds,col="Wind prediction"),linetype=2)+
+  geom_point(data=flux_agg[1:2,],aes(date,CO2_mumol_per_s_m2,col="Kammer"))+
+  guides(col=guide_legend(override.aes = list(shape=c(NA,NA,19),linetype=c(1,2,NA))))+
+  labs(y=expression(F[CO2]~"[ "*mu*"mol s"^{-1}*"m"^{-2}*"]"),x="",col="method")+
+  scale_color_discrete(limits=col_labs)+
+  ggsave(paste0(plotpfad_FVAgarten,"FCO2.png"),width = 8,height = 5,units = "in")
 ###############################
 #Methanflux
+col_char <- c("in situ (fix dCH4)","Wind prediction","Kammer")
+col_labs <- factor(col_char,levels = col_char)
 ggplot()+
   geom_vline(xintercept = flux_agg$date[1],alpha=0.6)+
-  geom_line(data=subset(F_CH4_df,!is.na(F_CH4)),aes(date,F_CH4*10^3,col="in situ (fix dCH4)"))+
-  geom_line(data=subset(F_CH4_df,date >= min(Deff$date) & date <= flux_agg$date[2]+12*3600),aes(date,F_CH4_preds*10^3,col="Wind prediction"),linetype="dashed")+
+  geom_line(data=subset(F_CH4_df,!is.na(F_CH4)),aes(date,F_CH4*10^3,col=col_labs[1]))+
+  geom_line(data=subset(F_CH4_df,date >= min(Deff$date) & date <= flux_agg$date[2]+12*3600),aes(date,F_CH4_preds*10^3,col=col_labs[2]),linetype="dashed")+
   #geom_line(data=F_CH4_df,aes(date,F_CH4,col="in situ"))+
-  geom_point(data=flux_agg[1:2,],aes(date,CH4_mumol_per_s_m2*10^3,col="kammer"))+
+  geom_point(data=flux_agg[1:2,],aes(date,CH4_mumol_per_s_m2*10^3,col=col_labs[3]))+
+  scale_color_discrete(limits=col_labs)+
+  guides(col=guide_legend(override.aes = list(shape=c(NA,NA,19),linetype=c(1,2,NA))))+
   labs(y=expression(F[CH4]~"[ nmol s"^{-1}*"m"^{-2}*"]"),x="",col="method")+
-  ggsave(paste0(plotpfad_FVAgarten,"FCH4.png"),width = 7,height = 5,units = "in")
+  ggsave(paste0(plotpfad_FVAgarten,"FCH4.png"),width = 8,height = 5,units = "in")
 flux_agg$CH4_mumol_per_s_m2
 ############################
 #plot offset function
@@ -354,10 +415,11 @@ smp2 <- ggplot(data_probe1u2)+
   geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe)))+labs(x="")
 smp3 <- ggplot(data_probe3)+
   geom_line(aes(date,CO2,col=as.factor(tiefe)))+
-  scale_color_manual(limits=as.factor(0:7*-3.5),values=scales::hue_pal()(8))+
+  scale_color_discrete(limits=as.factor(0:7*-3.5))+
   labs(x="",y="CO2_smp3")
 P_plot <- ggplot(subset(klima,date %in% data_probe3$date))+geom_line(aes(date,P_mm))
-Wind_plot <- ggplot(subset(klima,date %in% data_probe3$date))+geom_line(aes(date,wind))
+Wind_plot <- ggplot(subset(klima,date %in% data_probe3$date))+geom_line(aes(date,wind))+
+  labs(y="Wind [m/s]")
 
 load(file = paste(datapfad_FVAgarten,"HH2_long.RData"))
 #swc_plot <- 
@@ -371,16 +433,16 @@ SWC_plot <- ggplot(subset(swc_long,date %in% data_probe3$date))+
   geom_line(aes(date,swc,col=as.factor(-tiefe)))+scale_x_datetime(limits=range(data_probe3$date))+
   scale_y_continuous(sec.axis = sec_axis(~./ax_fac,name=expression(P["24h"]*" [mm]")))+
   geom_point(data=HH2_long,aes(date,SWC,col=as.factor(-tiefe)))+
-  labs(shape="HH2 reading")+
+  labs(shape="HH2 reading",y="SWC [vol. %]")+
   theme(
     axis.title.y.right = element_text(color = "blue"),
     axis.text.y.right = element_text(color = "blue")
-  )+scale_color_manual(values=scales::hue_pal()(9),limits=factor(c(0,3,7,10,14,17,20,30,40)))
+  )+scale_color_manual(values = c(scales::hue_pal()(8),"red","brown"),limits=factor(c(0,3,7,10,14,17,20,24,30,40)))
 
-range(data_probe3$date,na.rm = T)
+
 ggpubr::ggarrange(smp1,smp2,smp3,ncol=1,common.legend = T,legend="right")+ggsave(paste0(plotpfad_FVAgarten,"probe123.png"),width=10,height=8,unit="in")
 png(paste0(plotpfad_FVAgarten,"rawdata.png"),width=10,height=8,unit="in",res=1000)
-egg::ggarrange(smp1+theme(legend.position = "n")+geom_vline(xintercept = flux_agg$date,alpha=0.5),smp2+geom_point(data=HH2_long,aes(date,SWC,shape=""),alpha=0)+labs(shape="PR2 reading",col="tiefe [cm]")+guides(shape=guide_legend(override.aes = list(alpha=1))),SWC_plot+theme(legend.position = "n"),Wind_plot+theme(legend.position = "n"),ncol=1)#+ggsave(paste0(plotpfad_FVAgarten,"rawdata.png"),width=10,height=8,unit="in")
+egg::ggarrange(smp1+theme(legend.position = "n"),smp2+geom_point(data=HH2_long,aes(date,SWC,shape=""),alpha=0)+labs(shape="PR2 reading",col="tiefe [cm]")+guides(shape=guide_legend(override.aes = list(alpha=1)))+scale_color_manual(values = c(scales::hue_pal()(8),"red","brown"),limits = factor(c(0:7*3.5,30,40))),SWC_plot+theme(legend.position = "n"),Wind_plot+theme(legend.position = "n"),ncol=1)#+ggsave(paste0(plotpfad_FVAgarten,"rawdata.png"),width=10,height=8,unit="in")
 dev.off()
 #egg::ggarrange(smp1,smp2,SWC_plot,P_plot,Wind_plot,ncol=1)
 

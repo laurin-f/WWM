@@ -29,8 +29,10 @@ data$CO2[ data$CO2 < 300| data$CO2 > 9000] <- NA
 range(data$date,na.rm=T)
 daterange <- vector("list")
 daterange[[1]] <- ymd_h(c("21/04/22 12", "21/05/04 00"))
+#daterange[[1]] <- ymd_h(c("21/04/22 12", "21/04/23 00"))
 daterange[[2]] <- ymd_hm(c("21/05/04 00:00", "21/05/04 11:30"))
 daterange[[3]] <- ymd_h(c("21/05/04 13", "21/05/10 12"))
+daterange[[4]] <- ymd_hm(c("21/04/14 16:00", "21/04/16 18:00"))
 #daterange[[1]] <- c(ymd_h("21/04/22 12"),now())
 daterange_ges <-range(do.call(c,daterange)) 
 #
@@ -42,7 +44,6 @@ smp1u2 <- read_sampler(datelim=daterange_ges,format="wide",cols="T_C")
   # group_by(min10) %>% 
   # summarise(T_C = mean(T_C,na.rm=T))
 
-ggplot(data_sub)+geom_line(aes(date,CO2))
 
 ggplot(smp1u2)+geom_point(aes(date,T_C))+
   geom_line(data=smp1u2,aes(date,T_C))
@@ -53,14 +54,17 @@ for(i in seq_along(daterange)){
 data_sub <- subset(data, date >= min(daterange[[i]]) & date <= max(daterange[[i]])) 
 
 
-inj_ls_i <- injectionrate(data=data_sub,closing_lim = 100,t_min=2,t_init = 1,Pumpstufen = 1,return_data = T,t_max=4,adj_openings=T)
+
+inj_ls_i <- injectionrate(data=data_sub,closing_lim = c(100,300,100,500)[i],opening_lim = c(-100,-200,-200,-500)[i],t_min=1,t_init = 2,Pumpstufen = 1,return_data = T,t_max=4,adj_openings=T)
 inj_ls[[i]] <- inj_ls_i[[1]]
 inj_data_ls[[i]] <- inj_ls_i[[2]]
 inj_ls[[i]]$Versuch <- as.character(i)
 inj_data_ls[[i]]$Versuch <- as.character(i)
 }
+
 inj <- do.call(rbind,inj_ls)
 inj_data <- do.call(rbind,inj_data_ls)
+
 
 ggplot(inj_data)+geom_line(aes(zeit,CO2_tara,col=Versuch,linetype=as.factor(messid)))+guides(linetype=F)
 
@@ -76,6 +80,7 @@ egg::ggarrange(inj_plot,T_plt)
 
 save(inj,file = paste(datapfad_FVAgarten,"injectionrates.RData"))
 
+timediff_inj <- which(difftime(inj$date[-1],inj$date[-nrow(inj)],units= "hours") > 1)
 
 #################################
 #
@@ -92,8 +97,11 @@ data$CO2 <- as.numeric(data$CO2)
 data$CO2[ data$CO2 < 300| data$CO2 > 9000] <- NA
 
 daterange <- ymd_hm(c("21/05/17 16:00", "21/05/17 18:00"))
+daterange <- ymd_hm(c("21/04/14 16:00", "21/04/16 18:00"))
 
 data_sub <- subset(data, date >= min(daterange) & date <= max(daterange)) 
 
-
+range(data_sub$date)
 ggplot(data_sub)+geom_line(aes(date,CO2))
+
+#ggplot(subset(data,date < ymd_hm(c("21/05/17 16:00")))+geom_line(aes(date,CO2))
