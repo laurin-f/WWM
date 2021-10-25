@@ -28,7 +28,7 @@ load(file=paste(datapfad_FVAgarten,"klima_DWD.RData"))
 #################
 datelim <- ymd_h("2021.03.30 15")
 
-range1 <- ymd_h(c("2021.04.19 01","2021.04.28 00"))
+range1 <- ymd_h(c("2021.04.01 01","2021.04.28 00"))
 data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
 data_probe3 <-  read_sampler("sampler3",datelim = range1, format = "long")
 
@@ -217,9 +217,9 @@ mod_dates_1 <- unique(round_date(data_sub_1$date,"60 minutes"))[-1]
 
 comsol_out_1 <- run_comsol(data=data_sub_1,mod_dates = mod_dates_1,offset_method = "amp",read_all = F)
 
-Deff_1 <- subset(comsol_out_1,date > min(comsol_out$date) + 10*3600)
 
-ggplot(Deff_1)+
+
+ggplot(comsol_out_1)+
   geom_line(aes(date,DSD01,col="0-10 cm"))+
   geom_line(aes(date,DSD02,col="10-20 cm"))+
   geom_line(aes(date,DSD03,col="ab 20 cm"))+
