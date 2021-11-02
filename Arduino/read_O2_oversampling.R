@@ -4,11 +4,18 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr")
 check.packages(packages)
 
-files <- list.files(O2_pfad,full.names = T)
-files <- files[grep("211019",files)]
-
+all_files <- list.files(O2_pfad,full.names = T)
+files <- all_files[grep("211019",all_files)]
+labor_ref <- all_files[grep("Laurin zum Vergleich",all_files)]
 data_ls <- lapply(files,read.table,sep=";",header=T,stringsAsFactors = F)
+data_ref <- readxl::read_xlsx(labor_ref,skip = 1)
+colnames(data_ref) <- c("ymd","HMS","cycle",paste0("O2_mio",1:5))
+data_ref[paste0(paste0("O2_mio",1:5))] <- sapply(data_ref[paste0(paste0("O2_mio",1:5))],as.numeric)
 
+data_ref[paste0(paste0("O2_",1:5))] <- data_ref[paste0(paste0("O2_mio",1:5))] *10^-6
+
+ggplot()+
+  geom_point(data=data_ref[1:75,],aes(seq_along(O2_1),O2_1))
 treats <- str_extract(files,"(?<=_)[A-Za-z1-9]+(?=.TXT$)")
 for(i in seq_along(data_ls)){
   data_ls[[i]]$treat <- treats[i]
