@@ -1,4 +1,6 @@
+hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 O2_pfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten/O2test"
+plotpfad_test <- paste0(hauptpfad,"Dokumentation/Berichte/plots/Kalibrierung_tests/")
 
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr")
@@ -14,8 +16,21 @@ data_ref[paste0(paste0("O2_mio",1:5))] <- sapply(data_ref[paste0(paste0("O2_mio"
 
 data_ref[paste0(paste0("O2_",1:5))] <- data_ref[paste0(paste0("O2_mio",1:5))] *10^-6
 
+ref_mean <- mean(data_ref$O2_1[1:100])
+ardu_mean <- mean(data$O2[1:100])
 ggplot()+
-  geom_point(data=data_ref[1:75,],aes(seq_along(O2_1),O2_1))
+  geom_point(data=data_ref[1:100,],aes(seq_along(O2_1),O2_1+0.4,col="conventional Logger"))+
+  geom_line(data=data_ref[1:100,],aes(seq_along(O2_1),O2_1+0.4))+
+
+  geom_line(data=subset(data,treat == "normal")[1:100,],aes(seq_along(O2),O2),alpha=0.2)+
+  geom_point(data=subset(data,treat == "normal")[1:100,],aes(seq_along(O2),O2_roll,col="Arduino"))+
+  geom_line(data=subset(data,treat == "normal")[1:100,],aes(seq_along(O2),O2_roll))+
+  labs(x="sample",y="O2 [V]")+
+  ggsave(paste0(plotpfad_test,"Logger_Vergleich.png"),width=7,height=5)
+
+
+
+
 treats <- str_extract(files,"(?<=_)[A-Za-z1-9]+(?=.TXT$)")
 for(i in seq_along(data_ls)){
   data_ls[[i]]$treat <- treats[i]
@@ -27,6 +42,7 @@ colnames(data) <- c("date","CO2","O2","temp","treat")
 data$CO2 <- as.numeric(data$CO2)
 data$CO2[ data$CO2 < 300| data$CO2 > 5000] <- NA
 
+data$O2_roll <- RcppRoll::roll_mean(data$O2,30,fill=NA)
 
 data$temp <- as.numeric(data$temp)
 data$temp[data$temp<1] <- NA
@@ -48,5 +64,5 @@ ggplot(data)+
   geom_point(aes(date,temp,col=treat))
 
 ggplot(subset(data,treat == "KammerGarten"))+
-  geom_line(aes(date,as.numeric(CO2),col=treat))
+  geom_line(aes(date,as.numeric(O2),col=treat))
 
