@@ -16,17 +16,7 @@ data_ref[paste0(paste0("O2_mio",1:5))] <- sapply(data_ref[paste0(paste0("O2_mio"
 
 data_ref[paste0(paste0("O2_",1:5))] <- data_ref[paste0(paste0("O2_mio",1:5))] *10^-6
 
-ref_mean <- mean(data_ref$O2_1[1:100])
-ardu_mean <- mean(data$O2[1:100])
-ggplot()+
-  geom_point(data=data_ref[1:100,],aes(seq_along(O2_1),O2_1+0.4,col="conventional Logger"))+
-  geom_line(data=data_ref[1:100,],aes(seq_along(O2_1),O2_1+0.4))+
 
-  geom_line(data=subset(data,treat == "normal")[1:100,],aes(seq_along(O2),O2),alpha=0.2)+
-  geom_point(data=subset(data,treat == "normal")[1:100,],aes(seq_along(O2),O2_roll,col="Arduino"))+
-  geom_line(data=subset(data,treat == "normal")[1:100,],aes(seq_along(O2),O2_roll))+
-  labs(x="sample",y="O2 [V]")+
-  ggsave(paste0(plotpfad_test,"Logger_Vergleich.png"),width=7,height=5)
 
 
 
@@ -43,6 +33,16 @@ data$CO2 <- as.numeric(data$CO2)
 data$CO2[ data$CO2 < 300| data$CO2 > 5000] <- NA
 
 data$O2_roll <- RcppRoll::roll_mean(data$O2,30,fill=NA)
+a <- 1:40
+ggplot()+
+  geom_point(data=data_ref[a,],aes(seq_along(O2_1)*30,O2_1+0.4,col="conventional Logger"))+
+  geom_line(data=data_ref[a,],aes(seq_along(O2_1)*30,O2_1+0.4))+
+  
+  geom_line(data=data[1:(max(a)*30),],aes(seq_along(O2),O2),alpha=0.2)+
+  geom_point(data=data[a*30,],aes(seq_along(O2)*30,O2_roll,col="Arduino"))+
+  geom_line(data=data[1:(max(a)*30),],aes(seq_along(O2),O2_roll))+
+  labs(x="sample",y="O2 [V]")+
+  ggsave(paste0(plotpfad_test,"Logger_Vergleich.png"),width=7,height=5)
 
 data$temp <- as.numeric(data$temp)
 data$temp[data$temp<1] <- NA

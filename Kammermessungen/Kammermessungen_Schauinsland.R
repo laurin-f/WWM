@@ -16,11 +16,11 @@ check.packages(packages)
 
 
 
-flux_schaui <- chamber_flux(mess_dir = "Schauinsland",aggregate = F,
+flux_schaui <- chamber_flux(1:2,mess_dir = "Schauinsland",aggregate = F,
                             closing_lim=0,
                             opening_lim=0,
-                            t_min=2,adj_openings=T)
+                            t_init=1,
+                            t_max=4,
+                            t_min=2,adj_openings=T,return_data = F)
 
-
-
-ggplot(flux_schaui)+geom_line(aes(date,CO2_ppm_per_min,col=kammer))
+ggplot(flux_schaui)+geom_point(aes(date,CO2_ppm_per_min,col=kammer))

@@ -45,7 +45,7 @@ mod_dates_inj1 <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe ==
 # DS_anisotrop_max_inj <- run_comsol(data=data_max_inj,mod_dates = mod_dates_short,offset_method = "min_inj",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 date_pattern <- "\\d{2}(_\\d{2}){2,3}"
 
-DS_anisotrop_drift <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "drift2",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+DS_anisotrop_SWC_T <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "SWC_T",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 DS_anisotrop_roll <- run_comsol(data=data,mod_dates = (mod_dates_inj1),offset_method = "roll4",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
 # 

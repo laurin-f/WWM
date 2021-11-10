@@ -340,6 +340,7 @@ Sys.setlocale("LC_ALL","English")
 
 time_plt_adj <- ggplot(subset(data_sub,ID %in% c(1,3,7) & !is.na(Position)& tiefe < 0))+
   geom_line(aes(date,preds_drift,col=as.factor(-tiefe),linetype="B/C/D  adj"))+
+  #geom_line(aes(date,preds_SWC_T,linetype=as.factor(tiefe)))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="A"))+
   facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("profile",c("A + B","A + C","A + D"))),scales="free")+
   labs(x="",y=expression(CO[2]~"[ppm]"),col="depth [cm]",linetype="profile")+

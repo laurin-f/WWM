@@ -118,6 +118,15 @@ data <- variable_to_depths("T","T_soil")
 
 data <- data[,!grepl("_\\d+$",colnames(data))]
 
+data <- data %>% 
+  group_by(tiefe) %>% 
+  mutate(
+    VWC_roll = RcppRoll::roll_mean(VWC,n=50,fill=NA),
+    Wind = RcppRoll::roll_mean(WindVel_30m_ms,n=50,fill=NA),
+    
+  ) %>% 
+  ungroup() %>% 
+  as.data.frame()
 ############################
 #DS PTF
 DS_eps <- read.table(paste0(metapfad_harth,"DS_eps_Maier.txt"),stringsAsFactors = F,header = T)
@@ -209,8 +218,8 @@ data_wide[,paste0("F_z_",j2,paste(c(-tiefen[i-1],-tiefen[i]),collapse="-"))] <- 
 ###############
 #tiefen Offset
 
-
 data$hour <- hour(data$date) 
+#data$hour <- as.numeric(format(unique(data$date),"%H%M"))
 data$date_int <- as.numeric(data$date)
 data$offset <- NA
 data$offset[which(data$Pumpstufe == 0)] <- data$CO2_roll_inj[which(data$Pumpstufe == 0)] - data$CO2_roll_ref[which(data$Pumpstufe == 0)]
@@ -232,35 +241,42 @@ j_78 <- which(sapply(data_PSt0, function(x) unique(x$Position %in% 7:8)))
 #mit glm oder gam
 # data$preds_glm <- NA
  data$preds_gam <- NA
+ data$preds_SWC_T <- NA
+ #data$preds_SWC_T_Wind <- NA
 data$offset_drift <- NA
 data$preds_drift <- NA
 # data$preds_drift_amp <- NA
  data$preds_no_ref <- NA
 
+unique(unlist(lapply(data_PSt0,"[","Position")))
 #for(j in j_78){
-for(j in seq_along(data_PSt0)[-c(3,5)]){
+for(j in seq_along(data_PSt0)[-c(5)]){
 for(i in (1:7)*-3.5){
   #nicht verwendet
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
   #fm_glm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[j]],tiefe==i))
-  fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0[[j]],tiefe==i))
+  fm_drift <- glm(offset ~ poly(date_int,1),data=subset(data_PSt0[[j]],tiefe==i))
   #fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,2) + poly(hour,4) ,data=subset(data_PSt0[[j]],tiefe==i))
   #nicht verwendet
   fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
 
-  fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref)+ s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
+  #fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref)+ s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
+  fm_SWC_T <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
+  #fm_SWC_T_Wind <- mgcv::gam(CO2_roll_inj ~ poly(VWC_roll,2) + poly(T_soil,2) + poly(Wind,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
   
   pos <- na.omit(unique(data$Position))[j]
-  ID <- which(data$tiefe==i & data$Position == pos& !is.na(data$CO2_ref))
-  ID2 <- which(data$tiefe==i & data$Position == pos& !is.na(data$CO2_roll_ref))
+  ID <- which(data$tiefe==i & data$Position == pos)
+  #ID2 <- which(data$tiefe==i & data$Position == pos& !is.na(data$CO2_roll_ref))
   # 
   #data$preds_glm[ID] <- predict(fm_glm,newdata = data[ID,])
   data$offset_drift[ID] <- predict(fm_drift,newdata = data[ID,])
-  data$preds_drift[ID2] <- data$CO2_roll_ref[ID2] + data$offset_drift[ID2]
+  data$preds_drift[ID] <- data$CO2_roll_ref[ID] + data$offset_drift[ID]
   #fm_amp <- glm(CO2_roll_inj ~ poly(preds_drift,2),data=subset(data[ID2,],Pumpstufe == 0))
   #data$preds_drift_amp[ID] <- predict(fm_amp,newdata = data[ID,])
   data$preds_no_ref[ID] <- predict(fm_no_ref,newdata = data[ID,])
-  data$preds_gam[ID] <- predict(fm_gam,newdata = data[ID,])
+  #data$preds_gam[ID] <- predict(fm_gam,newdata = data[ID,])
+  data$preds_SWC_T[ID] <- predict(fm_SWC_T,newdata = data[ID,])
+  #data$preds_SWC_T_Wind[ID] <- predict(fm_SWC_T_Wind,newdata = data[ID,])
   
   }
 }
@@ -269,22 +285,23 @@ for(i in (1:7)*-3.5){
 
 #data$CO2_tracer_glm <- data$CO2_inj - (data$preds_glm)
 data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds_gam)
+data$CO2_tracer_SWC_T <- data$CO2_roll_inj - (data$preds_SWC_T)
 data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
 data$CO2_tracer_drift <- data$CO2_roll_inj - (data$preds_drift)
 #data$CO2_tracer_drift_amp <- data$CO2_roll_inj - (data$preds_drift_amp)
 
-mean_na <- function(x,thr=0.4){
-  ifelse(length(which(is.na(x)))/length(x) < thr,
-         mean(x,na.rm=T),#if
-         NA)#else
-}
-
-data <- data %>% group_by(tiefe) %>% mutate(
-  CO2_tracer_roll12 = data.table::frollapply(CO2_tracer_drift,60*12,mean_na,fill=NA,align = "center"),
-  #CO2_tracer_roll6 = zoo::rollapply(CO2_tracer_drift,60*6,mean_na,fill=NA),
-  CO2_tracer_roll4 = data.table::frollapply(CO2_tracer_drift,60*4,mean_na,fill=NA,align = "center")
-  ) %>% 
-  as.data.frame()
+# mean_na <- function(x,thr=0.4){
+#   ifelse(length(which(is.na(x)))/length(x) < thr,
+#          mean(x,na.rm=T),#if
+#          NA)#else
+# }
+# 
+# data <- data %>% group_by(tiefe) %>% mutate(
+#   CO2_tracer_roll12 = data.table::frollapply(CO2_tracer_drift,60*12,mean_na,fill=NA,align = "center"),
+#   #CO2_tracer_roll6 = zoo::rollapply(CO2_tracer_drift,60*6,mean_na,fill=NA),
+#   CO2_tracer_roll4 = data.table::frollapply(CO2_tracer_drift,60*4,mean_na,fill=NA,align = "center")
+#   ) %>% 
+#   as.data.frame()
 
 
 
@@ -321,7 +338,41 @@ data_agg <- subset(data_agg, Pumpstufe != 0)
 save(data,data_agg,Pumpzeiten,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
 
 
+###################
+#spielwiese
+##################################
+#
 
+data_plot <- data %>% filter(date == round_date(date,"30 mins"))
+plot_pos <- 8
+
+ggplot(subset(data_plot,Position %in% plot_pos ))+
+  geom_line(aes(date,CO2_inj,linetype="inj",col=as.factor(tiefe)))+
+  geom_line(aes(date,preds_drift,linetype="drift",col=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_ref,linetype="ref",col=as.factor(tiefe)))
+  
+  
+ggplot(subset(data_plot,Position %in% plot_pos))+
+  geom_line(aes(date,preds_drift,col="drift",linetype=as.factor(tiefe)))+
+  geom_line(aes(date,preds_SWC_T,col="SWC_T",linetype=as.factor(tiefe)))+
+  geom_line(aes(date,preds_SWC_T_Wind,col="SWC_T_Wind",linetype=as.factor(tiefe)))+
+  #geom_line(aes(date,preds_gam,col="gam",linetype=as.factor(tiefe)))+
+
+#  geom_line(aes(date,preds_no_ref,col="no ref",linetype=as.factor(tiefe)))+
+  geom_line(data=subset(data_plot,Position %in% plot_pos & Pumpstufe==0),aes(date,CO2_roll_inj,linetype=as.factor(tiefe)))+
+  scale_linetype_manual(values=rep(1,8))+guides(linetype=F)
+
+ggplot(subset(data_plot,Position %in% plot_pos))+
+  geom_line(aes(date,CO2_tracer_drift,col="drift",linetype=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_tracer_no_ref,col="no_ref",linetype=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_tracer_gam,col="gam",linetype=as.factor(tiefe)))+
+  scale_linetype_manual(values=rep(1,8))+guides(linetype=F)
+
+ggplot(subset(data,Position %in% plot_pos))+
+  geom_line(aes(date,VWC_roll,col=as.factor(tiefe)))
+T_plot <- ggplot(subset(data,Position == 7))+
+  geom_line(aes(date,T_soil,col=as.factor(tiefe)))
+egg::ggarrange(CO2_plot,T_plot)
 ###########
 #export data
 
