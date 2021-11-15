@@ -226,6 +226,7 @@ data$offset[which(data$Pumpstufe == 0)] <- data$CO2_roll_inj[which(data$Pumpstuf
 
 #injektion 1 weg
 data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
+data$Position[data$date > Pumpzeiten$start[13] & data$date < Pumpzeiten$start[14]+3600*1.5] <- NA
 
 #position 8 tracer abfall weg
 data$Position[data$date < ymd_h("2020.07.26 00") & data$date > Pumpzeiten$start[18]] <- NA
@@ -323,6 +324,73 @@ data$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
 # colnames(data_wide) <- str_replace(colnames(data_wide),"Fz_tiefe0","injection_ml_per_min")
 # 
 
+###########################
+#tracer uncertainty
+
+prob <- c(0,0.25,0.5,0.75,1)
+uncert <- data %>% 
+  filter(Position %in% 7:8 & Pumpstufe == 0) %>% 
+  group_by(tiefe,Position) %>% 
+  summarise(
+    drift=quantile(CO2_roll_inj - preds_drift,probs = prob,na.rm=T),
+    SWC_T=quantile(CO2_roll_inj - preds_SWC_T,probs = prob,na.rm=T),
+    probs=prob
+    )
+
+
+data_uncert <- data %>% 
+  filter(Position %in% 7:8) %>% 
+  group_by(tiefe) %>% 
+  mutate(
+    preds_drift_max = preds_drift + max(CO2_roll_inj[Pumpstufe==0] - preds_drift[Pumpstufe==0],na.rm=T),
+    preds_drift_q25 = preds_drift + quantile(CO2_roll_inj[Pumpstufe==0] - preds_drift[Pumpstufe==0],probs=0.25,na.rm=T),
+    preds_drift_q75 = preds_drift + quantile(CO2_roll_inj[Pumpstufe==0] - preds_drift[Pumpstufe==0],probs=0.75,na.rm=T),
+    preds_drift_min = preds_drift + min(CO2_roll_inj[Pumpstufe==0] - preds_drift[Pumpstufe==0],na.rm=T),
+    CO2_tracer_drift_min = CO2_roll_inj - preds_drift_max,
+    CO2_tracer_drift_q25 = CO2_roll_inj - preds_drift_75,
+    CO2_tracer_drift_q75 = CO2_roll_inj - preds_drift_25,
+    CO2_tracer_drift_max = CO2_roll_inj - preds_drift_min,
+    ) %>% 
+  ungroup() %>% 
+  as.data.frame()
+data_uncert <- data %>% 
+  select(matches("(date|tiefe|preds_(SWC_T|drift)|CO2_roll|Position|Pumpstufe)")) %>% 
+  filter(Position %in% 7:8) %>% 
+  group_by(tiefe) %>% 
+  # mutate(across(preds_drift,preds_SWC_T),
+  #     max = max( .,na.rm=T)
+  #   )
+  mutate(across(matches("preds_drift|preds_SWC_T"),
+  #mutate_at(vars(matches("preds_drift|preds_SWC_T")),
+      list(
+        max = ~. + max(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],na.rm=T),
+        q25 = ~. + quantile(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],probs=0.25,na.rm=T),
+        q75 = ~. + quantile(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],probs=0.75,na.rm=T),
+        min = ~. + min(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],na.rm=T)
+        )
+  )
+    ) %>% 
+  mutate(across(matches("preds_.+(max|min|q\\d+)"),
+  #mutate_at(vars(matches("preds_drift|preds_SWC_T")),
+      list(
+        CO2_tracer= ~CO2_roll_inj - .
+        ),
+  .names="{.fn}_{.col}"
+    )
+  ) 
+
+  
+colnames(data_uncert)
+ggplot(subset(data_uncert,Position==8))+
+  geom_ribbon(aes(x=date, ymin=preds_drift_min, ymax = preds_drift_max, fill=as.factor(tiefe)),alpha=0.2)+
+  geom_ribbon(aes(x=date, ymin=preds_drift_q25, ymax = preds_drift_q75, fill=as.factor(tiefe)),alpha=0.5)+
+  geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe)))+
+  geom_line(aes(date,preds_drift,col=as.factor(tiefe)))
+
+ggplot(subset(data_uncert,Position==8))+
+  geom_ribbon(aes(x=date, ymin=CO2_tracer_drift_min, ymax = CO2_tracer_drift_max, fill=as.factor(tiefe)),alpha=0.2)+
+  geom_ribbon(aes(x=date, ymin=CO2_tracer_drift_min, ymax = CO2_tracer_drift_max, fill=as.factor(tiefe)),alpha=0.2)+
+  geom_line(aes(date,CO2_tracer_drift,linetype=as.factor(tiefe)))
 
 ######################
 #data_agg
@@ -335,7 +403,7 @@ data_agg <- data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure|DS",colnames(
   
 data_agg <- subset(data_agg, Pumpstufe != 0)
 
-save(data,data_agg,Pumpzeiten,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
+save(data,data_agg,Pumpzeiten,data_uncert,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
 
 
 ###################

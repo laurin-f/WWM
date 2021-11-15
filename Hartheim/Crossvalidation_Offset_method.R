@@ -29,7 +29,7 @@ data <- data %>%
   as.data.frame()
 data_sub <- subset(data, Position == 8 & !ymd %in% ymd("2020-07-24","2020-07-25"))
 data_PSt0 <- subset(data_sub, Pumpstufe == 0)
-
+data_PSt0 <- data_PSt0 %>% select(-preds_gam)
 
 
 data_PSt0$offset <-  data_PSt0$CO2_inj - data_PSt0$CO2_ref
@@ -47,33 +47,33 @@ data_PSt0$offset <-  data_PSt0$CO2_inj - data_PSt0$CO2_ref
 ##################
 #mit glm oder gam
 #data_PSt0$preds_cv_glm <- NA
-data_PSt0$preds_cv_gam <- NA
+#data_PSt0$preds_cv_gam <- NA
 data_PSt0$preds_cv_drift <- NA
-data_PSt0$preds_cv_no_ref <- NA
-data_PSt0$preds_cv_SWC_T <- NA
+#data_PSt0$preds_cv_no_ref <- NA
+#data_PSt0$preds_cv_SWC_T <- NA
 data_PSt0$preds_cv_SWC_T_gam <- NA
 
 
 #data_PSt0$offset_cv <- NA
 days<-unique(data_PSt0$ymd)
 
-data_PSt0$preds_SWC_T <- NA
+#data_PSt0$preds_SWC_T <- NA
 data_PSt0$preds_SWC_T_gam <- NA
 
 for(i in (1:7)*-3.5){
     fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0,tiefe==i))
-    fm_SWC_T <- glm(CO2_roll_inj ~ poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i))
+    #fm_SWC_T <- glm(CO2_roll_inj ~ poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i))
     fm_SWC_T_gam <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i))
     
     ID <- which(data_PSt0$tiefe==i & !is.na(data_PSt0$CO2_roll_ref))
     
     data_PSt0$preds_drift[ID] <- data_PSt0[ID,]$CO2_roll_ref + predict(fm_drift,newdata = data_PSt0[ID,])
     
-    data_PSt0$preds_SWC_T[ID] <- predict(fm_SWC_T,newdata = data_PSt0[ID,])
+    #data_PSt0$preds_SWC_T[ID] <- predict(fm_SWC_T,newdata = data_PSt0[ID,])
     data_PSt0$preds_SWC_T_gam[ID] <- predict(fm_SWC_T_gam,newdata = data_PSt0[ID,])
 
   }
-data_PSt0$preds_SWC_T[is.na(data_PSt0$preds_drift)] <- NA
+data_PSt0$preds_SWC_T_gam[is.na(data_PSt0$preds_drift)] <- NA
 
 method <- "LOOCV"
 #method <- "k-fold CV"
@@ -114,11 +114,11 @@ for(j in 1:ncv){
       
       #fm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
-      fm_SWC_T <- glm(CO2_roll_inj ~  poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
+      #fm_SWC_T <- glm(CO2_roll_inj ~  poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       fm_SWC_T_gam <- mgcv::gam(CO2_roll_inj ~  poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       
       #fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,3) + poly(hour,4) ,data=subset(data_PSt0,tiefe==i& ymd %in% fitdays))
-      fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
+      #fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       #fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref) + s(hour),data=subset(data_PSt0,tiefe==i & ymd %in% fitdays))
       
       ID <- which(data_PSt0$tiefe==i & !is.na(data_PSt0$CO2_roll_ref) & !data_PSt0$ymd %in% fitdays)
@@ -126,8 +126,8 @@ for(j in 1:ncv){
       #data_PSt0$preds_cv_glm[ID] <- predict(fm,newdata = data_PSt0[ID,])
 
       data_PSt0$preds_cv_drift[ID] <- data_PSt0[ID,]$CO2_roll_ref + predict(fm_drift,newdata = data_PSt0[ID,])
-      data_PSt0$preds_cv_no_ref[ID] <- predict(fm_no_ref,newdata = data_PSt0[ID,])
-      data_PSt0$preds_cv_SWC_T[ID] <- predict(fm_SWC_T,newdata = data_PSt0[ID,])
+      #data_PSt0$preds_cv_no_ref[ID] <- predict(fm_no_ref,newdata = data_PSt0[ID,])
+      #data_PSt0$preds_cv_SWC_T[ID] <- predict(fm_SWC_T,newdata = data_PSt0[ID,])
       data_PSt0$preds_cv_SWC_T_gam[ID] <- predict(fm_SWC_T_gam,newdata = data_PSt0[ID,])
       #data_PSt0$preds_cv_gam[ID] <- predict(fm_gam,newdata = data_PSt0[ID,])
       
@@ -149,7 +149,40 @@ data_agg <- data_PSt0_2 %>%
 data_agg$cv[is.na(data_agg$cv)] <- "full"
 data_agg$cv[nchar(data_agg$cv)==0] <- "full"
 
+data_PSt0_2$date_int <- as.integer(data_PSt0_2$date)
 
+
+data_PSt0_2 <- data_PSt0_2 %>% 
+  select(matches("(tiefe|date|preds_.*(gam$|drift$)|CO2_roll)")) %>% 
+  group_by(tiefe) %>% 
+  mutate_at(
+    vars(matches("preds_.*(gam$|drift$)")),list(
+      #mav=~RcppRoll::roll_mean(.,60*24,fill=NA),
+      loess=~predict(loess(. ~ date_int,span=0.5))
+      )
+    )%>% 
+  
+  ungroup() %>% 
+  as.data.frame()
+
+data_PSt0_2[paste0(grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2),value = T),"_diff")] <-  data_PSt0_2$CO2_roll_inj - data_PSt0_2[grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2))] 
+data_PSt0_2[paste0(grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2),value = T),"_noise")] <-  data_PSt0_2[grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2))] - data_PSt0_2[grep("preds_.+_loess",colnames(data_PSt0_2))]
+ggplot(data_PSt0_2)+
+  geom_line(aes(date,preds_drift,col="drift",linetype=as.factor(tiefe)))+
+  geom_line(aes(date,preds_SWC_T_gam,col="SWC",linetype=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_roll_inj,col="inj",linetype=as.factor(tiefe)))
+  #geom_line(aes(date,preds_drift_mav,col=as.factor(tiefe)))+
+  geom_line(aes(date,preds_drift_loess,col=as.factor(tiefe)))
+ggplot(subset(data_PSt0_2))+
+  geom_line(aes(date,preds_cv_drift_diff,col="cv_drift"))+
+  geom_line(aes(date,preds_cv_SWC_T_gam_diff,col="cv_SWC_T_gam"))+
+  facet_wrap(~tiefe)
+
+
+ggplot(data_PSt0_2)+
+  geom_line(aes(date,preds_SWC_T_gam,col=as.factor(tiefe)))+
+  geom_line(aes(date,preds_SWC_T_gam_mav,col=as.factor(tiefe)))+
+  geom_line(aes(date,preds_SWC_T_gam_loess,col=as.factor(tiefe)))
 #ggplot(data_agg)+geom_col(aes(func,R2,fill=as.factor(tiefe)),position = "dodge")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))
 ggplot(data_agg)+geom_col(aes(func,1-R2,fill=as.factor(tiefe)),position = "stack")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))+ggsave(paste0(plotpfad_harth,"cv_barplot.jpg"),width=7,height=5)
 
@@ -181,7 +214,7 @@ cv_plt <-
   geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"),lwd=1)+
   geom_line(aes(date,preds_cv_drift,linetype=as.factor(tiefe),col="ref adj"))+
   #geom_line(aes(date,preds_cv_no_ref,linetype=as.factor(tiefe),col="gam"))+
-  geom_line(aes(date,preds_cv_SWC_T,linetype=as.factor(tiefe),col="SWC T glm"))+
+  #geom_line(aes(date,preds_cv_SWC_T,linetype=as.factor(tiefe),col="SWC T glm"))+
   geom_line(aes(date,preds_cv_SWC_T_gam,linetype=as.factor(tiefe),col="SWC T gam"))+
   scale_linetype_manual(values = rep(1,8))+
   scale_color_manual(values = c(1,col))+
@@ -194,7 +227,7 @@ full_plt <- ggplot(data_PSt0_3)+
   geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe),col="inj"),lwd=1)+
   geom_line(aes(date,preds_drift,linetype=as.factor(tiefe),col="ref adj"))+
   #geom_line(aes(date,preds_no_ref,linetype=as.factor(tiefe),col="gam"))+
-  geom_line(aes(date,preds_SWC_T,linetype=as.factor(tiefe),col="SWC T glm"))+
+  #geom_line(aes(date,preds_SWC_T,linetype=as.factor(tiefe),col="SWC T glm"))+
   geom_line(aes(date,preds_SWC_T_gam,linetype=as.factor(tiefe),col="SWC T gam"))+
   scale_linetype_manual(values = rep(1,8))+
   scale_color_manual(values = c(1,col))+
