@@ -8,7 +8,7 @@ metapfad_harth<- paste0(metapfad,"Hartheim/")
 plotpfad_harth <- paste0(hauptpfad,"Dokumentation/Berichte/plots/hartheim/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr","directlabels")
+packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr","directlabels","hydroGOF")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -149,24 +149,24 @@ data_agg <- data_PSt0_2 %>%
 data_agg$cv[is.na(data_agg$cv)] <- "full"
 data_agg$cv[nchar(data_agg$cv)==0] <- "full"
 
-data_PSt0_2$date_int <- as.integer(data_PSt0_2$date)
-
-
-data_PSt0_2 <- data_PSt0_2 %>% 
-  select(matches("(tiefe|date|preds_.*(gam$|drift$)|CO2_roll)")) %>% 
-  group_by(tiefe) %>% 
-  mutate_at(
-    vars(matches("preds_.*(gam$|drift$)")),list(
-      #mav=~RcppRoll::roll_mean(.,60*24,fill=NA),
-      loess=~predict(loess(. ~ date_int,span=0.5))
-      )
-    )%>% 
-  
-  ungroup() %>% 
-  as.data.frame()
-
-data_PSt0_2[paste0(grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2),value = T),"_diff")] <-  data_PSt0_2$CO2_roll_inj - data_PSt0_2[grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2))] 
-data_PSt0_2[paste0(grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2),value = T),"_noise")] <-  data_PSt0_2[grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2))] - data_PSt0_2[grep("preds_.+_loess",colnames(data_PSt0_2))]
+# data_PSt0_2$date_int <- as.integer(data_PSt0_2$date)
+# 
+# 
+# data_PSt0_2 <- data_PSt0_2 %>% 
+#   select(matches("(tiefe|date|preds_.*(gam$|drift$)|CO2_roll)")) %>% 
+#   group_by(tiefe) %>% 
+#   mutate_at(
+#     vars(matches("preds_.*(gam$|drift$)")),list(
+#       #mav=~RcppRoll::roll_mean(.,60*24,fill=NA),
+#       loess=~predict(loess(. ~ date_int,span=0.5))
+#       )
+#     )%>% 
+#   
+#   ungroup() %>% 
+#   as.data.frame()
+# 
+# data_PSt0_2[paste0(grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2),value = T),"_diff")] <-  data_PSt0_2$CO2_roll_inj - data_PSt0_2[grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2))] 
+# data_PSt0_2[paste0(grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2),value = T),"_noise")] <-  data_PSt0_2[grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2))] - data_PSt0_2[grep("preds_.+_loess",colnames(data_PSt0_2))]
 ggplot(data_PSt0_2)+
   geom_line(aes(date,preds_drift,col="drift",linetype=as.factor(tiefe)))+
   geom_line(aes(date,preds_SWC_T_gam,col="SWC",linetype=as.factor(tiefe)))+
