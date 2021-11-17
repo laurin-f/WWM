@@ -327,41 +327,23 @@ data$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
 ###########################
 #tracer uncertainty
 
-prob <- c(0,0.25,0.5,0.75,1)
-uncert <- data %>% 
-  filter(Position %in% 7:8 & Pumpstufe == 0) %>% 
-  group_by(tiefe,Position) %>% 
-  summarise(
-    drift=quantile(CO2_roll_inj - preds_drift,probs = prob,na.rm=T),
-    SWC_T=quantile(CO2_roll_inj - preds_SWC_T,probs = prob,na.rm=T),
-    probs=prob
-    )
+# prob <- c(0,0.25,0.5,0.75,1)
+# uncert <- data %>% 
+#   filter(Position %in% 7:8 & Pumpstufe == 0) %>% 
+#   group_by(tiefe,Position) %>% 
+#   summarise(
+#     drift=quantile(CO2_roll_inj - preds_drift,probs = prob,na.rm=T),
+#     SWC_T=quantile(CO2_roll_inj - preds_SWC_T,probs = prob,na.rm=T),
+#     probs=prob
+#     )
 
 
-data_uncert <- data %>% 
-  filter(Position %in% 7:8) %>% 
-  group_by(tiefe) %>% 
-  mutate(
-    preds_drift_max = preds_drift + max(CO2_roll_inj[Pumpstufe==0] - preds_drift[Pumpstufe==0],na.rm=T),
-    preds_drift_q25 = preds_drift + quantile(CO2_roll_inj[Pumpstufe==0] - preds_drift[Pumpstufe==0],probs=0.25,na.rm=T),
-    preds_drift_q75 = preds_drift + quantile(CO2_roll_inj[Pumpstufe==0] - preds_drift[Pumpstufe==0],probs=0.75,na.rm=T),
-    preds_drift_min = preds_drift + min(CO2_roll_inj[Pumpstufe==0] - preds_drift[Pumpstufe==0],na.rm=T),
-    CO2_tracer_drift_min = CO2_roll_inj - preds_drift_max,
-    CO2_tracer_drift_q25 = CO2_roll_inj - preds_drift_75,
-    CO2_tracer_drift_q75 = CO2_roll_inj - preds_drift_25,
-    CO2_tracer_drift_max = CO2_roll_inj - preds_drift_min,
-    ) %>% 
-  ungroup() %>% 
-  as.data.frame()
+
 data_uncert <- data %>% 
   select(matches("(date|tiefe|preds_(SWC_T|drift)|CO2_roll|Position|Pumpstufe)")) %>% 
   filter(Position %in% 7:8) %>% 
   group_by(tiefe) %>% 
-  # mutate(across(preds_drift,preds_SWC_T),
-  #     max = max( .,na.rm=T)
-  #   )
-  mutate(across(matches("preds_drift|preds_SWC_T"),
-  #mutate_at(vars(matches("preds_drift|preds_SWC_T")),
+  mutate(across(c("preds_drift","preds_SWC_T"),
       list(
         max = ~. + max(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],na.rm=T),
         q25 = ~. + quantile(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],probs=0.25,na.rm=T),
@@ -371,20 +353,20 @@ data_uncert <- data %>%
   )
     ) %>% 
   mutate(across(matches("preds_.+(max|min|q\\d+)"),
-  #mutate_at(vars(matches("preds_drift|preds_SWC_T")),
       list(
         CO2_tracer= ~CO2_roll_inj - .
         ),
   .names="{.fn}_{.col}"
     )
-  ) 
+  ) %>% 
+  rename_with(~str_remove(.,"preds_"),matches("^CO2_tracer_preds")) %>% 
+  ungroup() %>%
+  as.data.frame()
 
-  
-colnames(data_uncert)
 ggplot(subset(data_uncert,Position==8))+
   geom_ribbon(aes(x=date, ymin=preds_drift_min, ymax = preds_drift_max, fill=as.factor(tiefe)),alpha=0.2)+
   geom_ribbon(aes(x=date, ymin=preds_drift_q25, ymax = preds_drift_q75, fill=as.factor(tiefe)),alpha=0.5)+
-  geom_line(aes(date,CO2_roll_inj,linetype=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_roll_inj,group=as.factor(tiefe)))+
   geom_line(aes(date,preds_drift,col=as.factor(tiefe)))
 
 ggplot(subset(data_uncert,Position==8))+

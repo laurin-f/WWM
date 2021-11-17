@@ -139,12 +139,25 @@ for(j in 1:ncv){
 }
 
 
-data_PSt0_2 <- subset(data_PSt0, Pumpstufe == 0 & !is.na(preds_drift)& !is.na(preds_cv_drift))
+data_PSt0_2 <- subset(data_PSt0, !is.na(preds_drift)& !is.na(preds_cv_drift))
 
 data_agg <- data_PSt0_2 %>% 
+  select(c(tiefe,CO2_roll_inj,matches("preds_.*(gam|drift)"))) %>% 
   group_by(tiefe) %>% 
-  summarise_at(vars(matches("preds_")),list(R2=~R2(.,CO2_roll_inj),rmse=~RMSE(.,CO2_roll_inj))) %>% 
-  tidyr::pivot_longer(matches("preds"),names_pattern = "preds_(cv)?_?(.+)_(R2|rmse)$",names_to = c("cv","func",".value"))
+  summarise_at(vars(matches("preds_")),list(R2=~R2(.,CO2_roll_inj),
+                                            #R2cor=~cor(.,CO2_roll_inj,use = "complete.obs")^2,
+                                            #R2gof=~hydroGOF::gof(.,CO2_roll_inj,digits=7)["R2",],
+                                            rmse=~RMSE(.,CO2_roll_inj),
+                                            nrmse = ~hydroGOF::nrmse(.,CO2_roll_inj),
+                                            #nse = ~hydroGOF::NSE(.,CO2_roll_inj)
+                                            )) %>% 
+  tidyr::pivot_longer(matches("preds"),names_pattern = "preds_(cv)?_?(.+)_(R2|n?rmse)$",names_to = c("cv","func",".value"))
+
+
+R2(test$CO2_roll_inj,test$preds_drift)
+
+
+
 
 data_agg$cv[is.na(data_agg$cv)] <- "full"
 data_agg$cv[nchar(data_agg$cv)==0] <- "full"
@@ -167,26 +180,27 @@ data_agg$cv[nchar(data_agg$cv)==0] <- "full"
 # 
 # data_PSt0_2[paste0(grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2),value = T),"_diff")] <-  data_PSt0_2$CO2_roll_inj - data_PSt0_2[grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2))] 
 # data_PSt0_2[paste0(grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2),value = T),"_noise")] <-  data_PSt0_2[grep("preds_.*(gam$|drift$)",colnames(data_PSt0_2))] - data_PSt0_2[grep("preds_.+_loess",colnames(data_PSt0_2))]
-ggplot(data_PSt0_2)+
-  geom_line(aes(date,preds_drift,col="drift",linetype=as.factor(tiefe)))+
-  geom_line(aes(date,preds_SWC_T_gam,col="SWC",linetype=as.factor(tiefe)))+
-  geom_line(aes(date,CO2_roll_inj,col="inj",linetype=as.factor(tiefe)))
-  #geom_line(aes(date,preds_drift_mav,col=as.factor(tiefe)))+
-  geom_line(aes(date,preds_drift_loess,col=as.factor(tiefe)))
-ggplot(subset(data_PSt0_2))+
-  geom_line(aes(date,preds_cv_drift_diff,col="cv_drift"))+
-  geom_line(aes(date,preds_cv_SWC_T_gam_diff,col="cv_SWC_T_gam"))+
-  facet_wrap(~tiefe)
+# ggplot(data_PSt0_2)+
+#   geom_line(aes(date,preds_drift,col="drift",linetype=as.factor(tiefe)))+
+#   geom_line(aes(date,preds_SWC_T_gam,col="SWC",linetype=as.factor(tiefe)))+
+#   geom_line(aes(date,CO2_roll_inj,col="inj",linetype=as.factor(tiefe)))
+#   #geom_line(aes(date,preds_drift_mav,col=as.factor(tiefe)))+
+#   geom_line(aes(date,preds_drift_loess,col=as.factor(tiefe)))
+# ggplot(subset(data_PSt0_2))+
+#   geom_line(aes(date,preds_cv_drift_diff,col="cv_drift"))+
+#   geom_line(aes(date,preds_cv_SWC_T_gam_diff,col="cv_SWC_T_gam"))+
+#   facet_wrap(~tiefe)
 
 
-ggplot(data_PSt0_2)+
-  geom_line(aes(date,preds_SWC_T_gam,col=as.factor(tiefe)))+
-  geom_line(aes(date,preds_SWC_T_gam_mav,col=as.factor(tiefe)))+
-  geom_line(aes(date,preds_SWC_T_gam_loess,col=as.factor(tiefe)))
+# ggplot(data_PSt0_2)+
+#   geom_line(aes(date,preds_SWC_T_gam,col=as.factor(tiefe)))+
+#   geom_line(aes(date,preds_SWC_T_gam_mav,col=as.factor(tiefe)))+
+#   geom_line(aes(date,preds_SWC_T_gam_loess,col=as.factor(tiefe)))
 #ggplot(data_agg)+geom_col(aes(func,R2,fill=as.factor(tiefe)),position = "dodge")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))
-ggplot(data_agg)+geom_col(aes(func,1-R2,fill=as.factor(tiefe)),position = "stack")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))+ggsave(paste0(plotpfad_harth,"cv_barplot.jpg"),width=7,height=5)
+ggplot(data_agg)+geom_col(aes(func,1-R2,fill=as.factor(tiefe)),position = "dodge")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))+ggsave(paste0(plotpfad_harth,"cv_barplot.jpg"),width=7,height=5)
+ggplot(data_agg)+geom_col(aes(func,rmse,fill=as.factor(tiefe)),position = "stack")+facet_wrap(~factor(cv,level=c("cv","full"),labels=c("Cross-Validation fit","full fit")))+ggsave(paste0(plotpfad_harth,"cv_barplot.jpg"),width=7,height=5)
 
-agg <- data_agg %>% group_by(func,cv) %>% summarise_at(c("R2"),list(min=min,max=max,mean=mean),na.rm=T)
+agg <- data_agg %>% group_by(func,cv) %>% summarise_at(c("R2","nrmse"),list(min=min,max=max,mean=mean),na.rm=T)
 
 agg
 agg[agg$func %in% c("drift","SWC_T_gam"),]
