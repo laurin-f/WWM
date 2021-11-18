@@ -340,15 +340,15 @@ data$inj_mol_m2_s <- set_units(inj_mol_mm2_s,"mol/m^2/s")
 
 
 data_uncert <- data %>% 
-  select(matches("(date|tiefe|preds_(SWC_T|drift)|CO2_roll|Position|Pumpstufe)")) %>% 
+  select(matches("(date|tiefe|preds_(SWC_T|drift)|CO2_roll|Position|Pumpstufe|CO2_tracer_)")) %>% 
   filter(Position %in% 7:8) %>% 
   group_by(tiefe) %>% 
   mutate(across(c("preds_drift","preds_SWC_T"),
       list(
-        max = ~. + max(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],na.rm=T),
-        q25 = ~. + quantile(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],probs=0.25,na.rm=T),
-        q75 = ~. + quantile(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],probs=0.75,na.rm=T),
-        min = ~. + min(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],na.rm=T)
+        min = ~. + max(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],na.rm=T),
+        q25 = ~. + quantile(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],probs=0.75,na.rm=T),
+        q75 = ~. + quantile(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],probs=0.25,na.rm=T),
+        max = ~. + min(CO2_roll_inj[Pumpstufe==0] - .[Pumpstufe==0],na.rm=T)
         )
   )
     ) %>% 
@@ -360,6 +360,7 @@ data_uncert <- data %>%
     )
   ) %>% 
   rename_with(~str_remove(.,"preds_"),matches("^CO2_tracer_preds")) %>% 
+  select(-matches("preds_")) %>% 
   ungroup() %>%
   as.data.frame()
 
@@ -386,7 +387,6 @@ data_agg <- data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure|DS",colnames(
 data_agg <- subset(data_agg, Pumpstufe != 0)
 
 save(data,data_agg,Pumpzeiten,data_uncert,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
-
 
 ###################
 #spielwiese

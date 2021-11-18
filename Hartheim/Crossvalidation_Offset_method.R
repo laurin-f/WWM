@@ -1,4 +1,11 @@
+####pearson r^2#############################
+#  Objective functions 
 
+#NSE ist gleich R2
+#R2 ist (pearson r)^2 aber nur für lineare regression
+#R2 ist 1 - (RMSE/sd(obs))^2 = 1- nrmse^2
+
+#
 #pfade definieren
 #detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"

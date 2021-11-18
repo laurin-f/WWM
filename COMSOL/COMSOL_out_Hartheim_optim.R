@@ -17,14 +17,14 @@ COMSOL_exepath <- "C:/Program Files/COMSOL/COMSOL52a/Multiphysics/bin/win64/"
 COMSOL_progammpath <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Programme/Fremdprogramme/COMSOL/"
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr")
+packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr","tidyr")
 
 check.packages(packages)
 
 load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
-data$CO2_tracer_drift2 <- data$CO2_tracer_drift
+#data$CO2_tracer_drift2 <- data$CO2_tracer_drift
 
 data$date_hour <- round_date(data$date,"60 mins")
 data$date_3_hours <- round_date(data$date,"3 hours")
@@ -33,7 +33,45 @@ mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 
 mod_dates_short <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe != 0 & data$date %in% data$date_3_hours]))
 mod_dates_inj1 <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe == 1.5 & data$date %in% data$date_3_hours]))
 
+ggplot(subset(data,Position==8&Pumpstufe==0))+
+  geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))+
+  geom_hline(yintercept = 0)+
+  scale_x_datetime(limits=ymd_h("2020-07-18 00", "2020-07-21 12"))
+range(subset(data,Position==8&Pumpstufe==0)$date)
+  #geom_line(aes(date,preds_drift,group=as.factor(tiefe)))
+test <- data %>%
+  filter(Position == 8&Pumpstufe==0&tiefe!=0) %>% 
+  select(date,tiefe,CO2_tracer_drift) %>% 
+  mutate(tiefe_pos=-tiefe) %>%
+  pivot_wider(date,values_from=CO2_tracer_drift,names_from=tiefe_pos,names_prefix = "tracer_")
 
+cor_mat <- cor(test[,paste0("tracer_",1:7*3.5)],use="complete")
+corrplot::corrplot(cor_mat,method="number")
+
+
+data_uncert <- data_uncert %>% 
+  mutate(
+    CO2_tracer_drift_mingradient = case_when(
+    tiefe >= -7 ~ CO2_tracer_drift_max,
+    tiefe == -10.5 ~ CO2_tracer_drift_q75,
+    tiefe == -14 ~ CO2_tracer_drift,
+    tiefe == -17.5 ~ CO2_tracer_drift_q25,
+    tiefe <= -21 ~ CO2_tracer_drift_min
+  ),
+    CO2_tracer_drift_maxgradient = case_when(
+    tiefe >= -7 ~ CO2_tracer_drift_min,
+    tiefe == -10.5 ~ CO2_tracer_drift_q25,
+    tiefe == -14 ~ CO2_tracer_drift,
+    tiefe == -17.5 ~ CO2_tracer_drift_q75,
+    tiefe <= -21 ~ CO2_tracer_drift_max
+  )
+  )
+
+ggplot(subset(data_uncert,Pumpstufe!=0 & tiefe %in% (1:7*-3.5)))+
+  geom_line(aes(date,CO2_tracer_drift,group=tiefe,col="tracer"))+
+  geom_line(aes(date,CO2_tracer_drift_mingradient,group=tiefe,col="mingradient"))+
+  geom_line(aes(date,CO2_tracer_drift_maxgradient,group=tiefe,col="maxgradient"))#+
+  facet_wrap(~tiefe,scales="free")
 # data_min_inj <- data %>% 
 #   filter(Position == 8 & as.numeric(inj_mol_m2_s) > 0) %>% 
 #   mutate(inj_mol_m2_s = min(inj_mol_m2_s, na.rm=T), CO2_tracer_min_inj = CO2_tracer_drift)

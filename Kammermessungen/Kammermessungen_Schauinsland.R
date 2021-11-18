@@ -23,4 +23,7 @@ flux_schaui <- chamber_flux(1:2,mess_dir = "Schauinsland",aggregate = F,
                             t_max=4,
                             t_min=2,adj_openings=T,return_data = F)
 
+
+summary(glm(CO2~zeit,data=data))
+
 ggplot(flux_schaui)+geom_point(aes(date,CO2_ppm_per_min,col=kammer))
