@@ -22,7 +22,7 @@ load(paste0(samplerpfad,"Hartheim_CO2.RData"))
 #######################
 #einheiten anpassen für COMSOl
 #Tracersignal in COMSOL Einheit umrechnen
-offset_method <- "glm"
+offset_method <- "drift"
 ######################
 
 data$CO2_mol_per_m3 <- ppm_to_mol(data[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data$PressureActual_hPa/10,T_C = data$T_soil)
@@ -32,8 +32,8 @@ data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
 #data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- NA
 
 data$date_hour <- round_date(data$date,"hours")
-#mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
-mod_dates <- sort(unique(data$date[data$Position == 8 & data$Pumpstufe != 0 ]))
+mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
+#mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 ]))
 
 
 
@@ -83,6 +83,8 @@ colnames(CO2_sweep) <- colnames_sweep
 #ins long format
 sweep_long <- tidyr::pivot_longer(CO2_sweep,cols=-(1:2),names_patter= paste0(paste(pars,collapse = "=(.*), "),"=(.*)"),values_to="CO2_mol_per_m3",names_to=pars)
 
+range(sweep_long$injection_rate)
+range(data$inj_mol_m2_s[as.numeric(data$inj_mol_m2_s) > 0],na.rm = T)
 #inj_rates_2 <- unique(sweep_long2$injection_rate) %>% as.numeric() %>% round(3)
 #CO2_sweep <- CO2_sweep[,grep(paste(inj_rates_2,collapse = "|"),colnames(CO2_sweep))]
 #tiefe umrechnen
@@ -145,12 +147,50 @@ CO2_sweep <- tidyr::pivot_wider(df_long,names_from = matches("injection|DS"),nam
 #modell mit obs vergleichen
 
 ########################################################
+offset_methods <- c("SWC_T",
+                    # "SWC_T_min",
+                    # "SWC_T_mingradient",
+                    # "SWC_T_maxgradient",
+                    # "SWC_T_max",
+                    "drift_min",
+                    "drift_mingradient",
+                    "drift_maxgradient",
+                    "drift_max",
+                    "drift"
+                    )
+# 
+# offset_method <- "SWC_T"
+# offset_method <- "drift_min"
+# offset_method <- "drift_mingradient"
+# offset_method <- "drift_maxgradient"
+# offset_method <- "drift_max"
+# offset_method <- "drift"
+DS_long_list <- vector("list",length(offset_methods))
+names(DS_long_list) <- offset_methods
+F_df_list <- DS_long_list
 
-n_best <- 10
+######################
+
+minmax_cols <- grep("CO2_tracer_drift_.*(min|max)",colnames(data_uncert),value = T)
+data[,minmax_cols] <- NA
+data[data$date %in% data_uncert$date,minmax_cols] <- data_uncert[,minmax_cols]
+
+for(i in seq_along(offset_methods)){
+  offset_method <- offset_methods[i]
+  print(offset_method)
+
+data$CO2_mol_per_m3 <- ppm_to_mol(data[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data$PressureActual_hPa/10,T_C = data$T_soil)
+data$CO2_mol_per_m3[data$tiefe == 0]<- 0
+#data$CO2_mol_per_m3[data$tiefe == 0]<- NA
+data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
+
+
+n_best <- 1
 
 #Dataframe in den Flux und DS Werte reinkommen
 F_df <- data.frame(date=mod_dates,Fz=NA)
 F_df[,paste0("DS_",rep(c("","min_","max_","sorted_"),each=n_DS),1:n_DS)]<- NA
+
 
 ######################################
 #Schleife in der obs mit mod für unterschiedliche Zeiten verglichen werden
@@ -260,17 +300,17 @@ for(k in seq_along(mod_dates)){
 #speichern
 #save(F_df,file=paste0(comsolpfad,"F_df_glm_3DS_pos8_ext.RData"))
 
-load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8.RData"))
-F_df_pos8 <- F_df
-load(file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))
-F_df<-rbind(F_df,F_df_pos8)
-colnames(F_df)
-colnames(F_df_pos8)
-F_df_pos8#######
+# load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8.RData"))
+# F_df_pos8 <- F_df
+# load(file=paste0(comsolpfad,"F_df_gam_3DS_2.RData"))
+# F_df<-rbind(F_df,F_df_pos8)
+# colnames(F_df)
+# colnames(F_df_pos8)
+# F_df_pos8#######
 #DS_long
 
 #Zeitraum bis steady state abschneiden 
-for(i in 1:nrow(Pumpzeiten)){
+ for(i in 1:nrow(Pumpzeiten)){
   F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+12*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
 }
 #moving average
@@ -279,15 +319,39 @@ F_df$Fz_roll <- zoo::rollapply(F_df$Fz,width=120,mean,fill=NA)
 
 DS_long <-tidyr::pivot_longer(F_df,starts_with("DS"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 
+
+DS_long_list[[offset_method]] <- DS_long 
+F_df_list[[offset_method]] <- F_df 
+}
+#F_df_drift <- F_df
+#DS_long_drift <- DS_long
+#F_df_drift_min <- F_df
+#DS_long_drift_min <- DS_long
+#F_df_drift_mingradient <- F_df
+#DS_long_drift_mingradient <- DS_long
+#F_df_drift_maxgradient <- F_df
+#DS_long_drift_maxgradient <- DS_long
+#F_df_drift_max <- F_df
+#DS_long_drift_max <- DS_long
+#F_df_SWC_T <- F_df
+#DS_long_SWC_T <- DS_long
+
+minmax_vec <- c("min","max","mingradient","maxgradient")
+DS_long_list[["drift"]][,paste0("DS_",minmax_vec)] <-  DS_long_list[[paste0("drift",minmax_vec)]]$DS
+DS_long_drift$DS_min <- DS_long_drift_min$DS
+DS_long_drift$DS_max <- DS_long_drift_max$DS
+DS_long_drift$DS_maxgradient <- DS_long_drift_maxgradient$DS
+DS_long_drift$DS_mingradient <- DS_long_drift_mingradient$DS
 ##################################
 #plot
 
 #F_plot
 ggplot()+
   #geom_point(data=subset(F_df),aes(date,Fz))+
-  geom_line(data=subset(F_df),aes(date,Fz,col=""),alpha=0.3)+
-  geom_line(data=subset(F_df),aes(date,Fz_roll,col="moving avg"))+
-  scale_color_manual("gradient method",values=1:2)+
+  geom_line(data=subset(F_df_drift),aes(date,Fz,col="drift"),alpha=1)+
+  geom_line(data=subset(F_df_SWC_T),aes(date,Fz,col="SWC_T"),alpha=1)+
+  #geom_line(data=subset(F_df),aes(date,Fz_roll,col="moving avg"))+
+  #scale_color_manual("gradient method",values=1:2)+
   #xlim(c(min(F_df$date[-1]),max(F_df$date[])+3600*5))+
   #xlim(ymd_h(c("2020.07.04 8","2020.07.14 19")))+
   #xlim(ymd_h(c("2020.06.07 0","2020.06.09 19")))+
@@ -296,11 +360,17 @@ ggplot()+
 #F_df_gam <- F_df
 
 #DS_plot
-ggplot(DS_long)+
+ggplot(DS_long_drift)+
+  geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
+
+#  geom_ribbon(aes(x=date,ymin=DS_mingradient,ymax=DS_maxgradient,col=id),alpha=0.1)+
+  geom_line(aes(date,DS,col=id))
+  
+ggplot(DS_long_SWC_T)+
   geom_ribbon(aes(x=date,ymin=DS_min,ymax=DS_max,fill=id),alpha=0.2)+
   geom_line(aes(date,DS,col=id))+
-  geom_line(aes(date,DS_sorted,col=id))+
-  ggsave(paste0(plotpfad,"DS_zeit_gam_3DS_pos8.png"),width=8,height = 4)
+  geom_line(aes(date,DS_sorted,col=id))#+
+  #ggsave(paste0(plotpfad,"DS_zeit_gam_3DS_pos8.png"),width=8,height = 4)
 
 #mal anschauen
 paste(names(best_DS),best_DS)

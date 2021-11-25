@@ -49,23 +49,7 @@ cor_mat <- cor(test[,paste0("tracer_",1:7*3.5)],use="complete")
 corrplot::corrplot(cor_mat,method="number")
 
 
-data_uncert <- data_uncert %>% 
-  mutate(
-    CO2_tracer_drift_mingradient = case_when(
-    tiefe >= -7 ~ CO2_tracer_drift_max,
-    tiefe == -10.5 ~ CO2_tracer_drift_q75,
-    tiefe == -14 ~ CO2_tracer_drift,
-    tiefe == -17.5 ~ CO2_tracer_drift_q25,
-    tiefe <= -21 ~ CO2_tracer_drift_min
-  ),
-    CO2_tracer_drift_maxgradient = case_when(
-    tiefe >= -7 ~ CO2_tracer_drift_min,
-    tiefe == -10.5 ~ CO2_tracer_drift_q25,
-    tiefe == -14 ~ CO2_tracer_drift,
-    tiefe == -17.5 ~ CO2_tracer_drift_q75,
-    tiefe <= -21 ~ CO2_tracer_drift_max
-  )
-  )
+
 
 ggplot(subset(data_uncert,Pumpstufe!=0 & tiefe %in% (1:7*-3.5)))+
   geom_line(aes(date,CO2_tracer_drift,group=tiefe,col="tracer"))+

@@ -95,33 +95,33 @@ unique(sweep_long$injection_rate)
 extend_sweep <- F
 if(extend_sweep==T){
   df <- as.data.frame(sapply(sweep_long,as.numeric))
-df_wide <- df
-for(i in (unique(df$DS_1))){
-  for(j in (unique(df$DS_2))){
-    #for(k in (unique(df$DS_3))){
+  df_wide <- df
+  for(i in (unique(df$DS_1))){
+    for(j in (unique(df$DS_2))){
+      #for(k in (unique(df$DS_3))){
       for(l in (unique(df$z))){
         for(m in (unique(df$injection_rate))){
-      #dfi <- subset(df, DS_2 == j & DS_3 == k & z == l & injection_rate == m)
-      #dfj <- subset(df, DS_1 == i & DS_3 == k & z == l & injection_rate == m)
-      dfk <- subset(df, DS_1 == i & DS_2 == j & z == l & injection_rate == m)
-      
-      #approxi <- approx(dfi$DS_1,dfi$CO2_mol_per_m3,seq(min(dfi$DS_1),max(dfi$DS_1),len=40))
-      #approxj <- approx(dfj$DS_2,dfj$CO2_mol_per_m3,seq(min(dfj$DS_2),max(dfj$DS_2),len=40))
-      approxk <- approx(dfk$DS_3,dfk$CO2_mol_per_m3,seq(min(dfk$DS_3),max(dfk$DS_3),len=40))
-      
-      #df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_1=",approxi$x)] <- approxi$y
-      #df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_2=",approxj$x)] <- approxj$y
-      df_wide[df_wide$DS_1 == i & df_wide$DS_2 == j & df_wide$DS_3 == df_wide$DS_3[1] & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_3=",approxk$x)] <- approxk$y
+          #dfi <- subset(df, DS_2 == j & DS_3 == k & z == l & injection_rate == m)
+          #dfj <- subset(df, DS_1 == i & DS_3 == k & z == l & injection_rate == m)
+          dfk <- subset(df, DS_1 == i & DS_2 == j & z == l & injection_rate == m)
+          
+          #approxi <- approx(dfi$DS_1,dfi$CO2_mol_per_m3,seq(min(dfi$DS_1),max(dfi$DS_1),len=40))
+          #approxj <- approx(dfj$DS_2,dfj$CO2_mol_per_m3,seq(min(dfj$DS_2),max(dfj$DS_2),len=40))
+          approxk <- approx(dfk$DS_3,dfk$CO2_mol_per_m3,seq(min(dfk$DS_3),max(dfk$DS_3),len=40))
+          
+          #df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_1=",approxi$x)] <- approxi$y
+          #df_wide[df$DS_1 == i & df$DS_2 == j & df$DS_3 == k & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_2=",approxj$x)] <- approxj$y
+          df_wide[df_wide$DS_1 == i & df_wide$DS_2 == j & df_wide$DS_3 == df_wide$DS_3[1] & df_wide$injection_rate==m & df_wide$z == l ,paste0("DS_3=",approxk$x)] <- approxk$y
         }
       }
       #print(paste0("k=",k))
-    #}
-    #print(paste0("j=",j))
+      #}
+      #print(paste0("j=",j))
+    }
+    print(paste0("i=",i))
   }
-  print(paste0("i=",i))
-}
-
-save(df_wide,file=paste0(comsolpfad,"df_wide.RData"))
+  
+  save(df_wide,file=paste0(comsolpfad,"df_wide.RData"))
 }
 
 
@@ -185,14 +185,14 @@ plot<-F
 #Schleife in der obs mit mod für unterschiedliche Zeiten verglichen werden
 k <- 1
 for(k in seq_along(mod_dates)){
-
+  
   #fortschritt angeben
   if(round(k / length(mod_dates)*100,0) %% 10 == 0){
     print(paste0(k / length(mod_dates)*100,"% ",mod_dates[k]))
-    }
+  }
   #k-tes datum
   kammer_date <- mod_dates[k]
-
+  
   #######################
   #gemesssenes CO2 profil am k-ten datum
   #CO2_obs <- subset(data_agg_mod,date_hour== kammer_date)
@@ -208,93 +208,93 @@ for(k in seq_along(mod_dates)){
   ###########
   #mod und obs vergleichen
   if(any(CO2_obs$CO2_mol_per_m3>0,na.rm = T)){
-  #Injecitonsrate bei Kammermessungen
-  injection_rate_obs <-round(unique(CO2_obs$inj_mol_m2_s),6)
-  
-  sweep_inj_rates <- as.numeric(unique(sweep_long$injection_rate))
-  #die modellierte injection rate die am nächsten an der k-ten liegt
-  injection_rate_i <- sweep_inj_rates[which.min(abs(injection_rate_obs - sweep_inj_rates))]
-  #subset des Sweeps mit nur der richtigen injektionsrate
-  sweep_sub_id <- grep(paste0("injection_rate=",injection_rate_i),colnames(CO2_sweep))
-  sweep_sub <- CO2_sweep[,sweep_sub_id]
-  
-  #rmse jedes Sweeps berechnen
-  rmse <- apply(sweep_sub,2,RMSE,CO2_obs$CO2_mol_per_m3)#,normalize="mean_each")
-  #rmse <- apply(sweep_sub,2,function(x) RMSE(x[1:4],CO2_obs$CO2_mol_per_m3[1:4]))
-  
-  #zu den RMSE werten die jeweiligen DS sets
-  DS_mat_ch <- str_extract_all(names(rmse),"(?<=DS_\\d=)\\d(\\.\\d+)?(E|e)-\\d+",simplify = T)
-
-  DS_mat <- as.data.frame(apply(DS_mat_ch,2,as.numeric))
-  
-  colnames(DS_mat) <- str_subset(pars,"DS")
-  #dataframe mit RMSE und DS Sets
-  DS_wide <- cbind(rmse,DS_mat)
-  #nur die Paramtersets mit aufsteigendem DS
-  #4 ds
-  #DS_sorted <- DS_wide[which(DS_wide[,2] >= DS_wide[,3] & DS_wide[,3] >= DS_wide[,4] &DS_wide[,4] >= DS_wide[,5] ),]
-  #3Ds
-  DS_sorted <- DS_wide[which(DS_wide[,2] >= DS_wide[,3] & DS_wide[,3] >= DS_wide[,4]),]
-  #DS im long format
-  DS_long <- reshape2::melt(DS_wide, id = "rmse",variable="Schicht",value.name="DS")
-  
-  ##########################################
-  #dottyplot
-  #ggplot(subset(DS_long,rmse < sort(unique(rmse))[200]))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
-  #ggplot(subset(DS_long))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
-  #########################################
-  #Bester RMSE
-  ########################################
-  best.fit.id <- which.min(rmse)
-  good.fit.id <- which(rmse <= sort(rmse)[n_best])
-  best.fit.id2 <- which.min(DS_sorted$rmse)
-  if(plot==T){
-    plot(CO2_obs$tiefe~CO2_obs$CO2_mol_per_m3)
-    lines(CO2_obs$tiefe~sweep_sub[,best.fit.id],col=2)
-  }
-  #Bester Parametersatz
-  best_DS <- as.numeric(DS_mat[best.fit.id,])
-  names(best_DS) <- colnames(DS_mat)
-  best_DS_sorted <- as.numeric(DS_sorted[best.fit.id2,-1])
-  names(best_DS_sorted) <- paste0("DS_sorted_",1:length(best_DS_sorted))
-  
-  ##################
-  #range der DS-Werte die fast genauso gut waren
-  good_DS_chr <- DS_mat[good.fit.id,]
-  #min
-  min_DS <- apply(good_DS_chr,2,function(x) min(as.numeric(x)))
-  names(min_DS) <- paste0("DS_min_",1:length(min_DS))
-  #max
-  max_DS <- apply(good_DS_chr,2,function(x) max(as.numeric(x)))
-  names(max_DS) <- paste0("DS_max_",1:length(max_DS))
-  
-  #alle in einen Vector
-  DS_vec <- c(best_DS,max_DS,min_DS,best_DS_sorted)
-  #und in Data.fram
-  F_df[F_df$date == mod_dates[k],names(DS_vec)] <- DS_vec
-  
-  ################
-  #flux
-  #Co2-gradient zwischen 0 und 7 cm
-  slope_0_7cm <- glm(CO2_ref ~ tiefe, data= subset(CO2_obs,tiefe >= -7))#ppm/cm
-  slope_10_17cm <- glm(CO2_ref ~ tiefe, data= subset(CO2_obs,tiefe < -7 & tiefe >-18))#ppm/cm
-  dC_dz <- -slope_0_7cm$coefficients[2] #ppm/cm
-  dC_dz_10_17 <- -slope_10_17cm$coefficients[2] #ppm/cm
-  #einheit in mol / m3 /cm
-  dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units",T_C = CO2_obs$T_soil[CO2_obs$tiefe == -3.5],p_kPa = unique(CO2_obs$PressureActual_hPa)/10)#mol/m^3/cm
-  dC_dz_mol_10_17 <- ppm_to_mol(dC_dz_10_17,"ppm",out_class = "units",T_C = CO2_obs$T_soil[CO2_obs$tiefe == -14],p_kPa = unique(CO2_obs$PressureActual_hPa)/10)#mol/m^3/cm
-  
-  #Ficks Law
-  Fz_mumol_per_s_m2 <- best_DS[1]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
-  
-  Fz_mumol_per_s_m2_10_17 <- best_DS[2]  * dC_dz_mol_10_17 * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
-  
-  names(Fz_mumol_per_s_m2) <- "Fz"
-  names(Fz_mumol_per_s_m2_10_17) <- "Fz_10_17"
-  #in data frame
-  F_df$Fz[F_df$date == mod_dates[k]] <- Fz_mumol_per_s_m2
-  F_df$Fz_10_17[F_df$date == mod_dates[k]] <- Fz_mumol_per_s_m2_10_17
-}#ende if
+    #Injecitonsrate bei Kammermessungen
+    injection_rate_obs <-round(unique(CO2_obs$inj_mol_m2_s),6)
+    
+    sweep_inj_rates <- as.numeric(unique(sweep_long$injection_rate))
+    #die modellierte injection rate die am nächsten an der k-ten liegt
+    injection_rate_i <- sweep_inj_rates[which.min(abs(injection_rate_obs - sweep_inj_rates))]
+    #subset des Sweeps mit nur der richtigen injektionsrate
+    sweep_sub_id <- grep(paste0("injection_rate=",injection_rate_i),colnames(CO2_sweep))
+    sweep_sub <- CO2_sweep[,sweep_sub_id]
+    
+    #rmse jedes Sweeps berechnen
+    rmse <- apply(sweep_sub,2,RMSE,CO2_obs$CO2_mol_per_m3)#,normalize="mean_each")
+    #rmse <- apply(sweep_sub,2,function(x) RMSE(x[1:4],CO2_obs$CO2_mol_per_m3[1:4]))
+    
+    #zu den RMSE werten die jeweiligen DS sets
+    DS_mat_ch <- str_extract_all(names(rmse),"(?<=DS_\\d=)\\d(\\.\\d+)?(E|e)-\\d+",simplify = T)
+    
+    DS_mat <- as.data.frame(apply(DS_mat_ch,2,as.numeric))
+    
+    colnames(DS_mat) <- str_subset(pars,"DS")
+    #dataframe mit RMSE und DS Sets
+    DS_wide <- cbind(rmse,DS_mat)
+    #nur die Paramtersets mit aufsteigendem DS
+    #4 ds
+    #DS_sorted <- DS_wide[which(DS_wide[,2] >= DS_wide[,3] & DS_wide[,3] >= DS_wide[,4] &DS_wide[,4] >= DS_wide[,5] ),]
+    #3Ds
+    DS_sorted <- DS_wide[which(DS_wide[,2] >= DS_wide[,3] & DS_wide[,3] >= DS_wide[,4]),]
+    #DS im long format
+    DS_long <- reshape2::melt(DS_wide, id = "rmse",variable="Schicht",value.name="DS")
+    
+    ##########################################
+    #dottyplot
+    #ggplot(subset(DS_long,rmse < sort(unique(rmse))[200]))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
+    #ggplot(subset(DS_long))+geom_point(aes(DS,rmse))+facet_wrap(~Schicht,scales="free")
+    #########################################
+    #Bester RMSE
+    ########################################
+    best.fit.id <- which.min(rmse)
+    good.fit.id <- which(rmse <= sort(rmse)[n_best])
+    best.fit.id2 <- which.min(DS_sorted$rmse)
+    if(plot==T){
+      plot(CO2_obs$tiefe~CO2_obs$CO2_mol_per_m3)
+      lines(CO2_obs$tiefe~sweep_sub[,best.fit.id],col=2)
+    }
+    #Bester Parametersatz
+    best_DS <- as.numeric(DS_mat[best.fit.id,])
+    names(best_DS) <- colnames(DS_mat)
+    best_DS_sorted <- as.numeric(DS_sorted[best.fit.id2,-1])
+    names(best_DS_sorted) <- paste0("DS_sorted_",1:length(best_DS_sorted))
+    
+    ##################
+    #range der DS-Werte die fast genauso gut waren
+    good_DS_chr <- DS_mat[good.fit.id,]
+    #min
+    min_DS <- apply(good_DS_chr,2,function(x) min(as.numeric(x)))
+    names(min_DS) <- paste0("DS_min_",1:length(min_DS))
+    #max
+    max_DS <- apply(good_DS_chr,2,function(x) max(as.numeric(x)))
+    names(max_DS) <- paste0("DS_max_",1:length(max_DS))
+    
+    #alle in einen Vector
+    DS_vec <- c(best_DS,max_DS,min_DS,best_DS_sorted)
+    #und in Data.fram
+    F_df[F_df$date == mod_dates[k],names(DS_vec)] <- DS_vec
+    
+    ################
+    #flux
+    #Co2-gradient zwischen 0 und 7 cm
+    slope_0_7cm <- glm(CO2_ref ~ tiefe, data= subset(CO2_obs,tiefe >= -7))#ppm/cm
+    slope_10_17cm <- glm(CO2_ref ~ tiefe, data= subset(CO2_obs,tiefe < -7 & tiefe >-18))#ppm/cm
+    dC_dz <- -slope_0_7cm$coefficients[2] #ppm/cm
+    dC_dz_10_17 <- -slope_10_17cm$coefficients[2] #ppm/cm
+    #einheit in mol / m3 /cm
+    dC_dz_mol <- ppm_to_mol(dC_dz,"ppm",out_class = "units",T_C = CO2_obs$T_soil[CO2_obs$tiefe == -3.5],p_kPa = unique(CO2_obs$PressureActual_hPa)/10)#mol/m^3/cm
+    dC_dz_mol_10_17 <- ppm_to_mol(dC_dz_10_17,"ppm",out_class = "units",T_C = CO2_obs$T_soil[CO2_obs$tiefe == -14],p_kPa = unique(CO2_obs$PressureActual_hPa)/10)#mol/m^3/cm
+    
+    #Ficks Law
+    Fz_mumol_per_s_m2 <- best_DS[1]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
+    
+    Fz_mumol_per_s_m2_10_17 <- best_DS[2]  * dC_dz_mol_10_17 * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
+    
+    names(Fz_mumol_per_s_m2) <- "Fz"
+    names(Fz_mumol_per_s_m2_10_17) <- "Fz_10_17"
+    #in data frame
+    F_df$Fz[F_df$date == mod_dates[k]] <- Fz_mumol_per_s_m2
+    F_df$Fz_10_17[F_df$date == mod_dates[k]] <- Fz_mumol_per_s_m2_10_17
+  }#ende if
 }#ende loop
 #########################################
 #ende for loop
