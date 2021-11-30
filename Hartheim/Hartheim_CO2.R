@@ -166,13 +166,6 @@ data$DSD0_PTF <- data$c_PTF * data$eps^data$d_PTF
 data$DSD0_PTF_min <- data$c_PTF * data$eps_min^data$d_PTF
 data$DSD0_PTF_max <- data$c_PTF * data$eps_max^data$d_PTF
 
-#Laemmel et al 2017 ds models
-# for(i in c("","_min","_max")){
-# data[,paste0("DSD0_Buckingham",i)] <- data[,paste0("eps",i)]^2
-# data[,paste0("DSD0_Millington",i)] <- data[,paste0("eps",i)]^2/(data[,paste0("PV",i)]/100)^(2/3)
-# eps_phi <- data[,paste0("eps",i)]^2/(data[,paste0("PV",i)]/100)
-# data[,paste0("DSD0_Deepoga",i)] <- 0.1*(2*eps_phi^2+0.04*eps_phi)
-# }
 
 #F = -DS * dC/Dz
 data_wide <- tidyr::pivot_wider(data,id_cols=date,names_from = tiefe,values_from = grep("CO2|DSD0_PTF|T_soil|PressureActual",colnames(data)))
@@ -256,7 +249,7 @@ for(i in (1:7)*-3.5){
   #nicht verwendet
   #fm <- glm(CO2_roll_inj ~ CO2_roll_ref + hour + CO2_roll_ref * hour,data=subset(data_PSt0,tiefe==i))
   #fm_glm <- glm(CO2_roll_inj ~ CO2_roll_ref,data=subset(data_PSt0[[j]],tiefe==i))
-  fm_drift <- glm(offset ~ poly(date_int,1),data=subset(data_PSt0[[j]],tiefe==i))
+  fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0[[j]],tiefe==i))
   #fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,2) + poly(hour,4) ,data=subset(data_PSt0[[j]],tiefe==i))
   #nicht verwendet
   fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
@@ -398,13 +391,13 @@ data_uncert <- data_uncert %>%
 
 #data_agg <- aggregate(data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure|DS",colnames(data))],list(hour=round_date(data$date,"hours"),tiefe=data$tiefe),mean,na.rm=T)
 #data_agg$date <- with_tz(data_agg$date,"UTC")
-data_agg <- data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure|DS",colnames(data))] %>%
-  group_by(hour=round_date(data$date,"hours"),tiefe=data$tiefe) %>%
-  summarise_all(mean,na.rm=T)
+#data_agg <- data[grep("date|CO2|Fz|Pumpstufe|offset|Ta_2m|Pressure|DS",colnames(data))] %>%
+#  group_by(hour=round_date(data$date,"hours"),tiefe=data$tiefe) %>%
+#  summarise_all(mean,na.rm=T)
   
-data_agg <- subset(data_agg, Pumpstufe != 0)
+#data_agg <- subset(data_agg, Pumpstufe != 0)
 
-save(data,data_agg,Pumpzeiten,data_uncert,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
+save(data,Pumpzeiten,data_uncert,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
 
 ###################
 #spielwiese
