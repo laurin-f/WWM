@@ -218,7 +218,9 @@ data$offset <- NA
 data$offset[which(data$Pumpstufe == 0)] <- data$CO2_roll_inj[which(data$Pumpstufe == 0)] - data$CO2_roll_ref[which(data$Pumpstufe == 0)]
 
 #injektion 1 weg
-data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
+#data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
+
+#position 7 tracer abfall weg
 data$Position[data$date > Pumpzeiten$ende[13] & data$date < Pumpzeiten$start[14]+3600*1.5] <- NA
 
 #position 8 tracer abfall weg
@@ -233,9 +235,12 @@ data_PSt0 <- lapply(na.omit(unique(data$Position)),function(x) subset(data, Pump
 j_78 <- which(sapply(data_PSt0, function(x) unique(x$Position %in% 7:8)))
 ##################
 #mit glm oder gam
+
 # data$preds_glm <- NA
  data$preds_gam <- NA
  data$preds_SWC_T <- NA
+ data$preds_SWC_WS <- NA
+ data$preds_SWC <- NA
  #data$preds_SWC_T_Wind <- NA
 data$offset_drift <- NA
 data$preds_drift <- NA
@@ -256,6 +261,8 @@ for(i in (1:7)*-3.5){
 
   #fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref)+ s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
   fm_SWC_T <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
+  fm_SWC_WS <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(Wind,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
+  fm_SWC <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) ,data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
   #fm_SWC_T_Wind <- mgcv::gam(CO2_roll_inj ~ poly(VWC_roll,2) + poly(T_soil,2) + poly(Wind,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
   
   pos <- na.omit(unique(data$Position))[j]
@@ -270,6 +277,8 @@ for(i in (1:7)*-3.5){
   data$preds_no_ref[ID] <- predict(fm_no_ref,newdata = data[ID,])
   #data$preds_gam[ID] <- predict(fm_gam,newdata = data[ID,])
   data$preds_SWC_T[ID] <- predict(fm_SWC_T,newdata = data[ID,])
+  data$preds_SWC_WS[ID] <- predict(fm_SWC_WS,newdata = data[ID,])
+  data$preds_SWC[ID] <- predict(fm_SWC,newdata = data[ID,])
   #data$preds_SWC_T_Wind[ID] <- predict(fm_SWC_T_Wind,newdata = data[ID,])
   
   }
@@ -280,6 +289,8 @@ for(i in (1:7)*-3.5){
 #data$CO2_tracer_glm <- data$CO2_inj - (data$preds_glm)
 data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds_gam)
 data$CO2_tracer_SWC_T <- data$CO2_roll_inj - (data$preds_SWC_T)
+data$CO2_tracer_SWC_WS <- data$CO2_roll_inj - (data$preds_SWC_WS)
+data$CO2_tracer_SWC <- data$CO2_roll_inj - (data$preds_SWC)
 data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
 data$CO2_tracer_drift <- data$CO2_roll_inj - (data$preds_drift)
 #data$CO2_tracer_drift_amp <- data$CO2_roll_inj - (data$preds_drift_amp)

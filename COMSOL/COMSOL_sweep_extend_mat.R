@@ -171,7 +171,13 @@ for(i in c("injection_rate",paste0("DS_",1:3))){
 }
 extend_wide <- tidyr::pivot_wider(sweep_extend,names_from = matches("injection|DS"),names_sep=", ",values_from=CO2_mol_per_m3) %>% as.data.frame()
 rm(sweep_extend)
-save(extend_long,extend_wide,sweep_long,sweep_wide_list,file=paste0(comsolpfad,"sweep_extend.RData"))
+
+###############
+#save
+##############
+save(extend_long,file=paste0(comsolpfad,"extend_long.RData"))
+save(extend_wide,file=paste0(comsolpfad,"extend_wide.RData"))
+save(sweep_wide_list,file=paste0(comsolpfad,"sweep_wide_list.RData"))
 
 
 # sweep_inj_ext <- sweep_extend %>% 

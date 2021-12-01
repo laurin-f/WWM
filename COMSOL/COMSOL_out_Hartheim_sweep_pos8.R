@@ -20,12 +20,17 @@ check.packages(packages)
 #data_agg
 load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 load(paste0(samplerpfad,"Hartheim_CO2.RData"))
-load(paste0(comsolpfad,"sweep_extend.RData"))
 load(paste0(datapfad_harth,"PPC_DS.RData"))
 load(paste0(comsolpfad,"plotdata_Methodenpaper_roll.RData"))
+
+load(paste0(comsolpfad,"extend_wide.RData"))
 sweep_wide <- extend_wide
-# sweep_long <- sweep_extend
-# rm(sweep_extend)
+rm(extend_wide)
+
+#load(paste0(comsolpfad,"sweep_wide_list.RData"))
+#sweep_wide <- sweep_wide_list[[2]]
+
+
 #######################
 #einheiten anpassen für COMSOl
 #Tracersignal in COMSOL Einheit umrechnen
@@ -37,6 +42,9 @@ data$CO2_mol_per_m3[data$tiefe == 0]<- 0
 #data$CO2_mol_per_m3[data$tiefe == 0]<- NA
 data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
 #data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- NA
+
+#injektion 1 weg
+data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
 
 data$date_hour <- round_date(data$date,"hours")
 mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
@@ -74,11 +82,12 @@ offset_methods <- c(#"SWC_T",
                     # "SWC_T_mingradient",
                     # "SWC_T_maxgradient",
                     # "SWC_T_max",
-                    "drift_min",
+                    #"drift_min",
                     #"drift_mingradient",
                     #"drift_maxgradient",
-                    "drift_max",
-                    "drift"
+                    #"drift_max",
+                    "drift",
+                    "SWC"
                     )
 # 
 # offset_method <- "SWC_T"
@@ -266,7 +275,8 @@ F_df_list[[offset_method]] <- F_df
 #DS_long_drift_max <- DS_long
 #F_df_SWC_T <- F_df
 #DS_long_SWC_T <- DS_long
-
+##################################################################
+####################################################
 minmax_vec <- c("min","max")
 for(i in minmax_vec){
 DS_long_list[["drift"]][,paste0("DSD0_",i)] <-  DS_long_list[[paste0("drift_",i)]]$DSD0
@@ -275,8 +285,9 @@ DS_long_list$drift <- DS_long_list$drift %>% group_by(id) %>% mutate(across(past
 DS_long_list$SWC_T <- DS_long_list$SWC_T %>% group_by(id) %>% mutate(across("DSD0",list(roll=~RcppRoll::roll_mean(.,n=5,fill=NA)))) %>% as.data.frame()
 
 
+#save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_withPos1.RData"))
 #save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list.RData"))
-save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_poly1.RData"))
+#save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_poly1.RData"))
 #DS_long_list$drift <- DS_long_list$drift[,1:9]
 # DS_long_drift$DS_min <- DS_long_drift_min$DS
 # DS_long_drift$DS_max <- DS_long_drift_max$DS
@@ -288,8 +299,8 @@ save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_poly1.RData"))
 #F_plot
 ggplot()+
   #geom_point(data=subset(F_df),aes(date,Fz))+
-  geom_line(data=subset(F_df_drift),aes(date,Fz,col="drift"),alpha=1)+
-  geom_line(data=subset(F_df_SWC_T),aes(date,Fz,col="SWC_T"),alpha=1)+
+  #geom_line(data=subset(F_df_drift),aes(date,Fz,col="drift"),alpha=1)+
+  geom_line(data=subset(F_df_list$SWC_T),aes(date,Fz,col="SWC_T"),alpha=1)+
   #geom_line(data=subset(F_df),aes(date,Fz_roll,col="moving avg"))+
   #scale_color_manual("gradient method",values=1:2)+
   #xlim(c(min(F_df$date[-1]),max(F_df$date[])+3600*5))+
@@ -308,13 +319,12 @@ ggplot()+
 #   DS_long_list$SWC_T
 #   DS_long
   
-id <- which(is.na(data_sub$CO2_mol_per_m3))
-data_sub$date[id]
+
 ggplot(DS_long_list$drift)+
-  geom_ribbon(aes(x=date,ymin=DSD0_min_roll,ymax=DSD0_max_roll,group=id,fill="sweep"),alpha=0.2)+
-  geom_line(aes(date, DSD0_roll,group=id,col="sweep"))+
-  geom_line(data=DS_long_list$SWC_T,aes(date, DSD0_roll,group=id,col="SWC_T"))+
-  geom_line(data=DS_long_roll,aes(date,DSD0_roll,group=id,col="SNOPT"))
+  #geom_ribbon(aes(x=date,ymin=DSD0_min_roll,ymax=DSD0_max_roll,group=id,fill="sweep"),alpha=0.2)+
+  #geom_line(aes(date, DSD0_roll,group=id,col="sweep"))+
+  geom_line(data=DS_long_list$SWC_T,aes(date, DS,group=id,col="SWC_T"))#+
+  #geom_line(data=DS_long_roll,aes(date,DSD0_roll,group=id,col="SNOPT"))
   
   #geom_line(aes(date,DS_sorted,col=id))#+
   #ggsave(paste0(plotpfad,"DS_zeit_gam_3DS_pos8.png"),width=8,height = 4)
