@@ -78,16 +78,16 @@ data_sub <- subset(data, date %in% mod_dates)
 
 ########################################################
 offset_methods <- c(#"SWC_T",
-                    # "SWC_T_min",
+                     "SWC_T_min",
                     # "SWC_T_mingradient",
                     # "SWC_T_maxgradient",
-                    # "SWC_T_max",
+                     "SWC_T_max"
                     #"drift_min",
                     #"drift_mingradient",
                     #"drift_maxgradient",
                     #"drift_max",
-                    "drift",
-                    "SWC"
+                    #"drift"
+                    #"SWC"
                     )
 # 
 # offset_method <- "SWC_T"
@@ -102,7 +102,7 @@ F_df_list <- DS_long_list
 
 ######################
 
-minmax_cols <- grep("CO2_tracer_drift_.*(min|max)",colnames(data_uncert),value = T)
+minmax_cols <- grep("CO2_tracer_(drift|SWC_T)_.*(min|max)",colnames(data_uncert),value = T)
 data[,minmax_cols] <- NA
 data[data$date %in% data_uncert$date,minmax_cols] <- data_uncert[,minmax_cols]
 
@@ -277,14 +277,22 @@ F_df_list[[offset_method]] <- F_df
 #DS_long_SWC_T <- DS_long
 ##################################################################
 ####################################################
+for(j in c("drift","SWC_T")){
 minmax_vec <- c("min","max")
 for(i in minmax_vec){
-DS_long_list[["drift"]][,paste0("DSD0_",i)] <-  DS_long_list[[paste0("drift_",i)]]$DSD0
+DS_long_list[[j]][,paste0("DSD0_",i)] <-  DS_long_list[[paste0(j,"_",i)]]$DSD0
 }
-DS_long_list$drift <- DS_long_list$drift %>% group_by(id) %>% mutate(across(paste0("DSD0",c("","_min","_max")),list(roll=~RcppRoll::roll_mean(.,n=5,fill=NA)))) %>% as.data.frame()
-DS_long_list$SWC_T <- DS_long_list$SWC_T %>% group_by(id) %>% mutate(across("DSD0",list(roll=~RcppRoll::roll_mean(.,n=5,fill=NA)))) %>% as.data.frame()
+DS_long_list[[j]] <- DS_long_list[[j]] %>%
+  group_by(id) %>%
+  mutate(across(paste0("DSD0",c("","_min","_max")),list(roll=~RcppRoll::roll_mean(.,n=5,fill=NA)))) %>%
+  mutate(method = j) %>% 
+  as.data.frame()
 
+}
 
+names(DS_long_list)
+DS_long <- do.call(rbind,DS_long_list[c("drift","SWC_T")])
+save(DS_long_list,DS_long,file=paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
 #save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_withPos1.RData"))
 #save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list.RData"))
 #save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_poly1.RData"))

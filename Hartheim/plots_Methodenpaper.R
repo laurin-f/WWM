@@ -34,6 +34,7 @@ load(paste0(comsolpfad,"plotdata_Methodenpaper_roll.RData"))
 load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 load(paste0(datapfad_harth,"PPC_DS.RData"))
+load(paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
 
 #date ranges
 pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
@@ -377,7 +378,8 @@ Sys.setlocale("LC_ALL","")
 ###############################################################################
 
 h_steady <- 32
-ds_sub <- subset(DS_long_roll, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+ds_sub <- subset(DS_long, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+#ds_sub <- subset(DS_long_roll, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
 F_sub <- subset(F_df, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
 
 range(subset(ds_sub,id==1)$DSD0_roll,na.rm = T)

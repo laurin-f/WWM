@@ -13,7 +13,7 @@ soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","svMisc")
 check.packages(packages)
 
 
@@ -123,7 +123,9 @@ data <- data %>%
   mutate(
     VWC_roll = RcppRoll::roll_mean(VWC,n=50,fill=NA),
     Wind = RcppRoll::roll_mean(WindVel_30m_ms,n=50,fill=NA),
-    
+    T_soil = imputeTS::na_interpolation(T_soil),
+    T_daymean = RcppRoll::roll_mean(T_soil,n=60*24,fill=NA),
+    #T_daymean = imputeTS::na_interpolation(T_daymean),
   ) %>% 
   ungroup() %>% 
   as.data.frame()
@@ -219,6 +221,7 @@ data$offset[which(data$Pumpstufe == 0)] <- data$CO2_roll_inj[which(data$Pumpstuf
 
 #injektion 1 weg
 #data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
+data$Position[data$date > Pumpzeiten$start[10] & data$date < ymd_h("2020.07.01 18")] <- NA
 
 #position 7 tracer abfall weg
 data$Position[data$date > Pumpzeiten$ende[13] & data$date < Pumpzeiten$start[14]+3600*1.5] <- NA
@@ -237,17 +240,18 @@ j_78 <- which(sapply(data_PSt0, function(x) unique(x$Position %in% 7:8)))
 #mit glm oder gam
 
 # data$preds_glm <- NA
- data$preds_gam <- NA
+ #data$preds_gam <- NA
  data$preds_SWC_T <- NA
- data$preds_SWC_WS <- NA
- data$preds_SWC <- NA
+ 
+ #data$preds_SWC_WS <- NA
+ #data$preds_SWC <- NA
  #data$preds_SWC_T_Wind <- NA
 data$offset_drift <- NA
 data$preds_drift <- NA
 # data$preds_drift_amp <- NA
- data$preds_no_ref <- NA
+ #data$preds_no_ref <- NA
 
-unique(unlist(lapply(data_PSt0,"[","Position")))
+#unique(unlist(lapply(data_PSt0,"[","Position")))
 #for(j in j_78){
 for(j in seq_along(data_PSt0)[-c(5)]){
 for(i in (1:7)*-3.5){
@@ -257,12 +261,13 @@ for(i in (1:7)*-3.5){
   fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0[[j]],tiefe==i))
   #fm_no_ref <- glm(CO2_roll_inj ~ poly(date_int,2) + poly(hour,4) ,data=subset(data_PSt0[[j]],tiefe==i))
   #nicht verwendet
-  fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
+  #fm_no_ref <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
 
   #fm_gam <- mgcv::gam(CO2_roll_inj ~ s(CO2_roll_ref)+ s(hour) ,data=subset(data_PSt0[[j]],tiefe==i))
-  fm_SWC_T <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
-  fm_SWC_WS <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(Wind,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
-  fm_SWC <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) ,data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
+  
+  fm_SWC_T <- mgcv::gam(CO2_roll_inj ~  poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
+  #fm_SWC_WS <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) + poly(T_soil,2) + poly(Wind,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
+  #fm_SWC <- mgcv::gam(CO2_roll_inj ~ poly(date_int,2) + s(hour) + poly(VWC_roll,2) ,data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
   #fm_SWC_T_Wind <- mgcv::gam(CO2_roll_inj ~ poly(VWC_roll,2) + poly(T_soil,2) + poly(Wind,2),data=subset(data_PSt0[[j]],tiefe==i & !is.na(VWC_roll)))
   
   pos <- na.omit(unique(data$Position))[j]
@@ -274,24 +279,26 @@ for(i in (1:7)*-3.5){
   data$preds_drift[ID] <- data$CO2_roll_ref[ID] + data$offset_drift[ID]
   #fm_amp <- glm(CO2_roll_inj ~ poly(preds_drift,2),data=subset(data[ID2,],Pumpstufe == 0))
   #data$preds_drift_amp[ID] <- predict(fm_amp,newdata = data[ID,])
-  data$preds_no_ref[ID] <- predict(fm_no_ref,newdata = data[ID,])
+  #data$preds_no_ref[ID] <- predict(fm_no_ref,newdata = data[ID,])
   #data$preds_gam[ID] <- predict(fm_gam,newdata = data[ID,])
   data$preds_SWC_T[ID] <- predict(fm_SWC_T,newdata = data[ID,])
-  data$preds_SWC_WS[ID] <- predict(fm_SWC_WS,newdata = data[ID,])
-  data$preds_SWC[ID] <- predict(fm_SWC,newdata = data[ID,])
+  
+  #data$preds_SWC_WS[ID] <- predict(fm_SWC_WS,newdata = data[ID,])
+  #data$preds_SWC[ID] <- predict(fm_SWC,newdata = data[ID,])
   #data$preds_SWC_T_Wind[ID] <- predict(fm_SWC_T_Wind,newdata = data[ID,])
   
-  }
+}
+  #svMisc::progress(j,max.value = length(data_PSt0))
 }
 
 ########################
 
 #data$CO2_tracer_glm <- data$CO2_inj - (data$preds_glm)
-data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds_gam)
+#data$CO2_tracer_gam <- data$CO2_roll_inj - (data$preds_gam)
 data$CO2_tracer_SWC_T <- data$CO2_roll_inj - (data$preds_SWC_T)
-data$CO2_tracer_SWC_WS <- data$CO2_roll_inj - (data$preds_SWC_WS)
-data$CO2_tracer_SWC <- data$CO2_roll_inj - (data$preds_SWC)
-data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
+#data$CO2_tracer_SWC_WS <- data$CO2_roll_inj - (data$preds_SWC_WS)
+#data$CO2_tracer_SWC <- data$CO2_roll_inj - (data$preds_SWC)
+#data$CO2_tracer_no_ref <- data$CO2_roll_inj - (data$preds_no_ref)
 data$CO2_tracer_drift <- data$CO2_roll_inj - (data$preds_drift)
 #data$CO2_tracer_drift_amp <- data$CO2_roll_inj - (data$preds_drift_amp)
 
@@ -364,7 +371,7 @@ data_uncert <- data %>%
     )
   ) %>% 
   rename_with(~str_remove(.,"preds_"),matches("^CO2_tracer_preds")) %>% 
-  select(-matches("preds_")) %>% 
+  #select(-matches("preds_")) %>% 
   ungroup() %>%
   as.data.frame()
 
@@ -409,6 +416,8 @@ data_uncert <- data_uncert %>%
 #data_agg <- subset(data_agg, Pumpstufe != 0)
 
 save(data,Pumpzeiten,data_uncert,file=paste0(samplerpfad,"Hartheim_CO2.RData"))
+#save(data,Pumpzeiten,data_uncert,file=paste0(samplerpfad,"Hartheim_CO2_noPos1.RData"))
+#save(data,Pumpzeiten,data_uncert,file=paste0(samplerpfad,"Hartheim_CO2_withPos1.RData"))
 
 ###################
 #spielwiese
