@@ -36,6 +36,13 @@ load(paste0(comsolpfad,"plotdata_Methodenpaper_roll.RData"))
 load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 
+
+load(paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
+
+#injektion 1 weg
+data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
+
+
 pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
 range1 <- range(data$date[data$Position ==1],na.rm = T)
 range2 <- range(data$date[data$Position ==7],na.rm = T)

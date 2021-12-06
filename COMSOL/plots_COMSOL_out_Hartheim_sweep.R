@@ -9,6 +9,7 @@ plotpfad <- paste0(hauptpfad,"Dokumentation/Berichte/plots/Hartheim/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
+datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/") 
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","ggforce","units","egg","dplyr")
@@ -28,13 +29,15 @@ load(file=paste0(klimapfad,"klima_data.RData"))
 offset_method <- "roll"
 ######################
 
+load(paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
+
 # load(file=paste0(comsolpfad,"F_df_gam_3DS_pos8_ext.RData"))
 # 
 # F_df_pos8 <- F_df
-# # load(file=paste0(comsolpfad,"F_df_gam_3DS_ext2.RData"))
-# # F_df_ext2<-rbind(F_df,F_df_pos8)
-# load(file=paste0(comsolpfad,"F_df_gam_3DS_ext.RData"))
-# F_df<-rbind(F_df,F_df_pos8)
+# load(file=paste0(comsolpfad,"F_df_gam_3DS_ext2.RData"))
+# F_df_ext2<-rbind(F_df,F_df_pos8)
+load(file=paste0(comsolpfad,"F_df_gam_3DS_ext.RData"))
+F_df<-rbind(F_df,F_df_pos8)
 
 if(offset_method == "gam"){
 load(paste0(comsolpfad,"DS_anisotrop_gam.RData"))
@@ -54,7 +57,11 @@ if(offset_method == "no_ref"){
  load(paste0(comsolpfad,"DS_anisotrop_no_ref.RData"))
   F_df <- DS_anisotrop_no_ref
 }
-names(F_df) <- str_replace(names(F_df),"(\\d)$","_\\1")
+
+F_long <- DS_long_list$drift
+names(F_long)
+F_df <- tidyr::pivot_wider(F_long,date,names_from = id, values_from = c(DS,DSD0))
+names(F_df) #<- str_replace(names(F_df),"(\\d)$","_\\1")
 
 
 pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
@@ -122,13 +129,13 @@ for(i in 1:3){
   F_df[,paste0("DSD0_",i)] <- F_df[,paste0("DS_",i)]/F_df[,paste0("D0",i)]
 }
 
-hours_to_steady <- 0
-#Zeitraum bis steady state abschneiden 
-for(i in 1:nrow(Pumpzeiten)){
-  F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+hours_to_steady*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
-
-  DS_anisotrop_long[DS_anisotrop_long$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & DS_anisotrop_long$date < (round_date(Pumpzeiten$start,"hours")[i]+hours_to_steady*3600),"DSD0"]<-NA
-}
+# hours_to_steady <- 0
+# #Zeitraum bis steady state abschneiden 
+# for(i in 1:nrow(Pumpzeiten)){
+#   F_df[F_df$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & F_df$date < (round_date(Pumpzeiten$start,"hours")[i]+hours_to_steady*3600),c(grep("Fz|DS",colnames(F_df)))]<-NA
+# 
+#   DS_anisotrop_long[DS_anisotrop_long$date > (round_date(Pumpzeiten$start,"hours")[i]-3600) & DS_anisotrop_long$date < (round_date(Pumpzeiten$start,"hours")[i]+hours_to_steady*3600),"DSD0"]<-NA
+# }
 
 #######
 #DS_long

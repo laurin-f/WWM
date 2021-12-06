@@ -24,8 +24,11 @@ load(paste0(datapfad_harth,"PPC_DS.RData"))
 load(paste0(comsolpfad,"plotdata_Methodenpaper_roll.RData"))
 
 load(paste0(comsolpfad,"extend_wide.RData"))
+load(paste0(comsolpfad,"extend_long.RData"))
 sweep_wide <- extend_wide
+sweep_long <- extend_long
 rm(extend_wide)
+rm(extend_long)
 
 #load(paste0(comsolpfad,"sweep_wide_list.RData"))
 #sweep_wide <- sweep_wide_list[[2]]
@@ -78,18 +81,19 @@ data_sub <- subset(data, date %in% mod_dates)
 
 ########################################################
 offset_methods <- c(#"SWC_T",
-                     "SWC_T_min",
+                    # "SWC_T_min",
                     # "SWC_T_mingradient",
                     # "SWC_T_maxgradient",
-                     "SWC_T_max"
+                    # "SWC_T_max"
                     #"drift_min",
                     #"drift_mingradient",
                     #"drift_maxgradient",
                     #"drift_max",
-                    #"drift"
-                    #"SWC"
+                    "drift"
+                    #"SWC_WS"
                     )
-# 
+
+
 # offset_method <- "SWC_T"
 # offset_method <- "drift_min"
 # offset_method <- "drift_mingradient"
@@ -152,17 +156,20 @@ for(k in seq_along(mod_dates)){
   #mod und obs vergleichen
   if(any(CO2_obs$CO2_mol_per_m3>0,na.rm = T)){
     #Injecitonsrate bei Kammermessungen
-    injection_rate_obs <-signif(unique(CO2_obs$inj_mol_m2_s),2)
+    #injection_rate_obs <-signif(unique(CO2_obs$inj_mol_m2_s),2)
     
-    # sweep_inj_rates <- as.numeric(unique(sweep_long$injection_rate))
+    injection_rate_obs <-ceiling(unique(CO2_obs$inj_mol_m2_s)*10^3)/10^3
+    
+    sweep_inj_rates <- as.numeric(unique(sweep_long$injection_rate))
+    
     # #die modellierte injection rate die am nächsten an der k-ten liegt
-    # injection_rate_i <- sweep_inj_rates[which.min(abs(injection_rate_obs - sweep_inj_rates))]
+    injection_rate_i <- sweep_inj_rates[which.min(abs(injection_rate_obs - sweep_inj_rates))]
     # #subset des Sweeps mit nur der richtigen injektionsrate
-     sweep_sub_id <- grep(paste0("injection_rate=",injection_rate_obs),colnames(sweep_wide))
+     sweep_sub_id <- grep(paste0("injection_rate=",injection_rate_i),colnames(sweep_wide))
      sweep_sub <- sweep_wide[,sweep_sub_id]
     
     #rmse jedes Sweeps berechnen
-    rmse <- apply(sweep_sub,2,RMSE,CO2_obs$CO2_mol_per_m3)
+    rmse <- apply(sweep_sub,2,RMSE,CO2_obs$CO2_mol_per_m3)#,normalize="mean_each")
     #rmse <- apply(sweep_sub,2,function(x) RMSE(x[1:4],CO2_obs$CO2_mol_per_m3[1:4]))
     
     #zu den RMSE werten die jeweiligen DS sets
@@ -263,6 +270,7 @@ DS_long_list[[offset_method]] <- DS_long
 F_df_list[[offset_method]] <- F_df 
 }
 
+
 #F_df_drift <- F_df
 #DS_long_drift <- DS_long
 #F_df_drift_min <- F_df
@@ -292,7 +300,10 @@ DS_long_list[[j]] <- DS_long_list[[j]] %>%
 
 names(DS_long_list)
 DS_long <- do.call(rbind,DS_long_list[c("drift","SWC_T")])
-save(DS_long_list,DS_long,file=paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
+#DS_long_mean_each <- DS_long_list$drift
+#save(DS_long_list,DS_long_mean_each,file=paste0(datapfad_harth,"DS_long_list_drift_mean_each.RData"))
+#save(DS_long_list,DS_long_WS,file=paste0(datapfad_harth,"DS_long_list_SWC_WS.RData"))
+#save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_ceil.RData"))
 #save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_withPos1.RData"))
 #save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list.RData"))
 #save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_poly1.RData"))
@@ -328,10 +339,11 @@ ggplot()+
 #   DS_long
   
 
-ggplot(DS_long_list$drift)+
+ggplot()+
   #geom_ribbon(aes(x=date,ymin=DSD0_min_roll,ymax=DSD0_max_roll,group=id,fill="sweep"),alpha=0.2)+
   #geom_line(aes(date, DSD0_roll,group=id,col="sweep"))+
-  geom_line(data=DS_long_list$SWC_T,aes(date, DS,group=id,col="SWC_T"))#+
+  geom_line(data=DS_long_list$SWC_WS,aes(date, DS,group=id,col="SWC_WS"))+
+  geom_line(data=DS_long_list$SWC_T,aes(date, DS,group=id,col="SWC_T"),linetype=2)#+
   #geom_line(data=DS_long_roll,aes(date,DSD0_roll,group=id,col="SNOPT"))
   
   #geom_line(aes(date,DS_sorted,col=id))#+
