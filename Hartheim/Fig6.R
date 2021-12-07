@@ -36,6 +36,11 @@ load(paste0(datapfad_harth,"PPC_DS.RData"))
 load(paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
 
 #date ranges
+
+#injektion 1 weg
+data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
+
+
 pos8_date <- min(data$date[which(data$Position ==8 & data$Pumpstufe != 0)])
 range1 <- range(data$date[data$Position ==1],na.rm = T)
 range2 <- range(data$date[data$Position ==7],na.rm = T)
@@ -49,18 +54,32 @@ soil_agg_plot <- subset(soil_agg, tiefe %in% c(5,10,20) & date > range2u3[1] & d
   summarise_all(mean)
 soil_agg_plot$id <- as.character(soil_agg_plot$id)
 
+DS_long$Versuch <- NA
+DS_long$Versuch[DS_long$date > range2[1] & DS_long$date < range2[2]] <- 2
+DS_long$Versuch[DS_long$date > range3[1] & DS_long$date < range3[2]] <- 3
+
+F_df$Versuch <- NA
+F_df$Versuch[F_df$date > range2[1] & F_df$date < range2[2]] <- 2
+F_df$Versuch[F_df$date > range3[1] & F_df$date < range3[2]] <- 3
+
+h_steady <- 32
+ds_sub <- subset(DS_long, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+
+F_df <- F_df %>% 
+  group_by(method) %>% 
+  mutate(across(starts_with("Fz_"),list(roll = ~RcppRoll::roll_mean(.,n=5,fill=NA)))) %>% 
+  as.data.frame()
+
+F_sub <- subset(F_df, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+  
+
 
 ###############################################################################
 ###############################################################################
 #Figure 6 Ds profile over time
 ###############################################################################
 ###############################################################################
-DS_long$Versuch <- NA
-DS_long$Versuch[DS_long$date > range2[1] & DS_long$date < range2[2]] <- 2
-DS_long$Versuch[DS_long$date > range3[1] & DS_long$date < range3[2]] <- 3
 
-h_steady <- 32
-ds_sub <- subset(DS_long, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
 #ds_sub <- subset(DS_long_roll, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
 F_sub <- subset(F_df, (Versuch %in% 2 & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
 
@@ -79,53 +98,29 @@ PPC_DS$windy <- factor(PPC_DS$Versuch,levels = 2:3,labels=c("windy period","calm
 ds_soil_agg <- ds_soil %>% group_by(id,windy) %>% summarise_all(mean)
 
 
-
-DS_boxplot <- 
-  ggplot()+
-  geom_boxplot(data=subset(ds_soil_agg),aes(x="feps",middle=PTF_median_median,ymin=PTF_min_max,ymax=PTF_max_min,lower=PTF_q25_max,upper=PTF_q75_min,fill=id),stat="identity")+
-  geom_boxplot(data=subset(ds_soil,method=="drift"),aes("ref adj",DSD0_roll,fill=id,col=id),alpha=0.5)+
-  geom_boxplot(data=subset(ds_soil,method=="SWC_T"),aes("SWC T",DSD0_roll,fill=id,col=id),alpha=0.5)+
-  #geom_boxplot(data=subset(PPC_DS,date %in% ds_soil$date),aes("in situ DS",base,fill=id,col=id),width=0.4,alpha=0.5)+
-  scale_x_discrete(labels=c(expression(f(epsilon)),"ref adj", "SWC T"))+#expression(D[eff]/D[0]~"")))+
-  facet_wrap(~windy)+
-  scale_color_manual(limits=factor(1:2),values=scales::hue_pal()(2),labels=c("0-10 cm","10-20 cm"))+
-  scale_fill_manual(limits=factor(1:2),values=scales::hue_pal()(2),labels=c("0-10 cm","10-20 cm"))+
-  labs(x="",y="exchange coefficient",fill=expression(f(epsilon)),col="in situ")+
-  guides(col = guide_legend(override.aes = list(fill=scales::hue_pal()(2),alpha=0.2)))
-
-
-
-
-ds_soil$id_num <- as.numeric(factor(ds_soil$method))
-ggplot()+
-  geom_boxplot(data=subset(ds_soil,method=="drift"),aes(x=id,y=DSD0_roll,fill=as.factor(method)),position = position_nudge(x=0.2),width=0.3)+
-  geom_boxplot(data=subset(ds_soil,method=="SWC_T"),aes(x=id,y=DSD0_roll,fill=as.factor(method)),position = position_nudge(x=0),width=0.3)
-
+meth_col <- RColorBrewer::brewer.pal(n = 3, name = "Dark2")[c(2,3)]
 DS_boxplot_2 <- 
   ggplot()+
   geom_boxplot(data=subset(ds_soil_agg),aes(fill="feps",middle=PTF_median_median,ymin=PTF_min_max,ymax=PTF_max_min,lower=PTF_q25_max,upper=PTF_q75_min,x=id),stat="identity",width=0.2,position=position_nudge(x=-0.25))+
-  #geom_boxplot(data=subset(ds_soil),aes(method,DSD0_roll,fill=id,col=id),alpha=0.5)+
   geom_boxplot(data=subset(ds_soil,method=="drift"),aes(fill=as.factor(method),DSD0_roll,x=id),width=0.2,position = position_nudge(x = 0))+
   geom_boxplot(data=subset(ds_soil,method=="SWC_T"),aes(fill=as.factor(method),DSD0_roll,x=id),width=0.2,position = position_nudge(x = 0.25))+
-  #geom_boxplot(data=subset(ds_soil,method=="SWC_T"),aes(col="SWC T",DSD0_roll,fill="SWC T",x=id),alpha=0.5)+
-  #geom_boxplot(data=subset(PPC_DS,date %in% ds_soil$date),aes("in situ DS",base,fill=id,col=id),width=0.4,alpha=0.5)+
-  #scale_x_discrete(labels=c(expression(f(epsilon)),"ref adj","SWC T"))+#expression(D[eff]/D[0]~"")))+
   facet_wrap(~windy)+
-  
-  scale_fill_manual(breaks=c("feps","drift","SWC_T"),values=scales::hue_pal()(3),labels=c(expression(f(epsilon)),"ref adj","SWC T"))+
+#  scale_fill_brewer(breaks=c("feps","drift","SWC_T"),type="qual",palette=2,labels=c(expression(f(epsilon)),"ref adj","SWC T"))+
+  scale_fill_manual(breaks=c("feps","drift","SWC_T"),values=c("grey",meth_col),labels=c(expression(f(epsilon)),"ref adj","SWC T"))+
   scale_x_discrete(limits=factor(1:2),labels=c("0-10 cm","10-20 cm"))+
   labs(x="",y="exchange coefficient",fill="method",col="in situ")+
   guides(col = guide_legend(override.aes = list(fill=scales::hue_pal()(2),alpha=0.2)))+
     theme(legend.text.align = 0)
 DS_boxplot_2
+RColorBrewer::brewer.pal(n = 3, name = "Dark2")[1:2]
 ######################################
 #Flux
 ######################################
 
-F_sub$P_0_10 <- F_sub$Fz_roll_0_10 - F_sub$Fz_roll_10_17
-F_sub$P_10_20 <- F_sub$Fz_10_17
-F_long <- tidyr::pivot_longer(F_sub,matches("P_\\d+"),names_to = "tiefe",values_to = "P",names_prefix = "P_")
-F_long$tiefe2 <- factor(F_long$tiefe,levels=c("0_10","10_20"),labels=c("0-10 cm","10-20 cm"))
+#F_sub$P_0_10 <- F_sub$Fz_roll_0_10 - F_sub$Fz_roll_10_17
+# F_sub$P_10_20 <- F_sub$Fz_10_17
+# F_long <- tidyr::pivot_longer(F_sub,matches("P_\\d+"),names_to = "tiefe",values_to = "P",names_prefix = "P_")
+# F_long$tiefe2 <- factor(F_long$tiefe,levels=c("0_10","10_20"),labels=c("0-10 cm","10-20 cm"))
 Kammer_flux_agg <- Kammer_flux %>% group_by(day) %>% summarise(CO2flux = mean(CO2flux),CO2flux_max=max(CO2flux_max),CO2flux_min=min(CO2flux_min),date=mean(date))
 cols <- scales::hue_pal()(2)
 mindate <- ymd_h("2020-07-06 16")
@@ -137,9 +132,14 @@ Kammer_flux_agg$Versuch[Kammer_flux_agg$date > range2[1] - 3600 * 40 & Kammer_fl
 
 soil_wide$Versuch <- NA
 soil_wide$Versuch[soil_wide$date > range2[1] - 3600 * 20 & soil_wide$date < range2[2] - 3600 * 20] <- 2
-soil_wide$Versuch[soil_wide$date > Pumpzeiten$start[17] & soil_wide$date < Pumpzeiten$ende[17]] <- 3
+soil_wide$Versuch[soil_wide$date > Pumpzeiten$start[17] & soil_wide$date < Pumpzeiten$ende[17]+3600*20] <- 3
 
-flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
+ds_sub$calm <- T
+ds_sub$calm[!ds_sub$date %in% calm_dates] <- F
+#F_sub$calm <- T
+#F_sub$calm[!F_sub$date %in% calm_dates] <- F
+flux_plot <- 
+  ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   geom_linerange(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max,col=""))+
   geom_point(aes(date,CO2flux,col=""))+
   labs(col="chamber")+
@@ -151,19 +151,30 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   scale_fill_manual("T & SWC model",values=grey(0.3))+
   ggnewscale::new_scale_color()+
   ggnewscale::new_scale_fill()+
-  geom_col(data=subset(F_long)[-(1:2),],aes(date,P,fill=tiefe2,alpha="windy"),width=3600, show.legend = FALSE)+
-  geom_col(data=subset(F_long)[1,],aes(date,P,fill=tiefe2,alpha=""),width=3600, show.legend = FALSE)+
-  geom_col(data=subset(F_long)[2,],aes(date,P,fill=tiefe2,alpha=" "),width=3600, show.legend = FALSE)+
-  geom_col(data=subset(F_long,date %in% calm_dates),aes(date,P,fill=tiefe2,alpha="calm"),width=3600)+
-  geom_line(data=subset(soil_wide,!is.na(Versuch)),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA)),col=grey(0.3),linetype=2)+
+    geom_line(data=subset(ds_sub,id < 3 & method == "drift"),aes(date,Fz_roll,group=id,col="ref adj",alpha=calm,linetype="calm"))+
+    #geom_ribbon(data=subset(F_sub, method == "drift"),aes(x=date,ymin=Fz_2_roll,ymax=Fz_1_roll,fill=method),alpha=0.1)+
+    #geom_ribbon(data=subset(F_sub, method == "drift"),aes(x=date,ymin=0,ymax=Fz_2_roll,fill=method),alpha=0.3)+
+    geom_line(data=subset(ds_sub,id < 3 & method == "drift"),aes(date,Fz_roll,group=id,col="ref adj",linetype="windy"))+
+    geom_line(data=subset(ds_sub,id < 3 & method == "SWC_T"),aes(date,Fz_roll,group=id,col="SWC T",alpha=as.factor(calm)))+
+    geom_line(data=subset(ds_sub,id < 3 & method == "SWC_T"),aes(date,Fz_roll,group=id,col="SWC T",linetype="windy"))+
+    
   
-  scale_alpha_manual(values=c(0.6,0.35,0.6,0.35))+
-  guides(col=F,fill=F,
-         alpha= guide_legend("gradient method\n ",override.aes = list(fill=rep(cols[1:2],each=2)),ncol=2))+
+  
+  
+  
+  #geom_line(data=subset(soil_wide,!is.na(Versuch)),aes(date,zoo::rollapply(R_soil,20,mean,fill=NA)),col=grey(0.3),linetype=2)+
+  
+  directlabels::geom_dl(data=subset(ds_sub,id < 3 & method == "drift" & Versuch == 3),aes(date,Fz_roll,label=factor(id,levels = 1:2,labels=c("0 - 10 cm", "10 - 20 cm"))),method = list(directlabels::dl.trans(x = x - 0), "last.qp", cex = 0.8))+
+
+#scale_alpha_manual(values=c(0.6,0.35,0.6,0.35))+
+  scale_color_manual(values=meth_col)+
+  guides(alpha=F)+
+  # guides(col=F,fill=F,
+  #        alpha= guide_legend("gradient method\n ",override.aes = list(fill=rep(cols[1:2],each=2)),ncol=2))+
   scale_x_datetime(date_label="%b %d",breaks="2 days")+
-  ylim(c(0,5.5))+
+  ylim(c(0,8))+
   facet_wrap(~Versuch,scales="free_x")+
-  labs(x="",y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
+  labs(x="",y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"),linetype="")+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)+
   theme(
     strip.background = element_blank(),
@@ -173,11 +184,12 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
 
 
 flux_plot
+
 #theme(panel.border = element_rect(fill=NA))
-geom_vline(data=data.frame(x=c(max(subset(soil_wide,Versuch==2)$date),min(subset(soil_wide,Versuch==3)$date)),Versuch=2:3),aes(xintercept=x),linetype="dashed")
+#geom_vline(data=data.frame(x=c(max(subset(soil_wide,Versuch==2)$date),min(subset(soil_wide,Versuch==3)$date)),Versuch=2:3),aes(xintercept=x),linetype="dashed")
 soil_wide$period <- soil_wide$Versuch-1
 flux_adj <- adj_grob_size(flux_plot,subset(soil_wide,!is.na(period)),breaks="2 days",date_labels="%b %d",plot=F)
-#cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("0-10    10-20cm",x=0.9,y=0.7,size=10)
+cowplot::ggdraw()+cowplot::draw_plot(flux_adj)#+cowplot::draw_text(c("0-10 cm","10-20 cm"),x=0.9,y=0.7,size=10)
 
 
 
@@ -198,12 +210,13 @@ col_labs <- c("DSD0" ,"DSD0 peak","PPC")
 col_exps <- c(expression(D[eff]/D[0]),expression(D[PPE]/D[0]),"PPC")
 
 
-PPC_DS_plot <- 
+#PPC_DS_plot <- 
   ggplot(subset(data,!is.na(Versuch)))+
   geom_ribbon(data=subset(PPC_DS,date %in% ds_sub$date),aes(x=date,ymax=DSD0_roll,ymin=base,fill="DSD0 peak"),alpha=0.2)+
   geom_line(data=subset(PPC_DS,date %in% ds_sub$date),aes(date,PPC,col="PPC"))+
-  geom_line(data=subset(PPC_DS,date %in% ds_sub$date),aes(date,peak,col="DSD0 peak"))+
-  geom_line(data=subset(ds_sub,id == "1"),aes(date,DSD0_roll,col="DSD0" ))+
+  
+  #geom_line(data=subset(PPC_DS,date %in% ds_sub$date),aes(date,peak,col="DSD0 peak"))+
+  geom_line(data=subset(ds_sub,id == "1"),aes(date,DSD0_roll,col=method ))#+
   scale_x_datetime(date_label="%b %d",breaks="1 days",limits = )+
   scale_y_continuous(limits = c(0,0.6),sec.axis = sec_axis(trans=~.,name=expression("PPC [Pa s"^{-1}*"]")))+
   scale_fill_manual("",limits=col_labs,values = c(NA,2,NA),labels=col_exps)+
