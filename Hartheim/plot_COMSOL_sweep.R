@@ -30,7 +30,7 @@ load(paste0(comsolpfad,"plotdata_Methodenpaper_roll.RData"))
 
 
 #load(paste0(datapfad_harth,"DS_long_list_withPos1.RData"))
-load(paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
+#load(paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
 #load(paste0(datapfad_harth,"DS_long_list_withPos1minmax.RData"))
 #DS_long_listPos1 <- DS_long_list
 #load(paste0(datapfad_harth,"DS_long_list_poly1.RData"))
@@ -58,8 +58,9 @@ ggplot()+
   geom_line(data=DS_long_roll,aes(date,DSD0_roll,group=id,col="ref (SNOPT)"))+
   #geom_ribbon(data=DS_long_list$drift,aes(x=date,ymin=DS_min,ymax=DS_max,group=id,fill="drift"),alpha=0.2)+
 #  geom_ribbon(data=DS_long_list$SWC_T,aes(x=date,ymin=DSD0_min_roll,ymax=DSD0_max_roll,group=id,fill="SWC_T"),alpha=0.2)+
-  geom_line(data=DS_long_list$drift,aes(date,DSD0_roll,group=id,col="drift"))+
-  geom_line(data=DS_long_list$SWC_T,aes(date,DSD0,group=id,col="SWC_T"),linetype=2)
+  geom_line(data=DS_long_list$drift,aes(date,DSD0_roll*1.26,group=id,col="sweep*1.26 \n(anisotropy factor)"))+
+  geom_line(data=DS_long_list$drift,aes(date,DSD0_roll,group=id,col="sweep"))
+  #geom_line(data=DS_long_list$SWC_T,aes(date,DSD0,group=id,col="SWC_T"),linetype=2)
 
 DS_ceil <- DS_long_list$drift
 ggplot()+

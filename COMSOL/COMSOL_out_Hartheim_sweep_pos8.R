@@ -12,9 +12,11 @@ kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/") 
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","ggforce","units","egg","dplyr")
-sweep_long
+packages<-c("lubridate","stringr","ggplot2","ggforce","units","egg","dplyr","tictoc")
+
 check.packages(packages)
+
+
 
 ######################################
 #data_agg
@@ -33,7 +35,6 @@ rm(extend_long)
 #load(paste0(comsolpfad,"sweep_wide_list.RData"))
 #sweep_wide <- sweep_wide_list[[2]]
 
-
 #######################
 #einheiten anpassen für COMSOl
 #Tracersignal in COMSOL Einheit umrechnen
@@ -41,6 +42,7 @@ rm(extend_long)
 #injektion 1 weg
 data$Position[data$date > Pumpzeiten$start[10] & data$date < Pumpzeiten$start[12]] <- NA
 
+#data$date_hour <- round_date(data$date,"3 hours")
 data$date_hour <- round_date(data$date,"30 mins")
 mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
 #mod_dates <- sort(unique(data$date[data$Position %in% 8 & data$Pumpstufe != 0 & data$date %in% data$date_hour]))
@@ -54,7 +56,14 @@ z_soil_cm <- 150
 
 #############
 #data subset
-data_sub <- subset(data, date %in% mod_dates)
+minmax_cols <- grep("CO2_tracer_(drift|SWC_T)_.*(min|max)",colnames(data_uncert),value = T)
+data[,minmax_cols] <- NA
+data[data$date %in% data_uncert$date,minmax_cols] <- data_uncert[,minmax_cols]
+
+
+data_sub <- subset(data, date %in% mod_dates) %>% select(!matches("(Precip|Wind|Ta_|preds|DSD0|PV|VWC|^R_|offset|T_C|Swin|eps|PTF|Fz|Pumpstufe|daymean)")) 
+
+data_sub$z <- z_soil_cm + data_sub$tiefe
 
 #########################################################
 
@@ -70,8 +79,8 @@ offset_methods <- c("SWC_T",
                     #"drift_mingradient",
                     #"drift_maxgradient",
                     "drift_max",
-                    "drift"
-                    #"SWC_WS"
+                    "drift",
+                    "SWC_WS"
                     )
 
 
@@ -81,9 +90,6 @@ F_df_list <- DS_long_list
 
 ######################
 
-minmax_cols <- grep("CO2_tracer_(drift|SWC_T)_.*(min|max)",colnames(data_uncert),value = T)
-data[,minmax_cols] <- NA
-data[data$date %in% data_uncert$date,minmax_cols] <- data_uncert[,minmax_cols]
 
 
 ##################################################
@@ -92,20 +98,39 @@ data[data$date %in% data_uncert$date,minmax_cols] <- data_uncert[,minmax_cols]
 #                                                #
 ##################################################
 
+
+
+sweep_inj_rates <- as.numeric(unique(sweep_long$injection_rate))
+
+#sweep_sub_id <- grep(paste0("injection_rate=",),colnames(sweep_wide))
+#sweep_sub <- sweep_wide[,sweep_sub_id]
+sweep_sub_list <- lapply(sweep_inj_rates,function(x) 
+  sweep_wide[,grep(paste0("injection_rate=",x),colnames(sweep_wide))])
+
+names(sweep_sub_list) <- sweep_inj_rates
+
+
+# n.cores <- parallel::detectCores() - 1
+# my.cluster <- parallel::makeCluster(
+#   n.cores, 
+#   type = "PSOCK"
+# )
+# doParallel::registerDoParallel(cl = my.cluster)
+
 for(offset_method in offset_methods){
+tictoc::tic()
   print(offset_method)
 
-data$CO2_mol_per_m3 <- ppm_to_mol(data[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data$PressureActual_hPa/10,T_C = data$T_soil)
-data$CO2_mol_per_m3[data$tiefe == 0]<- 0
-data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0]<- 0
+data_sub$CO2_mol_per_m3 <- ppm_to_mol(data_sub[,paste0("CO2_tracer_",offset_method)],"ppm",p_kPa = data_sub$PressureActual_hPa/10,T_C = data_sub$T_soil)
+data_sub$CO2_mol_per_m3[data_sub$tiefe == 0]<- 0
+data_sub$CO2_mol_per_m3[(data_sub$CO2_mol_per_m3) < 0]<- 0
 
-data <- data %>% 
-  group_by(tiefe) %>% 
-  mutate(CO2_mol_per_m3 = imputeTS::na_interpolation(CO2_mol_per_m3)) %>% 
+data_sub <- data_sub %>%
+  group_by(tiefe) %>%
+  mutate(CO2_mol_per_m3 = imputeTS::na_interpolation(CO2_mol_per_m3)) %>%
   as.data.frame()
 
-
-n_best <- 1
+data_list <- lapply(mod_dates,function(x) subset(data_sub, date == x))
 
 #Dataframe in den Flux und DS Werte reinkommen
 F_df <- data.frame(date=mod_dates)
@@ -114,19 +139,21 @@ F_df[,paste0("DS_",1:n_DS)]<- NA
 pb <-  txtProgressBar(min = 0, max = length(mod_dates), initial = 0,style=3) 
 ######################################
 #Schleife in der obs mit mod für unterschiedliche Zeiten verglichen werden
+#foreach::foreach(k = seq_along(mod_dates),.combine = cbind,.packages = c("pkg.WWM","stringr")) %dopar% {
 for(k in seq_along(mod_dates)){
   #fortschritt angeben
   setTxtProgressBar(pb,k)
 
   #k-tes datum
-  kammer_date <- mod_dates[k]
+  #kammer_date <- mod_dates[k]
   
   #######################
   #gemesssenes CO2 profil am k-ten datum
   #CO2_obs <- subset(data_agg_mod,date_hour== kammer_date)
-  CO2_obs <- subset(data,date== kammer_date)
-  D0_CO2_m2 <- mean(D0_T_p(T_C = CO2_obs$T_soil,p_kPa = CO2_obs$PressureActual_hPa/10,unit="m2/s")) #20°C m2/s
-  CO2_obs$z <- z_soil_cm + CO2_obs$tiefe
+  CO2_obs <- data_list[[k]]
+  #CO2_obs <- subset(data,date== kammer_date)
+  #D0_CO2_m2 <- mean(D0_T_p(T_C = CO2_obs$T_soil,p_kPa = CO2_obs$PressureActual_hPa/10,unit="m2/s")) #20°C m2/s
+  
   #umsortieren
   CO2_obs <- CO2_obs[order(-CO2_obs$tiefe),]
   
@@ -141,13 +168,13 @@ for(k in seq_along(mod_dates)){
     
     #injection_rate_obs <-ceiling(unique(CO2_obs$inj_mol_m2_s)*10^3)/10^3
     
-    sweep_inj_rates <- as.numeric(unique(sweep_long$injection_rate))
     
     # #die modellierte injection rate die am nächsten an der k-ten liegt
     injection_rate_i <- sweep_inj_rates[which.min(abs(injection_rate_obs - sweep_inj_rates))]
     # #subset des Sweeps mit nur der richtigen injektionsrate
-     sweep_sub_id <- grep(paste0("injection_rate=",injection_rate_i),colnames(sweep_wide))
-     sweep_sub <- sweep_wide[,sweep_sub_id]
+     # sweep_sub_id <- grep(paste0("injection_rate=",injection_rate_i),colnames(sweep_wide))
+     # sweep_sub <- sweep_wide[,sweep_sub_id]
+    sweep_sub <- sweep_sub_list[[as.character(injection_rate_i)]]
     
     #rmse jedes Sweeps berechnen
     rmse <- apply(sweep_sub,2,RMSE,CO2_obs$CO2_mol_per_m3)#,normalize="mean_each")
@@ -197,7 +224,9 @@ F_df$method <- offset_method
 # #DS_long$T_C <- as.numeric(factor(DS_long$date,levels = data$date, labels = data$T_C)) 
 # DS_long_list[[offset_method]] <- DS_long 
 F_df_list[[offset_method]] <- F_df 
+tictoc::toc()
 }
+#parallel::stopCluster(cl = my.cluster)
 
 ##################################################################
 ####################################################
@@ -206,7 +235,7 @@ minmax_vec <- c("min","max")
 for(i in minmax_vec){
 #DS_long_list[[j]][,paste0("DSD0_",i)] <-  DS_long_list[[paste0(j,"_",i)]]$DSD0
 for(k in 1:3){
-F_df_list[[j]][,paste0("DS",i,"_",k)] <-  F_df_list[[paste0(j,"_",i)]][paste0("DS_",k)]
+F_df_list[[j]][,paste0("DS_",i,"_",k)] <-  F_df_list[[paste0(j,"_",i)]][paste0("DS_",k)]
 }
 }
 
@@ -217,15 +246,15 @@ F_df_list[[j]][,paste0("DS",i,"_",k)] <-  F_df_list[[paste0(j,"_",i)]][paste0("D
 
 }
 
-for(j in c("drift","SWC_T")){
+for(j in names(F_df_list)){
 #DS_long_list[[j]]$method <- j
 F_df_list[[j]]$method <- j
 }
 
+F_df_list$SWC_WS[paste0("DS_",rep(minmax_vec,each=3),"_",1:3)] <- NA
 #names(DS_long_list)
 #DS_long <- do.call(rbind,DS_long_list[c("drift","SWC_T")])
-F_df <- do.call(rbind,F_df_list[c("drift","SWC_T")])
-
+F_df <- do.call(rbind,F_df_list[c("drift","SWC_T","SWC_WS")])
 
 ################################################
 #F_df
@@ -245,20 +274,22 @@ F_df <- merge(F_df,data_wide_CO2)
 #anstatt glm geht es viel schneller jeweils den mittelwert von 3 
 ################
 #flux
+dC_list <- vector("list",3)
 
-dC_dz_mol_0_10 <- rowMeans(cbind(F_df$CO2_ref_0 - F_df$CO2_ref_1,F_df$CO2_ref_1 - F_df$CO2_ref_2,F_df$CO2_ref_2 - F_df$CO2_ref_3)/-3.5)
+dC_list[[1]] <- rowMeans(cbind(F_df$CO2_ref_0 - F_df$CO2_ref_1,F_df$CO2_ref_1 - F_df$CO2_ref_2,F_df$CO2_ref_2 - F_df$CO2_ref_3)/-3.5)
 
-dC_dz_mol_10_17 <- rowMeans(cbind(F_df$CO2_ref_3 - F_df$CO2_ref_4,F_df$CO2_ref_4 - F_df$CO2_ref_5)/-3.5)
-dC_dz_mol_ab20 <- rowMeans(cbind(F_df$CO2_ref_5 - F_df$CO2_ref_6,F_df$CO2_ref_6 - F_df$CO2_ref_7)/-3.5)
+dC_list[[2]] <- rowMeans(cbind(F_df$CO2_ref_3 - F_df$CO2_ref_4,F_df$CO2_ref_4 - F_df$CO2_ref_5)/-3.5)
+dC_list[[3]] <- rowMeans(cbind(F_df$CO2_ref_5 - F_df$CO2_ref_6,F_df$CO2_ref_6 - F_df$CO2_ref_7)/-3.5)
 #mol/m^3/cm
 #einheit in mol / m3 /cm
 
 #Ficks Law
 #Fz_mumol_per_s_m2 <- F_df$DS_1[k]  * dC_dz_mol * 100 * 10^6#m2/s * mol/m3/m = mol/s/m2
-
-F_df$Fz_1 <- F_df$DS_1   * dC_dz_mol_0_10 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
-F_df$Fz_2 <- F_df$DS_2   * dC_dz_mol_10_17 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
-F_df$Fz_3 <- F_df$DS_3   * dC_dz_mol_ab20 * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
+for(i in 1:3){
+  for(j in c("","min_","max_")){
+    F_df[,paste0("Fz_",j,i)] <- F_df[,paste0("DS_",j,i)]   * dC_list[[i]] * 100 * 10^6#m2/s * mol/m3/m = mumol/s/m2
+  }
+}
 
 
 sub7u8 <- subset(data, Position %in% 7:8) 
@@ -276,10 +307,12 @@ for(i in c("T_soil_","PressureActual_hPa_")){
 F_df<- merge(F_df,data_wide[,c("date",paste0("T_soil_",1:3),paste0("PressureActual_hPa_",1:3))])
 for(i in 1:3){
   F_df[,paste0("D0_",i)] <- D0_T_p(T_C=F_df[,paste0("T_soil_",i)],p_kPa = F_df[,paste0("PressureActual_hPa_",i)]/10,unit="m^2/s")
-  F_df[,paste0("DSD0_",i)] <- F_df[,paste0("DS_",i)]/F_df[,paste0("D0_",i)]
+  for(j in c("","min_","max_")){
+    F_df[,paste0("DSD0_",j,i)] <- F_df[,paste0("DS_",j,i)]/F_df[,paste0("D0_",i)]
+  }
 }
 
-
+#F_df <- F_df[,-2]
 DS_long <-tidyr::pivot_longer(F_df[,!grepl("CO2_ref",colnames(F_df))],matches("(DS|Fz|D0|T_soil|Press).*_\\d"),names_pattern = "(\\w+)_(\\d)",names_to = c(".value","id"))
 
 DS_long <- DS_long %>%
@@ -289,19 +322,23 @@ DS_long <- DS_long %>%
     as.data.frame()
   
 
+names(F_df)
 names(DS_long)
 ggplot(F_df)+
   #geom_line(aes(date,DSD0_1,col=method))+
   geom_line(data=DS_long_roll,aes(date,DSD0_roll,linetype=id))+
+  geom_ribbon(data=DS_long,aes(date,ymin=DSD0_min_roll,ymax=DSD0_max_roll,linetype=id,fill=method),alpha=0.2)+
   geom_line(data=DS_long,aes(date,DSD0_roll,linetype=id,col=method))
   
 
   
 ggplot(DS_long)+
-  geom_line(aes(date,Fz,col=method,linetype=id))
+  geom_ribbon(data=DS_long,aes(date,ymin=Fz_min_roll,ymax=Fz_max_roll,linetype=id,fill=method),alpha=0.2)+
+  geom_line(aes(date,Fz_roll,col=method,linetype=id))
   
 
-save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax.RData"))
+#save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax2.RData"))
+#save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax.RData"))
 #save(DS_long_list,DS_long_WS,file=paste0(datapfad_harth,"DS_long_list_SWC_WS.RData"))
 #save(DS_long_list,DS_long_mean_each,file=paste0(datapfad_harth,"DS_long_list_drift_mean_each.RData"))
 #save(DS_long_list,file=paste0(datapfad_harth,"DS_long_list_ceil.RData"))
