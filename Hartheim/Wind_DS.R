@@ -111,21 +111,22 @@ ggplot()+
   geom_point(data=ds_wide,aes(date,DSD0_1))+
   geom_point(data=ds_approx,aes(date,DSD0_1))
 colnames(ds_wide)
-ds_peak <- ds_sub2 %>% 
-  filter(id==1) %>%
-  select(date,DSD0_roll,Wind,WindVel_30m_ms,id,range2,Versuch) %>% 
-  group_by(Versuch) %>% 
-  mutate(
-    slope = c(NA, diff(DSD0_roll)),
-    slope2 = c(NA, diff(slope)),
-    DSD0_min = RcppRoll::roll_minr(DSD0_roll,19,na.rm = T),
-    tal = ifelse(abs(slope) < 5e-3 & (slope2) > 0& !DSD0_roll > DSD0_min + 0.01, DSD0_roll, NA),
-    tal_approx = zoo::na.approx(tal,na.rm=F),
-    base = ifelse(tal_approx < DSD0_roll,tal_approx,DSD0_roll),
-    peak_min = DSD0_roll-DSD0_min,
-    peak = DSD0_roll - base
-    ) %>% 
-  filter(!is.na(DSD0_min))
+
+# ds_peak <- ds_sub2 %>%
+#   filter(id==1) %>%
+#   select(date,DSD0_roll,Wind,WindVel_30m_ms,id,range2,Versuch) %>%
+#   group_by(Versuch) %>%
+#   mutate(
+#     slope = c(NA, diff(DSD0_roll)),
+#     slope2 = c(NA, diff(slope)),
+#     DSD0_min = RcppRoll::roll_minr(DSD0_roll,19,na.rm = T),
+#     tal = ifelse(abs(slope) < 5e-3 & (slope2) > 0& !DSD0_roll > DSD0_min + 0.01, DSD0_roll, NA),
+#     tal_approx = zoo::na.approx(tal,na.rm=F),
+#     base = ifelse(tal_approx < DSD0_roll,tal_approx,DSD0_roll),
+#     peak_min = DSD0_roll-DSD0_min,
+#     peak = DSD0_roll - base
+#     ) %>%
+#   filter(!is.na(DSD0_min))
 
 lim <- 1e-5
 lim2 <- 0.01
@@ -141,24 +142,40 @@ ds_peak <- ds_approx %>%
     tal = ifelse(abs(slope) < lim & (slope2) > 0& !DSD0_1 > DSD0_min + lim2, DSD0_1, NA),
     tal_approx = zoo::na.approx(tal,na.rm=F),
     base = ifelse(tal_approx < DSD0_1,tal_approx,DSD0_1),
-    peak_min = DSD0_1-DSD0_min,
+    #peak_min = DSD0_1-DSD0_min,
     peak = DSD0_1 - base
     ) %>% 
   filter(!is.na(DSD0_min))
 
 PPC_DS <- merge(ds_peak,PPC)
+#PPC_DS_2 <- merge(ds_peak_2,PPC)
 PPC_DS_long <- tidyr::pivot_longer(PPC_DS,matches("^V\\d"),values_to = "PPC")
+range(PPC$date)
+ggplot()+
+  #geom_line(data=PPC,aes(date,V33),col=3)+
+  geom_line(data=PPC_DS,aes(date,V19))+
 
+  geom_line(data=PPC_DS,aes(date,DSD0_roll),col=2)+
+  geom_line(data=PPC_DS,aes(date,base),col=2)+
+  geom_line(data=PPC_DS,aes(date,peak),col=2)
 
+colnames(PPC_DS)
 corcols <- grep("^V\\d|^peak$",colnames(PPC_DS))
 cormat <- cor(PPC_DS[,corcols],use="complete")
-best_cors <- names(which(cormat[,1]>0.9))
-best_cor <- names(sort(cormat[-1,1],decreasing = T)[1:6])
+best_cors <- names(which(sort(cormat[-1,1],decreasing=T)>0.8))
+best_cor <- names(sort(cormat[-1,1],decreasing = T)[1:15])
+
+sort(cormat[-1,1],decreasing = T)[1:15]
+#aus Mail von Sven: 
+#dein Versuchfeld lag in der nähe von Nummer 19 und 20.
+
 PPC_DS$PPC <- PPC_DS[,"V19"]
 PPC_DS <- PPC_DS[!grepl("^V\\d+$",colnames(PPC_DS))]
 PPC$PPC <- PPC[,"V19"]
+PPC <- PPC[!grepl("^V\\d+$",colnames(PPC))]
 
 colnames(PPC)
+colnames(PPC_DS)
 ####################
 #save
 save(PPC_DS,PPC,file=paste0(datapfad_harth,"PPC_DS.RData"))

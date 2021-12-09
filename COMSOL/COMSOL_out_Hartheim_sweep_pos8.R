@@ -65,6 +65,11 @@ data_sub <- subset(data, date %in% mod_dates) %>% select(!matches("(Precip|Wind|
 
 data_sub$z <- z_soil_cm + data_sub$tiefe
 
+
+
+
+
+  
 #########################################################
 
 #modell mit obs vergleichen
@@ -79,8 +84,8 @@ offset_methods <- c("SWC_T",
                     #"drift_mingradient",
                     #"drift_maxgradient",
                     "drift_max",
-                    "drift",
-                    "SWC_WS"
+                    "drift"
+                    #"SWC_WS"
                     )
 
 
@@ -318,7 +323,7 @@ DS_long <-tidyr::pivot_longer(F_df[,!grepl("CO2_ref",colnames(F_df))],matches("(
 DS_long <- DS_long %>%
     group_by(id,method) %>%
     #mutate(across(c("Fz",paste0("DSD0",c("","_min","_max"))),list(roll=~RcppRoll::roll_mean(.,n=5,fill=NA)))) %>%
-    mutate(across(matches("(Fz|DSD0)(_min|_max)?$"),list(roll=~RcppRoll::roll_mean(.,n=5,fill=NA)))) %>%
+    mutate(across(matches("(Fz|DSD0)(_min|_max)?$"),list(roll=~RcppRoll::roll_mean(.,n=10,fill=NA)))) %>%
     as.data.frame()
   
 
@@ -327,8 +332,8 @@ names(DS_long)
 ggplot(F_df)+
   #geom_line(aes(date,DSD0_1,col=method))+
   geom_line(data=DS_long_roll,aes(date,DSD0_roll,linetype=id))+
-  geom_ribbon(data=DS_long,aes(date,ymin=DSD0_min_roll,ymax=DSD0_max_roll,linetype=id,fill=method),alpha=0.2)+
-  geom_line(data=DS_long,aes(date,DSD0_roll,linetype=id,col=method))
+  geom_ribbon(data=DS_long,aes(date,ymin=DSD0_min_roll*1.26,ymax=DSD0_max_roll*1.26,linetype=id,fill=method),alpha=0.2)+
+  geom_line(data=DS_long,aes(date,DSD0_roll*1.26,linetype=id,col=method))
   
 
   
@@ -337,6 +342,7 @@ ggplot(DS_long)+
   geom_line(aes(date,Fz_roll,col=method,linetype=id))
   
 
+#save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax3.RData"))
 #save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax2.RData"))
 #save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax.RData"))
 #save(DS_long_list,DS_long_WS,file=paste0(datapfad_harth,"DS_long_list_SWC_WS.RData"))
