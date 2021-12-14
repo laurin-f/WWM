@@ -17,8 +17,6 @@ packages<-c("lubridate","stringr","ggplot2","ggforce","units","egg","dplyr")
 check.packages(packages)
 
 
-ggplot(data)+
-  geom_line(aes(date,Fz))
 ######################################
 #data_agg
 load(paste0(kammer_datapfad,"Kammer_flux.RData"))

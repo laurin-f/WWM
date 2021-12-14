@@ -128,12 +128,13 @@ colnames(ds_wide)
 #     ) %>%
 #   filter(!is.na(DSD0_min))
 
+
 lim <- 1e-5
 lim2 <- 0.01
-ds_peak <- ds_approx %>% 
-  filter(!is.na(Versuch)) %>% 
-  group_by(Versuch) %>% 
-  select(date,DSD0_1,Versuch) %>% 
+ds_peak <- ds_approx %>%
+  filter(!is.na(Versuch)) %>%
+  group_by(Versuch) %>%
+  select(date,DSD0_1,Versuch) %>%
   mutate(
     DSD0_roll = RcppRoll::roll_mean(DSD0_1,n=60,fill=NA),
     slope = c(NA, diff(DSD0_roll)),
@@ -144,16 +145,18 @@ ds_peak <- ds_approx %>%
     base = ifelse(tal_approx < DSD0_1,tal_approx,DSD0_1),
     #peak_min = DSD0_1-DSD0_min,
     peak = DSD0_1 - base
-    ) %>% 
+    ) %>%
   filter(!is.na(DSD0_min))
 
 PPC_DS <- merge(ds_peak,PPC)
 #PPC_DS_2 <- merge(ds_peak_2,PPC)
 PPC_DS_long <- tidyr::pivot_longer(PPC_DS,matches("^V\\d"),values_to = "PPC")
 range(PPC$date)
+PPC_DS$date
 ggplot()+
   #geom_line(data=PPC,aes(date,V33),col=3)+
-  geom_line(data=PPC_DS,aes(date,V19))+
+  #geom_line(data=PPC_DS,aes(date,V19))+
+  geom_line(data=subset(PPC_DS,date %in% round_date(date,"hours")),aes(date,V19))+
 
   geom_line(data=PPC_DS,aes(date,DSD0_roll),col=2)+
   geom_line(data=PPC_DS,aes(date,base),col=2)+

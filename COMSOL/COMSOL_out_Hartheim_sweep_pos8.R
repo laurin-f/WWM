@@ -69,23 +69,25 @@ data_sub$z <- z_soil_cm + data_sub$tiefe
 
 
 
-  
+
 #########################################################
 
 #modell mit obs vergleichen
 
 ########################################################
-offset_methods <- c("SWC_T",
-                     "SWC_T_min",
+offset_methods <- c(#"SWC_T",
+                    # "SWC_T_min",
                     # "SWC_T_mingradient",
                     # "SWC_T_maxgradient",
-                    "SWC_T_max",
+                    #"SWC_T_max",
                     "drift_min",
                     #"drift_mingradient",
                     #"drift_maxgradient",
                     "drift_max",
-                    "drift"
-                    #"SWC_WS"
+                    "drift",
+                    "SWC_WS",
+                    "SWC_WS_min",
+                    "SWC_WS_max"
                     )
 
 
@@ -235,7 +237,8 @@ tictoc::toc()
 
 ##################################################################
 ####################################################
-for(j in c("drift","SWC_T")){
+for(j in c("drift","SWC_WS")){
+#for(j in c("drift","SWC_T")){
 minmax_vec <- c("min","max")
 for(i in minmax_vec){
 #DS_long_list[[j]][,paste0("DSD0_",i)] <-  DS_long_list[[paste0(j,"_",i)]]$DSD0
@@ -256,10 +259,11 @@ for(j in names(F_df_list)){
 F_df_list[[j]]$method <- j
 }
 
-F_df_list$SWC_WS[paste0("DS_",rep(minmax_vec,each=3),"_",1:3)] <- NA
+#F_df_list$SWC_WS[paste0("DS_",rep(minmax_vec,each=3),"_",1:3)] <- NA
 #names(DS_long_list)
 #DS_long <- do.call(rbind,DS_long_list[c("drift","SWC_T")])
-F_df <- do.call(rbind,F_df_list[c("drift","SWC_T","SWC_WS")])
+F_df <- do.call(rbind,F_df_list[c("drift","SWC_WS")])
+#F_df <- do.call(rbind,F_df_list[c("drift","SWC_T","SWC_WS")])
 
 ################################################
 #F_df
@@ -342,6 +346,7 @@ ggplot(DS_long)+
   geom_line(aes(date,Fz_roll,col=method,linetype=id))
   
 
+save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_WS_drift_minmax.RData"))
 #save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax3.RData"))
 #save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax2.RData"))
 #save(F_df,DS_long,file=paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax.RData"))
