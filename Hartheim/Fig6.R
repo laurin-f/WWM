@@ -34,8 +34,13 @@ load(paste0(comsolpfad,"plotdata_Methodenpaper_roll.RData"))
 load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 load(paste0(datapfad_harth,"PPC_DS.RData"))
-load(paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax2.RData"))
+#load(paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax2.RData"))
 
+load(paste0(datapfad_harth,"DS_long_list_SWC_Ws_drift_minmax.RData"))
+DS_long$method[DS_long$method == "SWC_WS"] <- "SWC_T"
+
+#ggplot(ds_soil)+
+#  geom_line(aes(date,DSD0_roll,group=paste(id,method),col=method))
 #date ranges
 
 #injektion 1 weg
@@ -106,9 +111,9 @@ ds_sub$calm <- T
 ds_sub$calm[!ds_sub$date %in% calm_dates] <- F
 
 
-# ds_snopt <- subset(DS_long_roll, date %in% ds_sub$date)
-# ds_snopt$calm <- T
-# ds_snopt$calm[!ds_snopt$date %in% calm_dates] <- F
+ ds_snopt <- subset(DS_long_roll, date %in% ds_sub$date)
+ds_snopt$calm <- T
+ds_snopt$calm[!ds_snopt$date %in% calm_dates] <- F
 
 
 
@@ -120,10 +125,37 @@ PPC_DS$windy <- factor(PPC_DS$Versuch,levels = 2:3,labels=c("windy period","calm
 
 ds_soil_agg <- ds_soil %>% group_by(id,windy) %>% summarise_all(mean)
 
+
+ds_sub %>% 
+  group_by(method,Versuch,id) %>% 
+  summarise(from=min(DSD0_roll,na.rm=T),
+            to=max(DSD0_roll,na.rm=T)) %>% 
+  mutate(Versuch = ifelse(Versuch == 2, "windy","calm"))
+names(ds_sub)
+ds_sub %>% 
+  group_by(method,Versuch,id) %>% 
+  summarise(from=min(Fz_roll,na.rm=T),
+            to=max(Fz_roll,na.rm=T)) %>% 
+  mutate(Versuch = ifelse(Versuch == 2, "windy","calm"))
+range(subset(ds_snopt,Versuch==2 & id==1)$DSD0_roll,na.rm=T)
+range(subset(ds_snopt,Versuch==3 & id==1)$DSD0_roll,na.rm=T)
+range(subset(ds_snopt,Versuch==2 & id==1)$Fz_roll_0_10,na.rm=T)
+range(subset(ds_snopt,Versuch==3 & id==1)$Fz_roll_0_10,na.rm=T)
+
+
+names(ds_snopt)
+range(subset(ds_sub,id==1 & method=="drift")$DSD0_roll,na.rm = T)
+range(subset(ds_sub,id==2 & method=="drift")$DSD0_roll,na.rm = T)
+range(subset(ds_sub,id==3 & method=="SWC_T")$DSD0_roll,na.rm = T)
+range(subset(ds_sub,id==2 & method=="SWC_T")$DSD0_roll,na.rm = T)
+range(subset(ds_sub,id==3 & method=="SWC_T")$DSD0_roll,na.rm = T)
+range(subset(ds_sub,id==3)$DSD0_roll,na.rm = T)
+
+
 ds_sub <- subset(ds_sub, method != "SWC_WS" & id < 3)
 
 
-# ds_snopt$windy <- factor(ds_snopt$Versuch,levels = 2:3,labels=c("windy period","calm period"))
+ ds_snopt$windy <- factor(ds_snopt$Versuch,levels = 2:3,labels=c("windy period","calm period"))
 
 
 calm_windy <- diff(ds_sub$calm)
@@ -194,9 +226,8 @@ PPC_DS_2$PPC_roll <- RcppRoll::roll_mean(PPC_DS_2$PPC,3,fill=NA)
 ###############################################################################
 
 
-range(subset(ds_sub,id==1 & method=="drift")$DSD0_roll,na.rm = T)
-range(subset(ds_sub,id==2 & method=="drift")$DSD0_roll,na.rm = T)
-#range(subset(ds_sub,id==3)$DSD0_roll,na.rm = T)
+mean(subset(ds_sub,method=="drift"&id==2)$Fz_roll/subset(ds_sub,method=="drift"&id==1)$Fz_roll,na.rm=T)
+mean(subset(ds_sub,method=="SWC_T"&id==2)$Fz_roll/subset(ds_sub,method=="SWC_T"&id==1)$Fz_roll,na.rm=T)
 mean(subset(F_sub,method=="drift")$Fz_2_roll/subset(F_sub,method=="drift")$Fz_1_roll,na.rm=T)
 
 
@@ -205,7 +236,8 @@ DS_boxplot <-
   ggplot()+
   geom_boxplot(data=subset(ds_soil_agg),aes(fill="feps",middle=PTF_median_median,ymin=PTF_min_max,ymax=PTF_max_min,lower=PTF_q25_max,upper=PTF_q75_min,x=id),stat="identity",width=0.2,position=position_nudge(x=-0.25))+
   #geom_boxplot(data=ds_snopt,aes(fill="drift",DSD0_roll,x=id),width=0.2,position = position_nudge(x = 0))+
-  geom_boxplot(data=subset(ds_soil,method=="drift"),aes(fill=as.factor(method),col=method,DSD0_roll_aniso,x=id),width=0.2,position = position_nudge(x = 0),alpha=0.3)+
+  geom_boxplot(data=ds_snopt,aes(fill="drift",col="drift",DSD0_roll,x=id),width=0.2,position = position_nudge(x = 0),alpha=0.3)+
+  #geom_boxplot(data=subset(ds_soil,method=="drift"),aes(fill=as.factor(method),col=method,DSD0_roll_aniso,x=id),width=0.2,position = position_nudge(x = 0),alpha=0.3)+
   geom_boxplot(data=subset(ds_soil,method=="SWC_T"),aes(fill=as.factor(method),col=method,ifelse(DSD0_roll_aniso > 1, DSD0_roll_aniso,DSD0_roll_aniso),x=id),width=0.2,position = position_nudge(x = 0.25),alpha=0.3)+
   facet_wrap(~windy)+
 #  scale_fill_brewer(breaks=c("feps","drift","SWC_T"),type="qual",palette=2,labels=c(expression(f(epsilon)),"ref adj","SWC T"))+
@@ -245,11 +277,14 @@ flux_plot <-
   ggnewscale::new_scale_fill()+
     geom_ribbon(data=subset(ds_sub, !is.na(calm_id)),aes(x=date,ymin=Fz_min_roll_aniso,ymax=Fz_max_roll_aniso,fill=method2,group=paste(id,calm_id,method)),alpha=0.2)+
     #geom_ribbon(data=ds_sub,aes(x=date,ymin=Fz_min_roll,ymax=Fz_max_roll,fill=method2,group=paste(id,method)),alpha=0.1)+
-    #geom_line(data=ds_snopt,aes(date,Fz_roll_0_10,group=id,col="ref adj",alpha=calm,linetype="calm"))+
+    geom_line(data=ds_snopt,aes(date,Fz_roll_0_10,group=id,col="ref adj",linetype="windy"))+
+    geom_line(data=ds_snopt,aes(date,Fz_roll_0_10,group=id,col="ref adj",alpha=calm,linetype="calm"))+
     #geom_ribbon(data=subset(ds_sub,id==1&method=="drift"),aes(date,ymin=Fz_roll_aniso,ymax=Fz_roll_aniso,col="balm",fill="balm"))+
     #geom_ribbon(data=subset(ds_sub,id==1&method=="drift"),aes(date,ymin=Fz_roll_aniso,ymax=Fz_roll_aniso,col="aalm",fill="aalm"))+
-    geom_line(data=ds_sub,aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,linetype="windy"))+
-    geom_line(data=ds_sub,aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,alpha=calm,linetype="calm"))+
+    geom_line(data=subset(ds_sub,method=="SWC_T"),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,linetype="windy"))+
+    geom_line(data=subset(ds_sub,method=="SWC_T"),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,alpha=calm,linetype="calm"))+
+    geom_line(data=subset(ds_sub,method=="drift" & id ==2),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,linetype="windy"))+
+    geom_line(data=subset(ds_sub,method=="drift" & id ==2),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,alpha=calm,linetype="calm"))+
 
     
     
@@ -352,13 +387,14 @@ PPC_DS_plot
 #PPC_DS$peak_rel <- PPC_DS$peak#/PPC_DS$base*100
 
 
-cor(PPC_DS_sub$peak,PPC_DS_sub$PPC,use = "complete")
+cor(PPC_DS_sub$peak,PPC_DS_sub$PPC_roll,use = "complete")
+cor(PPC_DS_2_sub$peak,PPC_DS_2_sub$PPC_roll,use = "complete")
 
 fm_PPC_DPPE <- glm(peak~PPC_roll,data=subset(PPC_DS_sub,date %in% ds_sub$date))
 R2 <- 1-(fm_PPC_DPPE$deviance/fm_PPC_DPPE$null.deviance)
 intercept <- fm_PPC_DPPE$coefficients[1]
 slope <- fm_PPC_DPPE$coefficients[2]
-
+0.5108^2
 
 # fm_PPC_drift <- glm(peak~PPC,data=subset(PPC_DS_2_sub,method=="drift"))
 #R2_drift <- 1-(fm_PPC_drift$deviance/fm_PPC_drift$null.deviance)
@@ -431,7 +467,7 @@ fg4 <-
     debug = F
   )
 combined <- gridExtra::gtable_rbind(fg1, fg23,fg4) 
-jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS_new.jpg"),width=7,height = 7.5,units="in",res=300)
+jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS_WS.jpg"),width=7,height = 7.5,units="in",res=300)
 grid::grid.newpage()
 grid::grid.draw(combined)
 dev.off()

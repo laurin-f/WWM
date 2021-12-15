@@ -72,7 +72,7 @@ data$preds_SWC_WS <- NA
 #data$offset_drift <- NA
 #data$preds_drift <- NA
 
-
+fm_list <- list()
 for(j in j_78){
 
   for(i in (1:7)*-3.5){
@@ -94,10 +94,42 @@ for(j in j_78){
     data$preds_SWC_WS[ID] <- predict(fm_SWC_WS,newdata = data[ID,])
     #data$preds_SWC_PPC[ID] <- predict(fm_SWC_PPC,newdata = data[ID,])
     #data$preds_SWC_T_Wind[ID] <- predict(fm_SWC_T_Wind,newdata = data[ID,])
-    
+    fm_list[[paste0("depth_",-i,"Pos",j+1)]] <- fm_SWC_WS
   }
 }
 
+fm_list
+i <- -3.5
+j <- 7
+
+for(j in 7:8){
+for(i in (1:7)*-3.5){
+data_sub <- data %>%
+  filter(Position==j&tiefe == i &Pumpstufe == 0) %>% 
+#  group_by(tiefe) %>% 
+  select("date_int","hour","VWC_roll","T_soil","Wind_roll") %>% 
+  summarise(across(1:5,~seq(min(.),max(.),len=10))) %>% 
+  mutate(across(3:5,round,1),
+         hour = round(hour)) %>% 
+  as.data.frame()
+  
+data_expand <- expand.grid(data_sub)
+
+data_expand$CO2_preds <- predict(fm_list[[paste0("depth_",abs(i),"Pos",j)]],newdata=data_expand)
+
+data_long <- tidyr::pivot_longer(data_expand,1:5) %>% 
+  group_by(value,name) %>% 
+  summarise(min=min(CO2_preds),max=max(CO2_preds),mean=mean(CO2_preds))  
+
+ggplot(data_long)+
+  geom_ribbon(aes(x=value,ymin=min,ymax=max,col=name,fill=name),linetype=2,alpha=0.1)+
+  geom_line(aes(value,mean,col=name))+facet_wrap(~name,scales="free")+
+  labs(title = paste("tiefe",i,"Pos",j))+
+  ggsave(paste0(plotpfad_ms,"marginalplot_tiefe",abs(i),"Pos",j,".png"),width=7,height=6)
+}
+}
+lapply(fm_list,summary)
+print(summary(fm_list[[paste0("depth_",abs(i),"Pos",j)]]))
 
 #range(data_sub$date)
 data$CO2_tracer_SWC_WS <- data$CO2_roll_inj - (data$preds_SWC_WS)

@@ -56,7 +56,7 @@ z_soil_cm <- 150
 
 #############
 #data subset
-minmax_cols <- grep("CO2_tracer_(drift|SWC_T)_.*(min|max)",colnames(data_uncert),value = T)
+minmax_cols <- grep("CO2_tracer_(drift|SWC_T|SWC_WS)_.*(min|max)",colnames(data_uncert),value = T)
 data[,minmax_cols] <- NA
 data[data$date %in% data_uncert$date,minmax_cols] <- data_uncert[,minmax_cols]
 
@@ -69,7 +69,7 @@ data_sub$z <- z_soil_cm + data_sub$tiefe
 
 
 
-
+names(data)
 #########################################################
 
 #modell mit obs vergleichen
@@ -80,13 +80,13 @@ offset_methods <- c(#"SWC_T",
                     # "SWC_T_mingradient",
                     # "SWC_T_maxgradient",
                     #"SWC_T_max",
+                    "SWC_WS_min",
                     "drift_min",
                     #"drift_mingradient",
                     #"drift_maxgradient",
                     "drift_max",
                     "drift",
                     "SWC_WS",
-                    "SWC_WS_min",
                     "SWC_WS_max"
                     )
 
