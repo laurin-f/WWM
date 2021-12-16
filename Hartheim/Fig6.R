@@ -175,8 +175,13 @@ for(i in seq_along(start))  ds_sub$calm_id[start[i]:stop[i]] <- i
 #meth_col <- RColorBrewer::brewer.pal(n = 3, name = "Dark2")[c(2,3)]
 meth_col <- scales::hue_pal()(2)
 
-method_exp <- expression("ref"["adj"]~" stand-alone")
-method_labels <- c("ref adj","stand-alone")
+method_exp <- "DCPP stand-alone"
+#method_exp <- expression("ref"["adj"]~" stand-alone")
+
+meth_exp2 <- "depth 0-10 cm\n\nDCPP stand-alone"
+#meth_exp2 <- expression(atop("depth 0-10 cm","ref"["adj"]~" stand-alone"))
+method_labels <- c("DCPP","stand-alone")
+#method_labels <- c("ref adj","stand-alone")
 ds_sub$method2 <- factor(ds_sub$method,levels = c("drift","SWC_T"),labels=method_labels)
 
 #######################
@@ -300,8 +305,8 @@ flux_plot <-
    #                              ),ncol=2))+
   scale_x_datetime(date_label="%b %d",breaks="2 days")+
   ylim(c(0,max(ds_sub$Fz_min_roll)))+
-  scale_color_manual(method_exp,limits=paste0(rep(method_labels,each=2),rep(c("","windy"),2)),values = rep(meth_col,each=2),labels=c("","","calm","windy"))+
-  scale_fill_manual(method_exp,limits=paste0(rep(method_labels,each=2),rep(c("","windy"),2)),values = c(meth_col[1],NA,meth_col[2],NA),labels=c("","","calm","windy"))+
+  scale_color_manual(method_exp,limits=paste0(rep(method_labels,each=2),rep(c("","windy"),2)),values = rep(meth_col,each=2),labels=c("  ","","calm","windy"))+
+  scale_fill_manual(method_exp,limits=paste0(rep(method_labels,each=2),rep(c("","windy"),2)),values = c(meth_col[1],NA,meth_col[2],NA),labels=c("  ","","calm","windy"))+
   
   #scale_fill_manual(values = rep(meth_col,2))+
   guides(col=guide_legend(override.aes = list(linetype=c(1,2,1,2)),ncol=2,order=1),
@@ -333,6 +338,7 @@ flux_adj <- adj_grob_size(flux_plot,subset(soil_wide,!is.na(period)),breaks="2 d
 # 
 ################################
 #Wind DS
+
 axis_fac <- 10
 
 range7 <- range(subset(DS_long_roll,Versuch == 2)$date)
@@ -368,8 +374,8 @@ PPC_DS_plot <-
   scale_y_continuous(sec.axis = sec_axis(trans=~.,name=expression("PPC [Pa s"^{-1}*"]")))+
   #scale_fill_manual("",limits=col_labs,values = c(2,2,NA),labels=col_exps)+
   #scale_fill_manual("depth: 0-10 cm",limits=col_labs,values = c(NA,2,NA,NA),labels=col_exps)+
-  scale_fill_manual(expression(atop("depth 0-10 cm","ref"["adj"]~" stand-alone")),limits=c(col_labs,col_labs2),values = c(NA,meth_col[1],NA,NA,meth_col[2],NA),labels=c(rep("",3),col_exps))+
-  scale_color_manual(expression(atop("depth 0-10 cm","ref"["adj"]~" stand-alone")),limits=c(col_labs,col_labs2),values = c(meth_col[1],meth_col[1],"red",meth_col[2],meth_col[2],"blue"),labels=c(rep("",3),col_exps))+
+  scale_fill_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(NA,meth_col[1],NA,NA,meth_col[2],NA),labels=c(rep("  ",3),col_exps))+
+  scale_color_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(meth_col[1],meth_col[1],"red",meth_col[2],meth_col[2],"blue"),labels=c(rep("  ",3),col_exps))+
   #scale_color_manual("depth: 0-10 cm",limits=col_labs,values = c(scales::hue_pal()(1),scales::hue_pal()(1),"red",grey(0.2),NA),labels=col_exps)+
   facet_wrap(~factor(Versuch,levels=c("2","3"),labels = c("windy period","calm period")),scales="free_x")+
   guides(col=guide_legend(ncol=2,override.aes = list(linetype=c("dashed","solid","11","dashed","solid","11"),lwd=c(0.6,0.7,0.8,0.6,0.7,0.8)),order=1),
