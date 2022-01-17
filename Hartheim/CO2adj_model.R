@@ -31,7 +31,7 @@ ggplot(subset(data,Position==7))+
   #geom_point(aes(Wind_roll,preds_SWC_WS,col=as.factor(Pumpstufe)))
   #geom_point(aes(VWC_roll,preds_SWC_WS,col=as.factor(Pumpstufe)))
   geom_point(aes(T_Soil,preds_SWC_WS,col=as.factor(Pumpstufe)))
-pos <- 7
+for(pos in 7:8){
 dataranges <- data %>% 
   filter(Position==pos&!is.na(Pumpstufe)) %>% 
   mutate(period=ifelse(Pumpstufe > 0,"inj","cal")) %>% 
@@ -40,7 +40,8 @@ dataranges <- data %>%
   tidyr::pivot_longer(c("VWC_roll_range","T_soil_range","Wind_roll_range"))
 
 ggplot(dataranges)+
-  geom_boxplot(aes(tiefe,value,group=paste(tiefe,period),fill=period,col=period),lwd=1)+facet_wrap(~name,scales="free")+labs(title=paste("Position",pos))+ggsave(paste0(plotpfad_ms,"SWC_T_WS_ranges_pos",pos,".png"),width=7,height=3)
+  geom_boxplot(aes(tiefe,value,group=paste(tiefe,period),fill=period,col=period),lwd=1)+facet_wrap(~name,scales="free")+labs(title=ifelse(pos==7,"windy period","calm period"))+ggsave(paste0(plotpfad_ms,"SWC_T_WS_ranges_",ifelse(pos==7,"windy","calm"),".png"),width=7,height=3)
+}
 data$PPC <- NA
 for(i in unique(data$tiefe)){
   data$PPC[data$date %in% PPC$date & data$tiefe == i] <- PPC$PPC

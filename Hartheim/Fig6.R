@@ -223,6 +223,9 @@ PPC_DS_2 <- merge(ds_peak,PPC)
 PPC_DS$PPC_roll <- RcppRoll::roll_mean(PPC_DS$PPC,3,fill=NA)
 PPC_DS_2$PPC_roll <- RcppRoll::roll_mean(PPC_DS_2$PPC,3,fill=NA)
 
+PPC_col <- c(scales::hue_pal(l=45,c=200)(1),"#276dc2")
+PPC_col <- scales::hue_pal(l=60,c=150)(2)
+scales::show_col(c(PPC_col,meth_col))
 
 ###############################################################################
 ###############################################################################
@@ -280,16 +283,16 @@ flux_plot <-
   scale_fill_manual("T & SWC model",values=grey(0.3))+
   ggnewscale::new_scale_color()+
   ggnewscale::new_scale_fill()+
-    geom_ribbon(data=subset(ds_sub, !is.na(calm_id)),aes(x=date,ymin=Fz_min_roll_aniso,ymax=Fz_max_roll_aniso,fill=method2,group=paste(id,calm_id,method)),alpha=0.2)+
+    geom_ribbon(data=subset(ds_sub, !is.na(calm_id)),aes(x=date,ymin=pmin(Fz_min_roll_aniso,Fz_max_roll_aniso,Fz_roll_aniso),ymax=pmax(Fz_min_roll_aniso,Fz_max_roll_aniso,Fz_roll_aniso),fill=method2,group=paste(id,calm_id,method)),alpha=0.2)+
     #geom_ribbon(data=ds_sub,aes(x=date,ymin=Fz_min_roll,ymax=Fz_max_roll,fill=method2,group=paste(id,method)),alpha=0.1)+
-    geom_line(data=ds_snopt,aes(date,Fz_roll_0_10,group=id,col="ref adj",linetype="windy"))+
-    geom_line(data=ds_snopt,aes(date,Fz_roll_0_10,group=id,col="ref adj",alpha=calm,linetype="calm"))+
+    geom_line(data=ds_snopt,aes(date,Fz_roll_0_10,group=id,col=method_labels[1],linetype="windy"))+
+    geom_line(data=ds_snopt,aes(date,Fz_roll_0_10,group=id,col=method_labels[1],alpha=calm,linetype="calm"))+
     #geom_ribbon(data=subset(ds_sub,id==1&method=="drift"),aes(date,ymin=Fz_roll_aniso,ymax=Fz_roll_aniso,col="balm",fill="balm"))+
     #geom_ribbon(data=subset(ds_sub,id==1&method=="drift"),aes(date,ymin=Fz_roll_aniso,ymax=Fz_roll_aniso,col="aalm",fill="aalm"))+
     geom_line(data=subset(ds_sub,method=="SWC_T"),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,linetype="windy"))+
     geom_line(data=subset(ds_sub,method=="SWC_T"),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,alpha=calm,linetype="calm"))+
-    geom_line(data=subset(ds_sub,method=="drift" & id ==2),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,linetype="windy"))+
-    geom_line(data=subset(ds_sub,method=="drift" & id ==2),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,alpha=calm,linetype="calm"))+
+    geom_line(data=subset(ds_sub,method=="drift" & id %in% 2),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,linetype="windy"))+
+    geom_line(data=subset(ds_sub,method=="drift" & id %in% 2),aes(date,Fz_roll_aniso,group=paste(id,method),col=method2,alpha=calm,linetype="calm"))+
 
     
     
@@ -322,6 +325,12 @@ flux_plot <-
 
 
 flux_plot
+
+pmax(1:5,2:6,3:7)
+ggplot(subset(ds_sub,method=="drift"))+
+  geom_line(aes(date,Fz_roll_aniso,group=id))+
+  geom_line(aes(date,pmax(Fz_min_roll_aniso,Fz_max_roll_aniso,Fz_roll_aniso),group=id,col="max"))+
+  geom_line(aes(date,pmin(Fz_min_roll_aniso,Fz_max_roll_aniso,Fz_roll_aniso),group=id,col="min"))
 #theme(panel.border = element_rect(fill=NA))
 #geom_vline(data=data.frame(x=c(max(subset(soil_wide,Versuch==2)$date),min(subset(soil_wide,Versuch==3)$date)),Versuch=2:3),aes(xintercept=x),linetype="dashed")
 soil_wide$period <- soil_wide$Versuch-1
@@ -375,7 +384,7 @@ PPC_DS_plot <-
   #scale_fill_manual("",limits=col_labs,values = c(2,2,NA),labels=col_exps)+
   #scale_fill_manual("depth: 0-10 cm",limits=col_labs,values = c(NA,2,NA,NA),labels=col_exps)+
   scale_fill_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(NA,meth_col[1],NA,NA,meth_col[2],NA),labels=c(rep("  ",3),col_exps))+
-  scale_color_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(meth_col[1],meth_col[1],"red",meth_col[2],meth_col[2],"blue"),labels=c(rep("  ",3),col_exps))+
+  scale_color_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(meth_col[1],meth_col[1],PPC_col[1],meth_col[2],meth_col[2],PPC_col[2]),labels=c(rep("  ",3),col_exps))+
   #scale_color_manual("depth: 0-10 cm",limits=col_labs,values = c(scales::hue_pal()(1),scales::hue_pal()(1),"red",grey(0.2),NA),labels=col_exps)+
   facet_wrap(~factor(Versuch,levels=c("2","3"),labels = c("windy period","calm period")),scales="free_x")+
   guides(col=guide_legend(ncol=2,override.aes = list(linetype=c("dashed","solid","11","dashed","solid","11"),lwd=c(0.6,0.7,0.8,0.6,0.7,0.8)),order=1),
@@ -410,12 +419,12 @@ R2_SWC_T <- 1-(fm_PPC_SWC_T$deviance/fm_PPC_SWC_T$null.deviance)
 
 DPPE_PPC <- 
   ggplot(PPC_DS_sub)+
-  geom_point(aes(PPC_roll,peak),col=meth_col[1],fill=meth_col[1],alpha=0.6)+
   geom_point(data=PPC_DS_2_sub,aes(PPC_roll,peak),col=meth_col[2],fill=meth_col[2],alpha=0.6)+
-  geom_smooth(data=PPC_DS_2_sub,aes(PPC_roll,peak,group=method),method = "glm",se=F,col="blue",lwd=0.6,linetype="dashed")+
-  geom_smooth(aes(PPC_roll,peak),method = "glm",se=F,col="red",lwd=0.6,linetype="dashed",col="red")+
-  annotate("text",x=0.28,y=0.1,col="red",label=paste("R² =",round(R2,2)))+
-  annotate("text",x=0.28,y=0.05,col="blue",label=paste("R² =",round(R2_SWC_T,2)))+
+  geom_point(aes(PPC_roll,peak),col=meth_col[1],fill=meth_col[1],alpha=0.6)+
+  geom_smooth(data=PPC_DS_2_sub,aes(PPC_roll,peak,group=method),method = "glm",se=F,col=PPC_col[2],lwd=0.6,linetype="dashed")+
+  geom_smooth(aes(PPC_roll,peak),method = "glm",se=F,lwd=0.6,linetype="dashed",col=PPC_col[1])+
+  annotate("text",x=0.28,y=0.1,col=PPC_col[1],label=paste("R² =",round(R2,2)))+
+  annotate("text",x=0.28,y=0.05,col=PPC_col[2],label=paste("R² =",round(R2_SWC_T,2)))+
   #annotate("text",x=-Inf,y=0.29,label=paste("y =",round(slope,2),"x - ",abs(round(intercept,2))),hjust=-0.1)+
   labs(y=expression(D[PPE]/D[0]~"(0-10 cm)"),x=expression("PPC [Pa s"^{-1}*"]"),col="")+
   #scale_color_manual("",limits=c("feps",method_labels),values=c("grey",meth_col),labels=c(expression(f(epsilon)),method_labels))+
