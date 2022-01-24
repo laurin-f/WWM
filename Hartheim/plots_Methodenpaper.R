@@ -105,13 +105,15 @@ col<-scales::hue_pal()
 
 mod_obs_plot <- 
   ggplot(subset(data_sub, Versuch %in% c(5,6,9)))+
-  geom_line(aes(CO2_mod,tiefe,col=""))+
-  geom_point(aes(CO2,tiefe,shape="no Part"))+
-  geom_point(data=subset(respi_wide,Versuch%in%c(5:6,9)),aes(CO2_tracer_calc,tiefe,shape="with Part"),col=col(3)[2])+
+  geom_line(aes(CO2_mod,-tiefe,col=""))+
+  geom_point(aes(CO2,-tiefe,shape="no Part"))+
+  geom_point(data=subset(respi_wide,Versuch%in%c(5:6,9)),aes(CO2_tracer_calc,-tiefe,shape="with Part"),col=col(3)[2])+
   facet_wrap(~factor(material,levels=c("Sand","Splitt","Sand & Splitt"),labels=c("sand","grit","mixture")))+
   scale_shape_manual("obs",labels=c(expression("no "*P[art]),expression("with "*P[art])),values=c(19,20))+
   guides(shape=guide_legend(override.aes = list(color=c(1,col(3)[2]))))+
-  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="mod",fill="")+theme_bw()
+  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="mod",fill="")+
+  ylim(-range(data_sub$tiefe))+
+  theme_bw()
 mod_obs_plot 
 
 
@@ -125,10 +127,10 @@ lims2 <- c(expression(P[art]),"tracer",expression("tracer + "*P[art]))
 
 
 resp_plot <- ggplot(subset(respi_wide,Versuch%in%c(5:6)))+
-  geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_respi,y=tiefe,fill=lims[1]),alpha=0.2)+
-  geom_ribbon(aes(xmin=CO2_respi,xmax=CO2_ges,y=tiefe,fill=lims[2]),alpha=0.3)+
-  geom_point(aes(x=CO2_respi,y=tiefe,col=lims[1]))+
-  geom_point(aes(x=CO2_ges,y=tiefe,col=lims[3]))+
+  geom_ribbon(aes(xmin=CO2_atm,xmax=CO2_respi,y=-tiefe,fill=lims[1]),alpha=0.2)+
+  geom_ribbon(aes(xmin=CO2_respi,xmax=CO2_ges,y=-tiefe,fill=lims[2]),alpha=0.3)+
+  geom_point(aes(x=CO2_respi,y=-tiefe,col=lims[1]))+
+  geom_point(aes(x=CO2_ges,y=-tiefe,col=lims[3]))+
   #  geom_line(aes(x=CO2_tracer_calc,y=tiefe,col="CO2tracer"))+
   labs(fill=expression(CO[2]), x="", y="depth [cm]",col=expression(CO[2]))+
   guides(col=guide_legend(override.aes = list(shape=c(19,NA,19),fill=c(NA,col(3)[2],NA))))+
@@ -137,6 +139,7 @@ resp_plot <- ggplot(subset(respi_wide,Versuch%in%c(5:6)))+
   theme_bw()+
   theme(legend.text.align = 0)+
   #xlim(c(min(respi_wide$CO2_atm),max(respi_wide$CO2_ges)))+
+  ylim(-range(data_sub$tiefe))+
   facet_wrap(~factor(material,levels=c("Sand","Splitt"),labels=c("sand","grit")))
 
 
@@ -326,14 +329,15 @@ data_sub_agg <- data_sub2 %>% group_by(ID,tiefe) %>% summarise_at(paste0("CO2_ro
 data_sub_agg[data_sub_agg == Inf |data_sub_agg == -Inf] <- NA
 
 tiefe_plt <-  ggplot(data_sub_agg)+
-  geom_ribbon(aes(xmin=CO2_roll_ref_min,xmax=CO2_roll_ref_max,y=tiefe,fill=factor(ID,levels = c(1,3,7),labels=c("B","C","D"))),alpha=0.2)+
-  geom_ribbon(aes(xmin=CO2_roll_inj_min,xmax=CO2_roll_inj_max,y=tiefe,fill="A"),alpha=0.2)+
-  geom_line(aes(CO2_roll_ref_mean,tiefe,col=factor(ID,levels = c(1,3,7),labels=c("B","C","D"))))+
-  geom_line(aes(CO2_roll_inj_mean,tiefe,col="A"))+
+  geom_ribbon(aes(xmin=CO2_roll_ref_min,xmax=CO2_roll_ref_max,y=-tiefe,fill=factor(ID,levels = c(1,3,7),labels=c("B","C","D"))),alpha=0.2)+
+  geom_ribbon(aes(xmin=CO2_roll_inj_min,xmax=CO2_roll_inj_max,y=-tiefe,fill="A"),alpha=0.2)+
+  geom_line(aes(CO2_roll_ref_mean,-tiefe,col=factor(ID,levels = c(1,3,7),labels=c("B","C","D"))))+
+  geom_line(aes(CO2_roll_inj_mean,-tiefe,col="A"))+
   facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("profile",c("A + B","A + C","A + D"))))+
   labs(x=expression(CO[2]~"[ppm]"),fill="profile",col="profile",y="depth [cm]")+theme_bw()+
   scale_color_brewer(palette= 2,type="qual")+
-  scale_fill_brewer(palette= 2,type="qual")
+  scale_fill_brewer(palette= 2,type="qual")+  
+  ylim(-range(data_sub_agg$tiefe))
 
 tiefe_plt
 

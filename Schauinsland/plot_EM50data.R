@@ -11,8 +11,9 @@ check.packages(packages)
 data_long<-read.Em50("long")
 data_wide<-read.Em50("wide")
 #data_long<-reshape2::melt(data_wide,id.vars="date")
-vwc_plot<-ggplot(data_long)+geom_line(aes(date,vwc,col=as.factor(tiefe),alpha=key),size=1)+scale_alpha_manual("",values=rep(1,19))+facet_wrap(~plot)#+scale_color_viridis_c()
-vwc_plot+guides(alpha=F)
+vwc_plot<-ggplot(subset(data_long,year(date)==2022))+geom_line(aes(date,vwc,col=as.factor(tiefe),alpha=key),size=1)+scale_alpha_manual("",values=rep(1,19))+facet_wrap(~plot)#+scale_color_viridis_c()
+vwc_plot+guides(alpha=F)+geom_vline(xintercept = ymd_h("2022-01-20 11"))+annotate("text",x=ymd_h("2022-01-20 11"),y=60,label="Schneeschmelze \nplot B",hjust=1)
+
 
 temp_plot<-ggplot(data_long)+geom_line(aes(date,temp,col=as.factor(tiefe),lty=key),size=1)+scale_linetype_manual("",values=rep(1,19))+facet_wrap(~plot)#+ylim(c(-3,10))#+xlim(ymd_hms(c("2019-12-20 00:00:00","2019-12-23 00:00:00")))
 temp_plot+guides(lty=F)

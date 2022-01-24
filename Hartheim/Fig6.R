@@ -137,9 +137,12 @@ ds_sub %>%
   summarise(from=min(Fz_roll,na.rm=T),
             to=max(Fz_roll,na.rm=T)) %>% 
   mutate(Versuch = ifelse(Versuch == 2, "windy","calm"))
-range(subset(ds_snopt,Versuch==2 & id==1)$DSD0_roll,na.rm=T)
+range(subset(ds_snopt,Versuch %in% 2 & id==1)$DSD0_roll,na.rm=T)
 range(subset(ds_snopt,Versuch==3 & id==1)$DSD0_roll,na.rm=T)
-range(subset(ds_snopt,Versuch==2 & id==1)$Fz_roll_0_10,na.rm=T)
+
+range(subset(ds_snopt,Versuch %in% 2:3 & id==1)$Fz_roll_0_10,na.rm=T)
+range(subset(ds_snopt,Versuch %in% 2:3)$Fz_roll_10_17,na.rm=T)
+
 range(subset(ds_snopt,Versuch==3 & id==1)$Fz_roll_0_10,na.rm=T)
 
 
@@ -149,6 +152,11 @@ range(subset(ds_sub,id==2 & method=="drift")$DSD0_roll,na.rm = T)
 range(subset(ds_sub,id==3 & method=="SWC_T")$DSD0_roll,na.rm = T)
 range(subset(ds_sub,id==2 & method=="SWC_T")$DSD0_roll,na.rm = T)
 range(subset(ds_sub,id==3 & method=="SWC_T")$DSD0_roll,na.rm = T)
+range(subset(ds_sub,id==1 & method=="SWC_T")$Fz_roll_aniso,na.rm = T)
+range(subset(ds_sub,id==1 & method=="drift")$Fz_roll_aniso,na.rm = T)
+range(subset(ds_sub,id==2 & method=="drift")$Fz_roll_aniso,na.rm = T)
+range(subset(ds_sub,id==2 & method=="SWC_T")$Fz_roll_aniso,na.rm = T)
+
 range(subset(ds_sub,id==3)$DSD0_roll,na.rm = T)
 
 
@@ -234,6 +242,7 @@ scales::show_col(c(PPC_col,meth_col))
 ###############################################################################
 
 
+mean(ds_snopt$Fz_roll_10_17/ds_snopt$Fz_roll_0_10,na.rm=T)
 mean(subset(ds_sub,method=="drift"&id==2)$Fz_roll/subset(ds_sub,method=="drift"&id==1)$Fz_roll,na.rm=T)
 mean(subset(ds_sub,method=="SWC_T"&id==2)$Fz_roll/subset(ds_sub,method=="SWC_T"&id==1)$Fz_roll,na.rm=T)
 mean(subset(F_sub,method=="drift")$Fz_2_roll/subset(F_sub,method=="drift")$Fz_1_roll,na.rm=T)
