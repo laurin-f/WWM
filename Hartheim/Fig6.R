@@ -181,8 +181,9 @@ for(i in seq_along(start))  ds_sub$calm_id[start[i]:stop[i]] <- i
 
 
 #meth_col <- RColorBrewer::brewer.pal(n = 3, name = "Dark2")[c(2,3)]
-meth_col <- scales::hue_pal()(2)
-
+#meth_col <- scales::hue_pal()(2)
+#meth_col <- c(scales::hue_pal(l=40)(2)[1],scales::hue_pal(l=70)(2)[2])
+meth_col <- c(scales::hue_pal(l=50,c=150)(2)[1],scales::hue_pal(l=70,c=100)(2)[2])
 method_exp <- "DCPP stand-alone"
 #method_exp <- expression("ref"["adj"]~" stand-alone")
 
@@ -231,8 +232,9 @@ PPC_DS_2 <- merge(ds_peak,PPC)
 PPC_DS$PPC_roll <- RcppRoll::roll_mean(PPC_DS$PPC,3,fill=NA)
 PPC_DS_2$PPC_roll <- RcppRoll::roll_mean(PPC_DS_2$PPC,3,fill=NA)
 
-PPC_col <- c(scales::hue_pal(l=45,c=200)(1),"#276dc2")
-PPC_col <- scales::hue_pal(l=60,c=150)(2)
+#PPC_col <- c(scales::hue_pal(l=45,c=200)(1),"#276dc2")
+PPC_col <- c(scales::hue_pal(l=70,c=150)(2)[1],scales::hue_pal(l=40,c=150)(2)[2])
+PPC_col <- meth_col
 scales::show_col(c(PPC_col,meth_col))
 
 ###############################################################################
@@ -373,6 +375,9 @@ col_exps <- c(expression(D[S]/D[0]),expression(D[eff]/D[0]),expression(D[PPE]/D[
 PPC_DS_sub <- subset(PPC_DS,date %in% ds_sub$date)
 PPC_DS_2_sub <- subset(PPC_DS_2,date %in% ds_sub$date & method %in% c("SWC_T"))
 
+
+
+scales::show_col(meth_col)
 PPC_DS_plot <- 
   ggplot(subset(data,!is.na(Versuch)))+
   geom_ribbon(data=subset(ds_sub,method%in%c("drift","SWC_T") & id == 1),aes(x=date,ymin=DSD0_min_roll_aniso,ymax=DSD0_max_roll_aniso,fill=factor(method,levels=c("drift","SWC_T"),labels=paste0("DeffD0",c("",2)))),alpha=0.2,linetype=2)+
@@ -393,7 +398,7 @@ PPC_DS_plot <-
   #scale_fill_manual("",limits=col_labs,values = c(2,2,NA),labels=col_exps)+
   #scale_fill_manual("depth: 0-10 cm",limits=col_labs,values = c(NA,2,NA,NA),labels=col_exps)+
   scale_fill_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(NA,meth_col[1],NA,NA,meth_col[2],NA),labels=c(rep("  ",3),col_exps))+
-  scale_color_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(meth_col[1],meth_col[1],PPC_col[1],meth_col[2],meth_col[2],PPC_col[2]),labels=c(rep("  ",3),col_exps))+
+  scale_color_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(meth_col[1],meth_col[1],meth_col[1],meth_col[2],meth_col[2],meth_col[2]),labels=c(rep("  ",3),col_exps))+
   #scale_color_manual("depth: 0-10 cm",limits=col_labs,values = c(scales::hue_pal()(1),scales::hue_pal()(1),"red",grey(0.2),NA),labels=col_exps)+
   facet_wrap(~factor(Versuch,levels=c("2","3"),labels = c("windy period","calm period")),scales="free_x")+
   guides(col=guide_legend(ncol=2,override.aes = list(linetype=c("dashed","solid","11","dashed","solid","11"),lwd=c(0.6,0.7,0.8,0.6,0.7,0.8)),order=1),
@@ -491,7 +496,7 @@ fg4 <-
     debug = F
   )
 combined <- gridExtra::gtable_rbind(fg1, fg23,fg4) 
-jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS_WS.jpg"),width=7,height = 7.5,units="in",res=300)
+jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS_WS_col2.jpg"),width=7,height = 7.5,units="in",res=300)
 grid::grid.newpage()
 grid::grid.draw(combined)
 dev.off()

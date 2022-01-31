@@ -16,7 +16,7 @@ check.packages(packages)
 
 
 
-flux_schaui <- chamber_flux(1:4,mess_dir = "Schauinsland",aggregate = F,
+flux_schaui <- chamber_flux(4,mess_dir = "Schauinsland",aggregate = F,
                             closing_lim=0,
                             opening_lim=0,
                             t_init=1,
