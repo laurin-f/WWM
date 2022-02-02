@@ -17,7 +17,7 @@ COMSOL_exepath <- "C:/Program Files/COMSOL/COMSOL52a/Multiphysics/bin/win64/"
 COMSOL_progammpath <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Programme/Fremdprogramme/COMSOL/"
 #Packages laden
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr","tidyr")
+packages<-c("lubridate","stringr","ggplot2","units","ggforce","dplyr","tidyr","tictoc")
 
 check.packages(packages)
 
@@ -29,9 +29,13 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 data$date_hour <- round_date(data$date,"60 mins")
 data$date_3_hours <- round_date(data$date,"3 hours")
 
+
 mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour& data$date > ymd_h("2020.07.10 00")]))
+
 mod_dates_short <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe != 0 & data$date %in% data$date_3_hours]))
 mod_dates_inj1 <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe == 1.5 & data$date %in% data$date_3_hours]))
+
+
 
 ggplot(subset(data,Position==8&Pumpstufe==0))+
   geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))+
@@ -66,6 +70,30 @@ ggplot(subset(data_uncert,Pumpstufe!=0 & tiefe %in% (1:7*-3.5)))+
 # DS_anisotrop_min_inj <- run_comsol(data=data_min_inj,mod_dates = mod_dates_short,offset_method = "min_inj",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 # DS_anisotrop_max_inj <- run_comsol(data=data_max_inj,mod_dates = mod_dates_short,offset_method = "min_inj",overwrite = F,plot=F,optim_method = "snopt",read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 date_pattern <- "\\d{2}(_\\d{2}){2,3}"
+
+data_sub <- subset(data, date %in% mod_dates)
+inj_range <- range(data_sub$inj_mol_m2_s)
+inj_seq <- seq(inj_range[1],inj_range[2],len=10)
+ data_i <- data_sub
+ DS_list <- vector("list",length(inj_seq))
+for(i in seq_along(inj_seq)){
+  data_i$inj_mol_m2_s <- inj_seq[i]
+DS_list[[i]] <- run_comsol(data=data_i,mod_dates = mod_dates[100],offset_method = "SWC_T",overwrite = T,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+}
+
+ 
+ glm(DS3~inj,data=DS_df)
+ glm(DS1~inj,data=DS_df)
+DS_df <- do.call(rbind,DS_list)
+DS_df$inj <- inj_seq
+ggplot(DS_df)+geom_point(aes(inj,DS3))
+
+tic()
+test <- run_comsol(data=data,mod_dates = mod_dates[11:20],offset_method = "SWC_T",overwrite = T,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+toc()
+tic()
+test <- run_comsol_nruns(data=data,mod_dates = mod_dates[11:20],offset_method = "SWC_T",overwrite = T,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_looptest")
+toc()
 
 DS_anisotrop_SWC_T <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "SWC_T",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
