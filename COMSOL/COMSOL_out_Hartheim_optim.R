@@ -32,7 +32,7 @@ data$date_3_hours <- round_date(data$date,"3 hours")
 
 mod_dates <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_hour& data$date > ymd_h("2020.07.10 00")]))
 
-mod_dates_short <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe != 0 & data$date %in% data$date_3_hours]))
+mod_dates_short <- sort(unique(data$date[data$Position %in% 7:8 & data$Pumpstufe != 0 & data$date %in% data$date_3_hours & data$date > ymd_h("2020.07.10 00")]))
 mod_dates_inj1 <- sort(unique(data$date[data$Position %in% 7 & data$Pumpstufe == 1.5 & data$date %in% data$date_3_hours]))
 
 
@@ -89,11 +89,21 @@ DS_df$inj <- inj_seq
 ggplot(DS_df)+geom_point(aes(inj,DS3))
 
 tic()
-test <- run_comsol(data=data,mod_dates = mod_dates[11:20],offset_method = "SWC_T",overwrite = T,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+test <- run_comsol(data=data,mod_dates = mod_dates,offset_method = "drift",overwrite = F,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 toc()
+list.files(comsolpfad,pattern = "Diffusion_freeSoil_anisotropy_optim_3DS_drift(_\\d{2}){4}.txt")
 tic()
-test <- run_comsol_nruns(data=data,mod_dates = mod_dates[11:20],offset_method = "SWC_T",overwrite = T,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_looptest")
+loop <- run_comsol_nruns(data=data,mod_dates = mod_dates,offset_method = "drift",overwrite = F,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",nruns=50)
 toc()
+test <- interp_comsol_inj(data=data,mod_dates = mod_dates[1:10],offset_method = "drift",overwrite = F,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",nruns=50)
+
+test
+
+approx(1:2,xout=1.5)
+
+ggplot()+
+  geom_line(data=loop,aes(date,DSD0,col="loop",group=tiefe))+
+  geom_line(data=test,aes(date,DSD0,col="old",group=tiefe),linetype=2)
 
 DS_anisotrop_SWC_T <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "SWC_T",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 

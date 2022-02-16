@@ -326,7 +326,7 @@ flux_plot <-
   guides(col=guide_legend(override.aes = list(linetype=c(1,2,1,2)),ncol=2,order=1),
          fill=guide_legend(order=1))+
   facet_wrap(~Versuch,scales="free_x")+
-  labs(x="",y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"),linetype="",col="gradient method",fill="gradient method")+
+  labs(x="",y=expression(italic(F)[CO2]~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),linetype="",col="gradient method",fill="gradient method")+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)+
   theme(
     strip.background = element_blank(),
@@ -394,7 +394,7 @@ PPC_DS_plot <-
   #geom_line(data=subset(ds_sub,id == "1" & method == "drift"),aes(date,DSD0_roll_aniso,col="DSD0" ))+
   #geom_line(data=subset(ds_sub,id == "1"),aes(date,DSD0_roll,col=method ))#+
   scale_x_datetime(date_label="%b %d",breaks="1 days")+
-  scale_y_continuous(sec.axis = sec_axis(trans=~.,name=expression("PPC [Pa s"^{-1}*"]")))+
+  scale_y_continuous(sec.axis = sec_axis(trans=~.,name=expression("PPC (Pa s"^{-1}*")")))+
   #scale_fill_manual("",limits=col_labs,values = c(2,2,NA),labels=col_exps)+
   #scale_fill_manual("depth: 0-10 cm",limits=col_labs,values = c(NA,2,NA,NA),labels=col_exps)+
   scale_fill_manual(meth_exp2,limits=c(col_labs,col_labs2),values = c(NA,meth_col[1],NA,NA,meth_col[2],NA),labels=c(rep("  ",3),col_exps))+
@@ -407,7 +407,9 @@ PPC_DS_plot <-
          )+
   #guides(fill=guide_legend(override.aes = list(linetype=c(2,1,1,1))))+
   labs(y="exchange coefficient",x="",linetype="")+
-  theme(legend.text.align = 0,panel.border = element_rect(fill=NA),legend.title = element_text(size=10),legend.title.align = 0)#+
+  theme(legend.text.align = 0,panel.border = element_rect(fill=NA),legend.title = element_text(size=10),legend.title.align = 0)+
+  theme( axis.title.y.right = element_text( angle = 90))
+
 #ggsave(paste0(plotpfad_harth,"DS_PPC_Inj1u2.jpg"),width=7,height = 5)
 PPC_DS_plot
 
@@ -440,7 +442,7 @@ DPPE_PPC <-
   annotate("text",x=0.28,y=0.1,col=PPC_col[1],label=paste("R² =",round(R2,2)))+
   annotate("text",x=0.28,y=0.05,col=PPC_col[2],label=paste("R² =",round(R2_SWC_T,2)))+
   #annotate("text",x=-Inf,y=0.29,label=paste("y =",round(slope,2),"x - ",abs(round(intercept,2))),hjust=-0.1)+
-  labs(y=expression(D[PPE]/D[0]~"(0-10 cm)"),x=expression("PPC [Pa s"^{-1}*"]"),col="")+
+  labs(y=expression(D[PPE]/D[0]~"(0-10 cm)"),x=expression("PPC (Pa s"^{-1}*")"),col="")+
   #scale_color_manual("",limits=c("feps",method_labels),values=c("grey",meth_col),labels=c(expression(f(epsilon)),method_labels))+
   #scale_fill_manual("",limits=c("feps",method_labels),values=c("grey",meth_col),labels=c(expression(f(epsilon)),method_labels))+
   guides(col = guide_legend(override.aes = list(shape=15,size=8)))+
@@ -450,15 +452,15 @@ DPPE_PPC
 slope
 R2
 intercept
-p1 <- cowplot::ggdraw()+cowplot::draw_plot(PPC_DS_plot)+cowplot::draw_text("a)",x=0.03,y=0.97)
-p2 <- cowplot::ggdraw()+cowplot::draw_plot(DS_boxplot+theme(legend.position = "none"))+cowplot::draw_text("b)",x=0.05,y=0.97)
-p3 <- cowplot::ggdraw()+cowplot::draw_plot(DPPE_PPC)+cowplot::draw_text("c)",x=0.05,y=0.97)
-p4 <- cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("d)",x=0.03,y=0.97)#+cowplot::draw_text("0-10    10-20 cm",x=0.82,y=0.92,size=9,hjust=0,vjust=0)#+
+p1 <- cowplot::ggdraw()+cowplot::draw_plot(PPC_DS_plot)+cowplot::draw_text("(A)",x=0.03,y=0.97)
+p2 <- cowplot::ggdraw()+cowplot::draw_plot(DS_boxplot+theme(legend.position = "none"))+cowplot::draw_text("(B)",x=0.05,y=0.97)
+p3 <- cowplot::ggdraw()+cowplot::draw_plot(DPPE_PPC)+cowplot::draw_text("(C)",x=0.05,y=0.97)
+p4 <- cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("(D)",x=0.03,y=0.97)#+cowplot::draw_text("0-10    10-20 cm",x=0.82,y=0.92,size=9,hjust=0,vjust=0)#+
 
 gg23 <- ggpubr::ggarrange(DS_boxplot,DPPE_PPC,ncol = 2,widths = c(1.5,1),common.legend = T,legend = "right")
 p23 <- cowplot::ggdraw()+cowplot::draw_plot(gg23)+
-  cowplot::draw_text("b)",x=0.03,y=0.97)+
-  cowplot::draw_text("c)",x=0.53,y=0.97)
+  cowplot::draw_text("(B)",x=0.03,y=0.97)+
+  cowplot::draw_text("(C)",x=0.53,y=0.97)
 #rel_grid(0.01,color="grey")+
 #rel_grid(0.1)
 g1 <- ggplotGrob(p1)

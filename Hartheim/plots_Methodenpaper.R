@@ -111,7 +111,7 @@ mod_obs_plot <-
   facet_wrap(~factor(material,levels=c("Sand","Splitt","Sand & Splitt"),labels=c("sand","grit","mixture")))+
   scale_shape_manual("obs",labels=c(expression("no "*P[art]),expression("with "*P[art])),values=c(19,20))+
   guides(shape=guide_legend(override.aes = list(color=c(1,col(3)[2]))))+
-  labs(x=expression(CO[2]*" [ppm]"),y="depth [cm]",col="mod",fill="")+
+  labs(x=expression(CO[2]*" (ppm)"),y="depth (cm)",col="mod",fill="")+
   ylim(-range(data_sub$tiefe))+
   theme_bw()
 mod_obs_plot 
@@ -132,7 +132,7 @@ resp_plot <- ggplot(subset(respi_wide,Versuch%in%c(5:6)))+
   geom_point(aes(x=CO2_respi,y=-tiefe,col=lims[1]))+
   geom_point(aes(x=CO2_ges,y=-tiefe,col=lims[3]))+
   #  geom_line(aes(x=CO2_tracer_calc,y=tiefe,col="CO2tracer"))+
-  labs(fill=expression(CO[2]), x="", y="depth [cm]",col=expression(CO[2]))+
+  labs(fill=expression(CO[2]), x="", y="depth (cm)",col=expression(CO[2]))+
   guides(col=guide_legend(override.aes = list(shape=c(19,NA,19),fill=c(NA,col(3)[2],NA))))+
   scale_fill_manual(limits=c(lims),labels=lims2,values=col(3)[c(1,2,3)])+
   scale_color_manual(limits=c(lims),labels=lims2,values=col(3)[c(1,2,3)])+
@@ -146,8 +146,8 @@ resp_plot <- ggplot(subset(respi_wide,Versuch%in%c(5:6)))+
 cowplot::ggdraw()+
   cowplot::draw_plot(resp_plot,x=0,y=0.5,height=0.5,width=0.77)+
   cowplot::draw_plot(mod_obs_plot,height=0.5)+
-  cowplot::draw_text("a)",x=0.01,y=0.95,hjust=0)+
-  cowplot::draw_text("b)",x=0.01,y=0.45,hjust=0)+
+  cowplot::draw_text("(A)",x=0.01,y=0.95,hjust=0)+
+  cowplot::draw_text("(B)",x=0.01,y=0.45,hjust=0)+
   ggsave(paste0(plotpfad_ms,"Fig_2_COMSOL_mod_obs_prod.jpg"),width = 7,height=5)
 
 
@@ -192,7 +192,7 @@ inj_2u3 <- ggplot(data_agg)+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_inj,col=as.factor(-tiefe)))+
-  labs(col="depth [cm]",x="",y=expression(CO[2]*" [ppm]"),title="a) profile A",fill="")+
+  labs(col="depth (cm)",x="",y=expression(CO[2]*" (ppm)"),title="(A) profile A",fill="")+
   theme(axis.text.x = element_blank(),
         legend.title = element_text(color=1))+
   #scale_color_discrete(limits=all_dpths)+
@@ -216,7 +216,7 @@ ref_2u3 <- ggplot(data_agg)+
   scale_color_manual("",values=c(NA,1))+
   ggnewscale::new_scale_color()+
   geom_line(aes(date,CO2_ref,col=as.factor(-tiefe)))+
-  guides(col=F,fill=F)+labs(y=expression(CO[2]*" [ppm]"),x="",title="b) profile B/C/D")+
+  guides(col=F,fill=F)+labs(y=expression(CO[2]*" (ppm)"),x="",title="(B) profile B/C/D")+
   theme(axis.text.x = element_blank())+
   facet_wrap(~factor(period,levels=1:3,labels = paste("profile",c("B","C","D"))),scales="free_x")+
   scale_x_datetime(date_breaks = "2 days")+
@@ -239,20 +239,21 @@ T_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period)& tiefe %in% c(2,5,10,20,50)
   geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf),alpha=0.15)+
   geom_line(aes(date,mean_T,col=as.factor(tiefe)))+
   guides(col=F)+
-  labs(x="",y="Soil T [°C]",col="depth [cm]")+
+  labs(x="",y="Soil T (°C)",col="depth (cm)")+
   geom_line(data=subset(data,!is.na(period)),
             aes(date,WindVel_30m_ms*y_fac),alpha=0.2)+
   geom_line(data=subset(data,!is.na(period)),
             aes(date,Wind*y_fac),col=grey(0.3))+
   scale_y_continuous(breaks=c(10,15,20),
-                     sec.axis = sec_axis(~./y_fac,name=expression("wind velocity [m s"^{-1}*"]"),breaks=c(0,3,6)))+
+                     sec.axis = sec_axis(~./y_fac,name=expression("wind velocity (m s"^{-1}*")"),breaks=c(0,3,6)))+
   facet_wrap(~period,scales="free_x")+
   scale_x_datetime(date_breaks = "2 days",date_labels = "%b %d")+
   theme_bw()+
 theme(
   strip.background = element_blank(),
   strip.text.x = element_blank()
-)
+)+
+  theme(axis.title.y.right = element_text(angle = 90))
   
 Sys.setlocale("LC_ALL","English")
 T_plot_adj <- adj_grob_size(T_plot_2u3,subset(data,!is.na(period)),breaks="4 days",date_labels = "%b %d",plot=F)
@@ -266,7 +267,7 @@ VWC_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period) & tiefe %in% c(2,5,10,20,
   geom_rect(data=subset(Pumpzeiten,Pumpstufe!=0 & Position %in% 7:8),aes(xmin=start,xmax=ende,ymin=-Inf,ymax=Inf),alpha=0.15)+
   geom_ribbon(data=subset(data,!is.na(period)),aes(x=date,ymin=0,ymax=Precip_Last24hrs_mm/sec_ax_fac),fill="blue",alpha=0.8)+
   geom_line(aes(date,mean_VWC,col=as.factor(tiefe)))+
-  scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_fac,name=expression(P["24h"]*" [mm]")))+
+  scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_fac,name=expression(italic(P)["24h"]*" (mm)")))+
   theme_bw()+
   theme(
     axis.title.y.right = element_text(color = "blue"),
@@ -274,14 +275,15 @@ VWC_plot_2u3 <-  ggplot(subset(soil_agg,!is.na(period) & tiefe %in% c(2,5,10,20,
     axis.text.x = element_blank()
   )+
   guides()+
-  labs(x="",y="SWC [Vol. %]",col="depth [cm]")+
+  labs(x="",y="SWC (Vol. %)",col="depth (cm)")+
   guides(colour = guide_legend(override.aes = list(size = 1.5)))+
   facet_wrap(~period,scales="free_x")+
   scale_x_datetime(date_breaks = "2 days")+
   theme(
     strip.background = element_blank(),
     strip.text.x = element_blank()
-  )
+  )+
+  theme(axis.title.y.right = element_text(angle = 90))
 
   #scale_color_discrete(limits=all_dpths)
 VWC_plot_adj <- adj_grob_size(VWC_plot_2u3+theme(legend.position = "none"),subset(data,!is.na(period)),breaks="4 days",date_labels=" ",plot=F)
@@ -295,8 +297,8 @@ leg <- ggpubr::ggarrange(legend1,legend2,ncol=1,align = "v")
 
 inj_plot <- cowplot::ggdraw()+cowplot::draw_plot(inj_adj,x=-0.005,width=0.94)
 ref_plot <- cowplot::ggdraw()+cowplot::draw_plot(ref_adj,x=-0.005,width=0.94)
-VWC_plot <- cowplot::ggdraw()+cowplot::draw_plot(VWC_plot_adj,x=0.025,width = 0.98)+cowplot::draw_text("c)",x=0.12,y=1.05)
-T_plot <- cowplot::ggdraw()+cowplot::draw_plot(T_plot_adj,x=0.025,width = 0.98)+cowplot::draw_text("d)",x=0.12,y=1.05)
+VWC_plot <- cowplot::ggdraw()+cowplot::draw_plot(VWC_plot_adj,x=0.025,width = 0.98)+cowplot::draw_text("(C)",x=0.12,y=1.05)
+T_plot <- cowplot::ggdraw()+cowplot::draw_plot(T_plot_adj,x=0.025,width = 0.98)+cowplot::draw_text("(D)",x=0.12,y=1.05)
 
 no_leg <- ggpubr::ggarrange(inj_plot,ref_plot,VWC_plot,T_plot,ncol=1,heights = c(1.5,1.7,1,1))#,draw=F)
 
@@ -334,7 +336,7 @@ tiefe_plt <-  ggplot(data_sub_agg)+
   geom_line(aes(CO2_roll_ref_mean,-tiefe,col=factor(ID,levels = c(1,3,7),labels=c("B","C","D"))))+
   geom_line(aes(CO2_roll_inj_mean,-tiefe,col="A"))+
   facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("profile",c("A + B","A + C","A + D"))))+
-  labs(x=expression(CO[2]~"[ppm]"),fill="profile",col="profile",y="depth [cm]")+theme_bw()+
+  labs(x=expression(CO[2]~"(ppm)"),fill="profile",col="profile",y="depth (cm)")+theme_bw()+
   scale_color_brewer(palette= 2,type="qual")+
   scale_fill_brewer(palette= 2,type="qual")+  
   ylim(-range(data_sub_agg$tiefe))
@@ -348,9 +350,11 @@ time_plt_adj <- ggplot(subset(data_sub,ID %in% c(1,3,7) & !is.na(Position)& tief
   #geom_line(aes(date,preds_SWC_T,linetype=as.factor(tiefe)))+
   geom_line(aes(date,CO2_roll_inj,col=as.factor(-tiefe),linetype="A"))+
   facet_wrap(~factor(ID,levels = c(1,3,7),labels=paste("profile",c("A + B","A + C","A + D"))),scales="free")+
-  labs(x="",y=expression(CO[2]~"[ppm]"),col="depth [cm]",linetype="profile")+
+  labs(x="",y=expression(CO[2]~"(ppm)"),col="depth (cm)",linetype="profile")+
   scale_x_datetime(date_breaks = "2 days",date_labels = "%b %d")+
-  theme_bw()
+  theme_bw()+
+  guides(col=guide_legend(order=2),
+         linetype=guide_legend(order=1))
 
 leg1 <- ggpubr::get_legend(tiefe_plt)
 legend1 <- ggpubr::as_ggplot(leg1)
@@ -368,8 +372,8 @@ no_leg_adj <- ggpubr::ggarrange(tiefe_plt+theme(legend.position = "none"),time_p
 heterogeneity_plot <- ggpubr::ggarrange(no_leg_adj,leg_adj,widths = c(8,2))
 cowplot::ggdraw()+
   cowplot::draw_plot(heterogeneity_plot)+
-  cowplot::draw_text("a)",x=0.05,y=0.97)+
-  cowplot::draw_text("b)",x=0.05,y=0.47)+
+  cowplot::draw_text("(A)",x=0.05,y=0.97)+
+  cowplot::draw_text("(B)",x=0.05,y=0.47)+
   ggsave(paste0(plotpfad_ms,"Fig_5_heterogeneity_adj.jpg"),width=7,height=5)
 Sys.setlocale("LC_ALL","")
 
@@ -458,7 +462,7 @@ flux_plot <- ggplot(subset(Kammer_flux_agg,!is.na(Versuch)))+
   scale_x_datetime(date_label="%b %d",breaks="2 days")+
   ylim(c(0,5.5))+
   facet_wrap(~Versuch,scales="free_x")+
-  labs(x="",y=expression(F[CO2]~"["*mu * mol ~ m^{-2} ~ s^{-1}*"]"))+
+  labs(x="",y=expression(italic(F)[CO2]~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"))+
   geom_errorbar(aes(x=date,ymin=CO2flux_min,ymax=CO2flux_max),col=1,width=10000)+
   theme(
     strip.background = element_blank(),
@@ -524,7 +528,7 @@ DPPE_PPC <-
   geom_smooth(aes(PPC,peak_rel),method = "glm",se=F,col=1,lwd=0.6,linetype="dashed")+
   annotate("text",x=-Inf,y=0.25,label=paste("R² =",round(R2,2)),hjust=-0.1)+
   annotate("text",x=-Inf,y=0.29,label=paste("y =",round(slope,2),"x - ",abs(round(intercept,2))),hjust=-0.1)+
-  labs(y=expression(D[PPE]/D[0]),x=expression("PPC [Pa s"^{-1}*"]"),col="")+
+  labs(y=expression(D[PPE]/D[0]),x=expression("PPC (Pa s"^{-1}*")"),col="")+
   scale_color_manual("",limits=c("0-10 cm","10-20 cm"),values=scales::hue_pal()(2))+
   scale_fill_manual("",limits=c("0-10 cm","10-20 cm"),values=scales::hue_pal()(2))+
     guides(col = guide_legend(override.aes = list(shape=15,size=8)))
@@ -533,10 +537,10 @@ DPPE_PPC
 slope
 R2
 intercept
-p1 <- cowplot::ggdraw()+cowplot::draw_plot(PPC_DS_plot)+cowplot::draw_text("a)",x=0.03,y=0.97)
-p2 <- cowplot::ggdraw()+cowplot::draw_plot(DS_boxplot+theme(legend.position = "none"))+cowplot::draw_text("b)",x=0.05,y=0.97)
-p3 <- cowplot::ggdraw()+cowplot::draw_plot(DPPE_PPC)+cowplot::draw_text("c)",x=0.05,y=0.97)
-p4 <- cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("d)",x=0.03,y=0.97)+cowplot::draw_text("0-10    10-20 cm",x=0.82,y=0.92,size=9,hjust=0,vjust=0)#+
+p1 <- cowplot::ggdraw()+cowplot::draw_plot(PPC_DS_plot)+cowplot::draw_text("(A)",x=0.03,y=0.97)
+p2 <- cowplot::ggdraw()+cowplot::draw_plot(DS_boxplot+theme(legend.position = "none"))+cowplot::draw_text("(B)",x=0.05,y=0.97)
+p3 <- cowplot::ggdraw()+cowplot::draw_plot(DPPE_PPC)+cowplot::draw_text("(C)",x=0.05,y=0.97)
+p4 <- cowplot::ggdraw()+cowplot::draw_plot(flux_adj)+cowplot::draw_text("(D)",x=0.03,y=0.97)+cowplot::draw_text("0-10    10-20 cm",x=0.82,y=0.92,size=9,hjust=0,vjust=0)#+
   #rel_grid(0.01,color="grey")+
   #rel_grid(0.1)
 g1 <- ggplotGrob(p1)
