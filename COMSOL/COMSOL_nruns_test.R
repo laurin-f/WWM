@@ -58,7 +58,7 @@ toc()
 tic()
 loop <- run_comsol_nruns(data=data,mod_dates = mod_dates,offset_method = "drift",overwrite = T,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",nruns=50)
 toc()
-interp <- interp_comsol_inj(data=data,mod_dates = mod_dates[1:50],offset_method = "drift",overwrite = T,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",nruns=50)
+interp <- interp_comsol_inj(data=data,mod_dates = mod_dates,offset_method = "drift",overwrite = F,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",nruns=50)
 
 # approx_df <- test[[1]][,c("date","tiefe")]
 # 
@@ -84,3 +84,6 @@ ggplot()+
   geom_line(data=interp,aes(date,DSD0,col="interp",group=tiefe))+
   geom_line(data=loop,aes(date,DSD0,col="loop",group=tiefe))+
   geom_line(data=old,aes(date,DSD0,col="old",group=tiefe),linetype=2)
+
+plot(interp$DSD0-old$DSD0,type="l")
+plot(loop$DSD0-old$DSD0,type="l",col=2)

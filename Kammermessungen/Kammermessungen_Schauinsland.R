@@ -16,8 +16,8 @@ check.packages(packages)
 
 
 
-flux_schaui <- chamber_flux(4,mess_dir = "Schauinsland",aggregate = F,
-                            closing_lim=0,
+flux_schaui <- chamber_flux(5,mess_dir = "Schauinsland",aggregate = F,
+                            closing_lim=1,
                             opening_lim=0,
                             t_init=1,
                             t_max=4,
@@ -26,5 +26,9 @@ flux_schaui <- chamber_flux(4,mess_dir = "Schauinsland",aggregate = F,
 
 summary(glm(CO2~zeit,data=data))
 
-ggplot(flux_schaui)+geom_point(aes(date,CO2_ppm_per_min,col=kammer))
-ggplot(flux_schaui)+geom_point(aes(date,CH4_ppm_per_min,col=kammer))
+ggplot(flux_schaui)+
+  geom_point(aes(date,CO2_ppm_per_min,col=kammer))+
+  geom_line(aes(date,CO2_ppm_per_min,col=kammer))
+ggplot(flux_schaui)+
+  geom_point(aes(date,CH4_ppm_per_min,col=kammer))+
+  geom_line(aes(date,CH4_ppm_per_min,col=kammer))
