@@ -4,7 +4,8 @@ Sys.setenv(HTTPS_PROXY=gsub("s", "", Sys.getenv("HTTPS_PROXY") ))
 ## Fehler unterdruecken
 Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS=TRUE)
 
-devtools::install_github("laurin-f/pkg.WWM")
+#devtools::install_github("laurin-f/pkg.WWM")
 
+#usethis::use_git_config(user.name = "laurin-f", user.email = "laurin_f@posteo.de")
 #install.packages("gitcreds")
 #gitcreds::gitcreds_set()
