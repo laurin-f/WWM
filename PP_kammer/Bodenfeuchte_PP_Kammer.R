@@ -47,8 +47,8 @@ swc_long$tiefe <- as.numeric(swc_long$tiefenstufe) * 7
 #swc_plot <- 
 ggplot(swc_long)+
   geom_line(aes(date,swc,col=as.factor(tiefe)))+
-#  geom_point(data=HH2_long,aes(date,SWC,col=as.factor(tiefe),shape=as.character(plot)))+
-  labs(shape="HH2 reading")
+#  geom_point(data=HH2_long,aes(date,SWC,col=as.factor(tiefe),shape=as.character(plot)))
+  
 swc_wide <- swc[grep("date|swc_\\d$",colnames(swc))] %>% as.data.frame()
 swc_wide[,-1] <- sapply(swc_wide[,-1],as.numeric,simplify = T)
 colnames(swc_wide) <- c("date",  "swc_30", "swc_10", "swc_20")
