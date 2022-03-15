@@ -30,6 +30,7 @@ data$CO2[ data$CO2 < 300| data$CO2 > 9000] <- NA
 range(data$date,na.rm=T)
 daterange <- vector("list")
 daterange[[1]] <- ymd_h(c("22/03/09 19", "22/03/11 09"))
+daterange[[1]] <- ymd_h(c("22/03/15 14", "22/03/15 17"))
 #daterange[[1]] <- ymd_h(c("22/03/ 19", "22/03/11 09"))
 #daterange[[1]] <- ymd_h(c("21/04/22 12", "21/04/23 00"))
 # daterange[[2]] <- ymd_hm(c("21/05/04 00:00", "21/05/04 11:30"))
@@ -48,7 +49,7 @@ i<-1
   
   
   
-  inj_ls_i <- injectionrate(data=data_sub,closing_lim = c(300,300,100,500)[i],opening_lim = c(-100,-200,-200,-500)[i],t_min=1,t_init = 0,Pumpstufen = 1,return_data = T,t_max=4,adj_openings=T)
+  inj_ls_i <- injectionrate(data=data_sub,closing_lim = c(100,300,100,500)[i],opening_lim = c(-100,-200,-200,-500)[i],t_min=1,t_init = 0,Pumpstufen = 1,return_data = T,t_max=4,adj_openings=T)
   inj_ls[[i]] <- inj_ls_i[[1]]
   inj_data_ls[[i]] <- inj_ls_i[[2]]
   inj_ls[[i]]$Versuch <- as.character(i)
