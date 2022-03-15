@@ -20,6 +20,9 @@ ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
 datelim <- "2022-03-09 16:00:00"
 data <- read_PP(datelim = datelim)
 ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
+datelim <- "2022-03-14 10:00:00"
+data <- read_PP(datelim = datelim)
+ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
 
 
 
