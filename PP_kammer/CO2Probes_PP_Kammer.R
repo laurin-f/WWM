@@ -44,7 +44,7 @@ ggplot(data_probe3_na)+geom_line(aes(date,CO2,col=as.factor(tiefe)))+
   xlim(ymd_h("2022.03.02 00","2022.03.05 17"))
 
 ggplot(data_probe1u2)+
-  geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
+  #geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
   geom_line(aes(date,CO2_smp2,col=as.factor(tiefe),linetype="smp2"))
 
 ggplot(data_probe1u2)+

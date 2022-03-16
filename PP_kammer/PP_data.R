@@ -7,6 +7,11 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr","svMisc")
 check.packages(packages)
 
+datelim <- c("2022-03-16 12:30:00","2022-03-16 16:30:00")
+data <- read_PP(datelim = datelim)
+range(data$date)
+ggplot(subset(data,id==6))+geom_line(aes(date,p_Pa,col=id))
+
 datelim <- c("2022-01-31 10:55:00","2022-01-31 11:00:00")
 data <- read_PP(datelim = datelim)
 ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
