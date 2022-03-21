@@ -24,36 +24,54 @@ Grundfl <- Kammer$Kammer_Grundfl_cm2
 
 datelim <- ymd_hm("2022.03.14 10:00","2022.03.16 18:00")
 datelim <- ymd_hm("2022.03.16 11:00","2022.03.16 18:00")
-flux_ls <- chamber_arduino(datelim,return_ls = T)
+flux_ls <- chamber_arduino(datelim,gga_data = T,return_ls = T,t_init=1.5)
+flux_GGA <- chamber_arduino(datelim,gga_data = T,gas=c("CO2_GGA"))
+flux_CH4 <- chamber_arduino(datelim,gga_data = T,gas=c("CH4_GGA"))
 flux <- flux_ls[[1]]
 data <- flux_ls[[2]]
+
+
 #flux_GGA_ls <- chamber_flux(datelim=datelim,GGA = "micro",chamber="automatische Kammer",return_data = T,closing_lim=4,t_max=7)
+ggplot(flux_CH4)+geom_line(aes(date,CH4_GGA_mumol_per_s_m2))
+ggplot(data)+geom_line(aes(date,CH4_GGA,col=as.factor(messid),group=1))
+ggplot(data)+geom_line(aes(date,CO2_GGA,col=as.factor(messid),group=1))
 
 
-ggplot(data)+
-  geom_line(aes(zeit,CO2_tara,col=as.factor(messid)))+
-  facet_wrap(~ceiling(messid/10))+
+ggplot(subset(data,!is.na(messid)))+
+  geom_line(aes(zeit,CO2_GGA,col=as.factor(messid)))+
+  geom_line(aes(zeit,CO2,col=as.factor(messid)))+
+  facet_wrap(~ceiling(messid),scales="free")+
   guides(col=F)
 ggplot(data)+
   geom_line(aes(date,CO2,col=as.factor(messid)))+
 #  xlim(ymd_h("2022.03.16 14","2022.03.16 18"))+
   guides(col=F)
 
-ggplot(subset(flux,CO2_R2 > 0.5))+
+ggplot(subset(flux,CO2_R2 > 0.4))+
   geom_point(aes(date,CO2_mumol_per_s_m2,col=CO2_R2))+
   geom_line(aes(date,CO2_mumol_per_s_m2))+
   geom_smooth(aes(date,CO2_mumol_per_s_m2))+
-#  geom_line(data=subset(flux_GGA,messid %in% 2:11),aes(date,CO2_mumol_per_s_m2),col=2)+
+  geom_line(data=flux_GGA,aes(date,CO2_GGA_mumol_per_s_m2))
   scale_color_viridis_c()
 
 
+as.numeric(median(diff(data_GGA$date)))
 data_GGA <- read_GGA(datelim =datelim,table.name = "gga")
+data_GGA$date <- round_date(data_GGA$date,"5 secs")
+names(data_GGA) <- c("date",paste0(names(data_GGA[-1]),"_GGA"))
+data_agg <- data %>% 
+  mutate(date = round_date(date, "5 secs")) %>% 
+  group_by(date) %>% 
+  summarise(across(everything(),mean,na.rm=T))
+
+data_merge <- merge(data_agg,data_GGA,all=T)
+
 ggplot(data_GGA)+
   geom_line(data=data_GGA,aes(date,CO2,col="GGA"))+
-  geom_line(data=data,aes(date,CO2,col="dyn"))+
+  geom_line(data=data,aes(date,CO2,col="dyn"))#+
   xlim(ymd_h("2022.03.16 12","2022.03.16 15"))
 
-closingID <- which((minute(data_GGA$date)-1) %% 20 == 0 & second(data_GGA$date) < 10)
+closingID <- which(data_merge == )
 openingID <- which((minute(data_GGA$date)-7) %% 20 == 0 & second(data_GGA$date) < 10)
 
 openingID <- openingID[-2]
