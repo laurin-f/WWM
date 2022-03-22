@@ -3,18 +3,24 @@ metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_harth<- paste0(metapfad,"Hartheim/")
 metapfad_comsol<- paste0(metapfad,"COMSOL/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
-plotpfad_harth <- paste0(hauptpfad,"Dokumentation/Berichte/plots/hartheim/")
+plotpfad_PPchamber <- paste0(hauptpfad,"Dokumentation/Berichte/plots/PP_Kammer/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 datapfad_FVAgarten <- paste0(hauptpfad,"Daten/aufbereiteteDaten/FVA_Garten/") 
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
-inj_pfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/Daten/Urdaten/Kammermessungen_Arduino"
+
+chamber_arduino_pfad <- paste0(hauptpfad,"/Daten/Urdaten/Kammermessungen_Arduino/")
+metapfad_PP <- paste0(metapfad,"PP_Kammer/")
 detach("package:pkg.WWM", unload = TRUE)
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS")
 check.packages(packages)
 
+
+pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
+pp_chamber$Start <- dmy_hm(pp_chamber$Start)
+pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 Kammer <-
   readxl::read_xlsx(paste0(metapfad, "Kammermessungen/Kammer_Volumen.xlsx"),
@@ -24,35 +30,78 @@ Grundfl <- Kammer$Kammer_Grundfl_cm2
 
 datelim <- ymd_hm("2022.03.14 10:00","2022.03.16 18:00")
 datelim <- ymd_hm("2022.03.16 11:00","2022.03.16 18:00")
-flux_ls <- chamber_arduino(datelim,gga_data = T,return_ls = T,t_init=1.5)
-flux_GGA <- chamber_arduino(datelim,gga_data = T,gas=c("CO2_GGA"))
-flux_CH4 <- chamber_arduino(datelim,gga_data = T,gas=c("CH4_GGA"))
+#datelim <- ymd_hm("2022.03.16 13:00","2022.03.16 14:00")
+datelim <- ymd_hm("2022.03.21 00:00","2022.03.22 18:00")
+flux_ls <- chamber_arduino(datelim,gga_data = T,return_ls = T,t_init=2,plot="timeline",t_offset = 100)
+flux_GGA <- chamber_arduino(datelim,gga_data = T,gas=c("CO2_GGA"),t_init = 0,plot="timeline",t_offset = 100)
+flux_CH4 <- chamber_arduino(datelim,gga_data = T,gas=c("CH4_GGA"),t_init = 2,plot="timeline",t_offset = 100)
 flux <- flux_ls[[1]]
 data <- flux_ls[[2]]
 
+#######################
+#plots
+####################################
 
-#flux_GGA_ls <- chamber_flux(datelim=datelim,GGA = "micro",chamber="automatische Kammer",return_data = T,closing_lim=4,t_max=7)
-ggplot(flux_CH4)+geom_line(aes(date,CH4_GGA_mumol_per_s_m2))
-ggplot(data)+geom_line(aes(date,CH4_GGA,col=as.factor(messid),group=1))
-ggplot(data)+geom_line(aes(date,CO2_GGA,col=as.factor(messid),group=1))
+################
+#timelines
+#CO2
+
+ggplot(data)+
+  geom_line(aes(date,CO2_GGA,col="gga"))+
+  geom_line(aes(date,CO2,col="dynament"))+
+  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  scale_fill_grey()+
+  xlim(range(data$date))
 
 
+#CH4
+ggplot(data)+geom_line(aes(date,CH4_GGA,col=as.factor(messid),group=1))+
+  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  scale_fill_grey()+
+  xlim(range(data$date))
+
+#########
+#flux plots
+#CO2
+ggplot(flux)+
+  #geom_point(aes(date,CO2_mumol_per_s_m2,col=CO2_R2))+
+  geom_line(aes(date,CO2_mumol_per_s_m2))+
+  #geom_smooth(aes(date,CO2_mumol_per_s_m2))+
+  geom_line(data=flux_GGA,aes(date,CO2_GGA_mumol_per_s_m2),col=2)+
+  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  scale_fill_grey()+
+  xlim(range(data$date))+
+  ggsave(paste0(plotpfad_PPchamber,"CO2_flux_",date(min(data$date)),".png"),width=7,height = 4)
+  #scale_color_distiller(palette = "Spectral")
+
+
+
+#CH4
+ggplot(flux_CH4)+geom_line(aes(date,CH4_GGA_mumol_per_s_m2))+
+  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  scale_fill_grey()+
+  xlim(range(data$date))
+
+#############
+##facets
+
+#CO2
 ggplot(subset(data,!is.na(messid)))+
   geom_line(aes(zeit,CO2_GGA,col=as.factor(messid)))+
   geom_line(aes(zeit,CO2,col=as.factor(messid)))+
   facet_wrap(~ceiling(messid),scales="free")+
   guides(col=F)
-ggplot(data)+
-  geom_line(aes(date,CO2,col=as.factor(messid)))+
-#  xlim(ymd_h("2022.03.16 14","2022.03.16 18"))+
+
+#CH4
+ggplot(subset(data,!is.na(messid)))+
+  geom_line(aes(zeit,CH4_GGA,col=as.factor(messid)))+
+  facet_wrap(~ceiling(messid),scales="free")+
   guides(col=F)
 
-ggplot(subset(flux,CO2_R2 > 0.4))+
-  geom_point(aes(date,CO2_mumol_per_s_m2,col=CO2_R2))+
-  geom_line(aes(date,CO2_mumol_per_s_m2))+
-  geom_smooth(aes(date,CO2_mumol_per_s_m2))+
-  geom_line(data=flux_GGA,aes(date,CO2_GGA_mumol_per_s_m2))
-  scale_color_viridis_c()
+
+####
+#scatterplot
+ggplot(data)+geom_point(aes(CO2,CO2_GGA))
 
 
 as.numeric(median(diff(data_GGA$date)))

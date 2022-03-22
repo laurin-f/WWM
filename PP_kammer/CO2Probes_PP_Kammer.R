@@ -34,17 +34,17 @@ data_probe1u2falsch$date <- data_probe1u2falsch$date + t_diff
 data_probe1u2 <- rbind(data_probe1u2falsch,data_probe1u2)
 data_probe1u2$tiefe <- abs(data_probe1u2$tiefe)
 
-data_probe3 <-  read_sampler("sampler3",datelim = datelim, format = "long")
-range(data_probe3$date)
-range(data_probe1u2$date)
-names(data_probe3)
-data_probe3_na <- subset(data_probe3,!is.na(CO2))
-ggplot(data_probe3_na)+geom_line(aes(date,CO2,col=as.factor(tiefe)))+
-  geom_vline(xintercept = ymd_h("2022.03.03 12","2022.03.03 17"))+
-  xlim(ymd_h("2022.03.02 00","2022.03.05 17"))
+# data_probe3 <-  read_sampler("sampler3",datelim = datelim, format = "long")
+# range(data_probe3$date)
+# range(data_probe1u2$date)
+# names(data_probe3)
+# data_probe3_na <- subset(data_probe3,!is.na(CO2))
+# ggplot(data_probe3_na)+geom_line(aes(date,CO2,col=as.factor(tiefe)))+
+#   geom_vline(xintercept = ymd_h("2022.03.03 12","2022.03.03 17"))+
+#   xlim(ymd_h("2022.03.02 00","2022.03.05 17"))
 
 ggplot(data_probe1u2)+
-  #geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
+  geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
   geom_line(aes(date,CO2_smp2,col=as.factor(tiefe),linetype="smp2"))
 
 ggplot(data_probe1u2)+
@@ -62,6 +62,7 @@ for(i in 1:nrow(pp_chamber)){
 ggplot(data_probe1u2)+
   geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
   geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe)))+
+  geom_line(aes(date,CO2_smp1,col=as.factor(-tiefe)))+
   #geom_vline(xintercept = ymd_hm("2022.03.07 12:00","2022.03.07 14:30"))+
   #geom_vline(xintercept = ymd_hm("2022.03.08 11:30","2022.03.08 15:30"))+
   xlim(c(pp_chamber$Start[i]-3600*24*1.5,pp_chamber$Ende[i]+3600*24))+
