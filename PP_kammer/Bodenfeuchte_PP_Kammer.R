@@ -46,7 +46,7 @@ swc_long$tiefe <- as.numeric(swc_long$tiefenstufe) * 7
 #load(file = paste(datapfad_FVAgarten,"HH2_long.RData"))
 #swc_plot <- 
 ggplot(swc_long)+
-  geom_line(aes(date,swc,col=as.factor(tiefe)))+
+  geom_line(data=swc_long,aes(date,swc,col=as.factor(tiefe)))
 #  geom_point(data=HH2_long,aes(date,SWC,col=as.factor(tiefe),shape=as.character(plot)))
   
 swc_wide <- swc[grep("date|swc_\\d$",colnames(swc))] %>% as.data.frame()

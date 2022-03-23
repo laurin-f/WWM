@@ -28,13 +28,16 @@ Kammer <-
 Vol <- Kammer$Kammer_Volumen_cm3
 Grundfl <- Kammer$Kammer_Grundfl_cm2
 
-datelim <- ymd_hm("2022.03.14 10:00","2022.03.16 18:00")
-datelim <- ymd_hm("2022.03.16 11:00","2022.03.16 18:00")
-#datelim <- ymd_hm("2022.03.16 13:00","2022.03.16 14:00")
-datelim <- ymd_hm("2022.03.21 00:00","2022.03.22 18:00")
-flux_ls <- chamber_arduino(datelim,gga_data = T,return_ls = T,t_init=2,plot="timeline",t_offset = 100)
-flux_GGA <- chamber_arduino(datelim,gga_data = T,gas=c("CO2_GGA"),t_init = 0,plot="timeline",t_offset = 100)
-flux_CH4 <- chamber_arduino(datelim,gga_data = T,gas=c("CH4_GGA"),t_init = 2,plot="timeline",t_offset = 100)
+datelim <- list()
+
+datelim[[1]] <- ymd_hm("2022.03.16 11:00","2022.03.16 18:00")
+
+datelim[[2]] <- ymd_hm("2022.03.21 01:00","2022.03.22 01:00")
+datelim[[3]] <- ymd_hm("2022.03.22 06:00","2022.03.23 12:00")
+for(i in 1:length(datelim)){
+flux_ls <- chamber_arduino(datelim[[i]],gga_data = T,return_ls = T,t_init=2,plot="",t_offset = 60)
+#flux_GGA <- chamber_arduino(datelim,gga_data = T,gas=c("CO2_GGA"),t_init = 0,plot="timeline",t_offset = 100)
+#flux_CH4 <- chamber_arduino(datelim,gga_data = T,gas=c("CH4_GGA"),t_init = 2,plot="timeline",t_offset = 100)
 flux <- flux_ls[[1]]
 data <- flux_ls[[2]]
 
@@ -51,33 +54,37 @@ ggplot(data)+
   geom_line(aes(date,CO2,col="dynament"))+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
   scale_fill_grey()+
-  xlim(range(data$date))
+  xlim(range(data$date))+
+  ggsave(paste0(plotpfad_PPchamber,"CO2_timeline_",date(min(data$date)),".png"),width=7,height = 4)
 
 
 #CH4
-ggplot(data)+geom_line(aes(date,CH4_GGA,col=as.factor(messid),group=1))+
+ggplot(data)+geom_line(aes(date,CH4,col=as.factor(messid),group=1))+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
   scale_fill_grey()+
-  xlim(range(data$date))
+  guides(col=F)+
+  xlim(range(subset(data,!is.na(CH4))$date))+
+  ggsave(paste0(plotpfad_PPchamber,"CH4_timeline_",date(min(data$date)),".png"),width=7,height = 4)
 
 #########
 #flux plots
 #CO2
 ggplot(flux)+
-  #geom_point(aes(date,CO2_mumol_per_s_m2,col=CO2_R2))+
-  geom_line(aes(date,CO2_mumol_per_s_m2))+
+  geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"))+
+  geom_line(aes(date,CO2_mumol_per_s_m2,col="Dynament"))+
   #geom_smooth(aes(date,CO2_mumol_per_s_m2))+
-  geom_line(data=flux_GGA,aes(date,CO2_GGA_mumol_per_s_m2),col=2)+
+  geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))+
+  geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
   scale_fill_grey()+
   xlim(range(data$date))+
   ggsave(paste0(plotpfad_PPchamber,"CO2_flux_",date(min(data$date)),".png"),width=7,height = 4)
   #scale_color_distiller(palette = "Spectral")
 
-
+}
 
 #CH4
-ggplot(flux_CH4)+geom_line(aes(date,CH4_GGA_mumol_per_s_m2))+
+ggplot(flux)+geom_line(aes(date,CH4_mumol_per_s_m2))+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
   scale_fill_grey()+
   xlim(range(data$date))
@@ -94,7 +101,7 @@ ggplot(subset(data,!is.na(messid)))+
 
 #CH4
 ggplot(subset(data,!is.na(messid)))+
-  geom_line(aes(zeit,CH4_GGA,col=as.factor(messid)))+
+  geom_line(aes(zeit,CH4,col=as.factor(messid)))+
   facet_wrap(~ceiling(messid),scales="free")+
   guides(col=F)
 
