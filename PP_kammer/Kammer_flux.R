@@ -28,14 +28,16 @@ Kammer <-
 Vol <- Kammer$Kammer_Volumen_cm3
 Grundfl <- Kammer$Kammer_Grundfl_cm2
 
-datelim <- list()
+datelim_ls <- list()
 
-datelim[[1]] <- ymd_hm("2022.03.16 11:00","2022.03.16 18:00")
+datelim_ls[[1]] <- ymd_hm("2022.03.16 11:00","2022.03.16 18:00")
 
-datelim[[2]] <- ymd_hm("2022.03.21 01:00","2022.03.22 01:00")
-datelim[[3]] <- ymd_hm("2022.03.22 06:00","2022.03.23 12:00")
-for(i in 1:length(datelim)){
-flux_ls <- chamber_arduino(datelim[[i]],gga_data = T,return_ls = T,t_init=2,plot="",t_offset = 60)
+datelim_ls[[2]] <- ymd_hm("2022.03.21 01:00","2022.03.22 01:00")
+datelim_ls[[3]] <- ymd_hm("2022.03.22 06:00","2022.03.23 12:00")
+datelim_ls[[4]] <- ymd_hm("2022.03.23 06:00","2022.03.24 12:00")
+#for(i in 1:length(datelim)){
+i <- 4
+flux_ls <- chamber_arduino(datelim_ls[[i]],gga_data = T,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=3)
 #flux_GGA <- chamber_arduino(datelim,gga_data = T,gas=c("CO2_GGA"),t_init = 0,plot="timeline",t_offset = 100)
 #flux_CH4 <- chamber_arduino(datelim,gga_data = T,gas=c("CH4_GGA"),t_init = 2,plot="timeline",t_offset = 100)
 flux <- flux_ls[[1]]
@@ -81,7 +83,7 @@ ggplot(flux)+
   ggsave(paste0(plotpfad_PPchamber,"CO2_flux_",date(min(data$date)),".png"),width=7,height = 4)
   #scale_color_distiller(palette = "Spectral")
 
-}
+#}
 
 #CH4
 ggplot(flux)+geom_line(aes(date,CH4_mumol_per_s_m2))+

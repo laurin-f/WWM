@@ -35,6 +35,7 @@ daterange <- vector("list")
 daterange[[1]] <- ymd_h(c("22/03/09 19", "22/03/11 09"))
 daterange[[1]] <- ymd_h(c("22/03/15 14", "22/03/16 17"))
 #daterange[[1]] <- ymd_h(c("22/03/ 19", "22/03/11 09"))
+daterange[[1]] <- ymd_hm("2022.03.23 06:00","2022.03.24 12:00")
 #daterange[[1]] <- ymd_h(c("21/04/22 12", "21/04/23 00"))
 # daterange[[2]] <- ymd_hm(c("21/05/04 00:00", "21/05/04 11:30"))
 # daterange[[3]] <- ymd_h(c("21/05/04 13", "21/05/10 12"))
@@ -58,7 +59,7 @@ i<-1
   inj_data_ls[[i]] <- inj_ls_i[[2]]
   inj_ls[[i]]$Versuch <- as.character(i)
   inj_data_ls[[i]]$Versuch <- as.character(i)
-}
+#}
 
 inj <- do.call(rbind,inj_ls)
   inj$date

@@ -66,7 +66,33 @@ ggplot(data_probe1u2)+
   xlim(c(pp_chamber$Start[i]-3600*24*1.5,pp_chamber$Ende[i]+3600*24))+
   theme_bw()+
   scale_fill_manual(values = "black")+
-  labs(fill="",col="tiefe")+
+  labs(fill="",col="tiefe",title=pp_chamber$Bemerkung[i])+
   ggsave(paste0(plotpfad_PPchamber,"Messung",i,".png"),width = 8,height = 5)
 }
   
+############################
+# probe 1 u2 vertauscht
+
+wechsel_date <- ymd_h("22.03.23 14")
+ggplot(data_probe1u2)+
+  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  geom_line(data=subset(data_probe1u2, date < wechsel_date),aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
+  geom_line(data=subset(data_probe1u2, date > wechsel_date),aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
+  geom_vline(xintercept = wechsel_date,linetype=2)+
+  xlim(c(pp_chamber$Start[7]-3600*24*1.5,pp_chamber$Ende[7]+3600*24))+
+  theme_bw()+
+  scale_fill_manual(values = "black")+
+  labs(fill="",col="tiefe")+
+  ggsave(paste0(plotpfad_PPchamber,"Wechsel_probe1zu2.png"),width = 8,height = 5)
+
+ggplot(data_probe1u2)+
+  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  geom_line(data=subset(data_probe1u2, date > wechsel_date),aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
+  geom_line(data=subset(data_probe1u2, date < wechsel_date),aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
+  geom_vline(xintercept = wechsel_date,linetype=2)+
+  xlim(c(pp_chamber$Start[7]-3600*24*1.5,pp_chamber$Ende[7]+3600*24))+
+  theme_bw()+
+  scale_fill_manual(values = "black")+
+  labs(fill="",col="tiefe")+
+  ggsave(paste0(plotpfad_PPchamber,"Wechsel_probe2zu1.png"),width = 8,height = 5)
+
