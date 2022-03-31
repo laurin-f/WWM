@@ -5,7 +5,7 @@ metapfad_comsol<- paste0(metapfad,"COMSOL/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad_PPchamber <- paste0(hauptpfad,"Dokumentation/Berichte/plots/PP_Kammer/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
-datapfad_FVAgarten <- paste0(hauptpfad,"Daten/aufbereiteteDaten/FVA_Garten/") 
+datapfad_PP_Kammer <- paste0(hauptpfad,"Daten/aufbereiteteDaten/PP_Kammer/") 
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
@@ -33,11 +33,13 @@ datelim_ls <- list()
 datelim_ls[[1]] <- ymd_hm("2022.03.16 11:00","2022.03.16 18:00")
 
 datelim_ls[[2]] <- ymd_hm("2022.03.21 01:00","2022.03.22 01:00")
-datelim_ls[[3]] <- ymd_hm("2022.03.22 06:00","2022.03.23 12:00")
-datelim_ls[[4]] <- ymd_hm("2022.03.23 06:00","2022.03.24 12:00")
+datelim_ls[[3]] <- ymd_hm("2022.03.22 06:00","2022.03.24 24:00")
+datelim_ls[[4]] <- ymd_hm("2022.03.23 06:00","2022.03.24 23:00")
+datelim_ls[[5]] <- ymd_hm("2022.03.24 23:00","2022.03.29 15:00")
 #for(i in 1:length(datelim)){
-i <- 4
-flux_ls <- chamber_arduino(datelim_ls[[i]],gga_data = T,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=3)
+
+i <- 2
+flux_ls <- chamber_arduino(datelim_ls[[i]],gga_data = T,return_ls = T,t_init=0,plot="timeline",t_offset = 60,t_min=4)
 #flux_GGA <- chamber_arduino(datelim,gga_data = T,gas=c("CO2_GGA"),t_init = 0,plot="timeline",t_offset = 100)
 #flux_CH4 <- chamber_arduino(datelim,gga_data = T,gas=c("CH4_GGA"),t_init = 2,plot="timeline",t_offset = 100)
 flux <- flux_ls[[1]]
@@ -106,6 +108,68 @@ ggplot(subset(data,!is.na(messid)))+
   geom_line(aes(zeit,CH4,col=as.factor(messid)))+
   facet_wrap(~ceiling(messid),scales="free")+
   guides(col=F)
+
+
+##############################
+#plots für martin
+
+datelim_pp <- ymd_hm("2022.03.21 12:28","2022.03.21 15:40")
+datelim_no_pp <- ymd_hm("2022.03.21 10:20","2022.03.21 11:20")
+datelim_3 <- ymd_hm("2022.03.21 11:30","2022.03.21 13:00")
+
+flux_pp <- chamber_arduino(datelim_pp,gga_data = T,return_ls = T,t_init=0,plot="facets",t_offset = 60,t_min=4)
+data_pp <- flux_pp[[2]]
+flux_no_pp <- chamber_arduino(datelim_no_pp,gga_data = T,return_ls = T,t_init=0,plot="facets",t_offset = 60,t_min=4)
+data_no_pp <- flux_no_pp[[2]]
+flux_3 <- chamber_arduino(datelim_3,gga_data = T,return_ls = T,t_init=0,plot="timeline",t_offset = 60,t_min=4)
+data_3 <- flux_3[[2]]
+
+
+ggplot(subset(data_pp,!is.na(messid)))+
+  geom_smooth(aes(zeit,CO2_tara,col="Dynament"),method="lm",se=F,linetype=2,lwd=0.7)+
+  geom_line(aes(zeit,CO2_tara,col="Dynament"))+
+  geom_line(aes(zeit,CO2_GGA_tara,col="GGA"))+
+  facet_wrap(~paste("",messid))+
+  labs(y="CO2 (ppm) tara",col="sensor")+
+  ggsave(paste0(plotpfad_PPchamber,"chamber_sensor_vergleich_facets_PP.png"),width = 7,height=5)
+ggplot(subset(data_pp,date > ymd_hm("2022-03-21 12:20")&date < ymd_hm("2022-03-21 13:20")))+
+  geom_line(aes(date,CO2_GGA,col="GGA"))+
+  #xlim(ymd_hm("2022-03-21 12:20","2022-03-21 14:20"))+
+  labs(y="CO2 (ppm)",col="sensor",linetype="chamber",x="time")+
+  ggsave(paste0(plotpfad_PPchamber,"chamber_gga_PP_fluctuations.png"),width = 7,height=5)
+
+for(i in 4:nrow(pp_chamber)){
+datelim_pp_start <- pp_chamber$Start[i]+c(-3600,3600)
+flux_start <- chamber_arduino(datelim_pp_start,gga_data = T,return_ls = T,t_init=0,plot="timeline",t_offset = 60,t_min=4)
+data_start <- flux_start[[2]]
+if("CO2_GGA" %in% names(data_start)){
+ggplot(subset(data_start))+
+  geom_line(aes(date,CO2_GGA,col=factor(chamber,levels=c(0,1),labels=c("open","closed")),group=1))+
+  geom_vline(xintercept = pp_chamber$Start[i],linetype=2)+
+  annotate("text",x= pp_chamber$Start[i]+60,y=620,label="PP-chamber start +- 10 min",hjust=0)+
+  labs(y="CO2 (ppm)",col="chamber",x="time",title = pp_chamber$Bemerkung[i])+
+  ggsave(paste0(plotpfad_PPchamber,"chamber_gga_start",i,".png"),width = 9,height=5)
+}
+}
+
+ggplot(subset(data_pp))+
+  geom_line(aes(date,CO2,col="Dynament",linetype="open"))+
+  geom_line(data=subset(data_pp,!is.na(messid)),aes(date,CO2,col="Dynament",linetype="closed",group=messid))+
+  #geom_line(aes(date,RcppRoll::roll_mean(CO2,30,fill=NA),col="Dynament"))+
+  geom_line(aes(date,CO2_GGA,col="GGA",linetype="open"))+
+  geom_line(data=subset(data_pp,!is.na(messid)),aes(date,CO2_GGA,col="GGA",linetype="closed",group=messid))+
+  xlim(ymd_hm("2022-03-21 12:20","2022-03-21 14:20"))+
+  labs(y="CO2 (ppm)",col="sensor",linetype="chamber",x="time")+
+  ggsave(paste0(plotpfad_PPchamber,"chamber_sensor_vergleich_PP.png"),width = 7,height=5)
+ggplot(subset(data_no_pp))+
+  geom_line(aes(date,CO2,col="Dynament",linetype="open"))+
+  geom_line(data=subset(data_no_pp,!is.na(messid)),aes(date,CO2,col="Dynament",linetype="closed",group=messid))+
+  #geom_line(aes(date,RcppRoll::roll_mean(CO2,30,fill=NA),col="Dynament"))+
+  geom_line(aes(date,CO2_GGA,col="GGA",linetype="open"))+
+  geom_line(data=subset(data_no_pp,!is.na(messid)),aes(date,CO2_GGA,col="GGA",linetype="closed",group=messid))+
+  labs(y="CO2 (ppm)",col="sensor",linetype="chamber",x="time")+
+  ggsave(paste0(plotpfad_PPchamber,"chamber_sensor_vergleich.png"),width = 7,height=5)
+
 
 
 ####

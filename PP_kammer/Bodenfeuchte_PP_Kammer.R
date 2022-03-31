@@ -5,13 +5,14 @@ metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_harth<- paste0(metapfad,"Hartheim/")
 metapfad_comsol<- paste0(metapfad,"COMSOL/")
 datapfad_bf<- paste0(hauptpfad,"Daten/Urdaten/Bodenfeuchte_FVA_Garten/")
-plotpfad_harth <- paste0(hauptpfad,"Dokumentation/Berichte/plots/hartheim/")
+
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
-datapfad_harth <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Hartheim/") 
+
+datapfad_PP_Kammer <- paste0(hauptpfad,"Daten/aufbereiteteDaten/PP_Kammer/") 
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
-datapfad_FVAgarten <- paste0(hauptpfad,"Daten/aufbereiteteDaten/FVA_Garten/") 
+
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr")
@@ -19,6 +20,7 @@ check.packages(packages)
 
 files <- list.files(datapfad_bf,pattern = "22-\\d{4}.xls$",full.names = T)
 
+read.Em50()
 
 swc_ls <- lapply(files,readxl::read_xls,skip=2,col_types = c("date",rep("numeric",5)))
 for(i in seq_along(swc_ls)){
@@ -53,4 +55,4 @@ swc_wide <- swc[grep("date|swc_\\d$",colnames(swc))] %>% as.data.frame()
 swc_wide[,-1] <- sapply(swc_wide[,-1],as.numeric,simplify = T)
 colnames(swc_wide) <- c("date",  "swc_30", "swc_10", "swc_20")
 #swc_plot
-save(swc_long,swc_wide,file = paste(datapfad_FVAgarten,"swc_long.RData"))
+save(swc_long,swc_wide,file = paste(datapfad_PP_Kammer,"swc_long.RData"))

@@ -66,20 +66,21 @@ ggplot(data_probe1u2)+
   xlim(c(pp_chamber$Start[i]-3600*24*1.5,pp_chamber$Ende[i]+3600*24))+
   theme_bw()+
   scale_fill_manual(values = "black")+
-  labs(fill="",col="tiefe",title=pp_chamber$Bemerkung[i])+
+  labs(y = "",fill="",col="tiefe",title=pp_chamber$Bemerkung[i])+
   ggsave(paste0(plotpfad_PPchamber,"Messung",i,".png"),width = 8,height = 5)
 }
   
 ############################
 # probe 1 u2 vertauscht
 
-wechsel_date <- ymd_h("22.03.23 14")
+wechsel_date <- ymd_h("22.03.23 14","22.03.28 10")
 ggplot(data_probe1u2)+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
-  geom_line(data=subset(data_probe1u2, date < wechsel_date),aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
-  geom_line(data=subset(data_probe1u2, date > wechsel_date),aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
+  geom_line(data=subset(data_probe1u2, date < wechsel_date[1]),aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
+  geom_line(data=subset(data_probe1u2, date > wechsel_date[2]),aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
+  geom_line(data=subset(data_probe1u2, date > wechsel_date[1] & date < wechsel_date[2]),aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
   geom_vline(xintercept = wechsel_date,linetype=2)+
-  xlim(c(pp_chamber$Start[7]-3600*24*1.5,pp_chamber$Ende[7]+3600*24))+
+  xlim(c(min(wechsel_date)-3600*24*3,max(wechsel_date)+3600*24*3))+
   theme_bw()+
   scale_fill_manual(values = "black")+
   labs(fill="",col="tiefe")+
@@ -87,12 +88,14 @@ ggplot(data_probe1u2)+
 
 ggplot(data_probe1u2)+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
-  geom_line(data=subset(data_probe1u2, date > wechsel_date),aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
-  geom_line(data=subset(data_probe1u2, date < wechsel_date),aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
+  geom_line(data=subset(data_probe1u2, date > wechsel_date[1] & date < wechsel_date[2]),aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
+  geom_line(data=subset(data_probe1u2, date < wechsel_date[1]),aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
+  geom_line(data=subset(data_probe1u2, date > wechsel_date[2]),aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
   geom_vline(xintercept = wechsel_date,linetype=2)+
-  xlim(c(pp_chamber$Start[7]-3600*24*1.5,pp_chamber$Ende[7]+3600*24))+
+  xlim(c(min(wechsel_date)-3600*24*3,max(wechsel_date)+3600*24*3))+
   theme_bw()+
   scale_fill_manual(values = "black")+
   labs(fill="",col="tiefe")+
   ggsave(paste0(plotpfad_PPchamber,"Wechsel_probe2zu1.png"),width = 8,height = 5)
+
 
