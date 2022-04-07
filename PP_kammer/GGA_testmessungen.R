@@ -22,16 +22,55 @@ pp_bemerkungen <- read_ods(paste0(metapfad_PP,"PP_Kammer_Bemerkungen.ods"))
 pp_bemerkungen$Start <- dmy_hm(pp_bemerkungen$Start)
 
 pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
-pp_chamber$Start <- dmy_hm(pp_chamber$Start)
-pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
+pp_chamber$Start <- dmy_hm(pp_chamber$Start)+3600
+pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)+3600
+i <- 9
+micro <- read_GGA(table.name = "micro",datelim=t(pp_chamber[i,c("Start","Ende")]))
+gga <- read_GGA(table.name = "gga",datelim=t(pp_chamber[i,c("Start","Ende")]))
 
-micro <- read_GGA(table.name = "micro",datelim=t(pp_chamber[8,c("Start","Ende")]))
-gga <- read_GGA(table.name = "gga",datelim=t(pp_chamber[8,c("Start","Ende")]))
+pp_bemerk <- sub_daterange(pp_bemerkungen,range(micro$date),"Start")
+ggplot(micro)+
+  geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+#  geom_point(aes(date,CO2))+
+  geom_vline(data=pp_bemerk,aes(xintercept=Start))+
+  geom_text(data=pp_bemerk,aes(x=Start,y=Inf,label=Bemerkung),hjust=0,vjust=1)+
+  geom_line(aes(date,CO2))
 
-ggplot(gga)+
-  geom_line(aes(date,CO2))+
-  geom_point(aes(date,CO2))
-ggplot(sub_daterange(micro,ymd_hm("2022.04.04 16:00","2022.04.04 18:00")))+
-  geom_line(aes(date,CO2))+
-  geom_vline(data=pp_bemerkungen[4:6,],aes(xintercept=Start))
+
+date_seq <- seq(min(micro$date),max(micro$date),by=1)
+micro_2 <- merge(micro,data.frame(date=date_seq),all=T)
+micro_2$CO2 <- imputeTS::na_interpolation(micro_2$CO2)
+
+t_diff <- as.numeric(median(diff_time(micro_2$date,"secs"),na.rm = T))
+
+
+#####################
+#P_filter und PPC
+fs <- 1 / round(t_diff,1)#1/s = Hz
+fpass <- c(0.003,0.1)
+wpass <- fpass / (fs /2)
+
+bpfilter <- gsignal::butter(n=4,w=wpass,type="pass")
+
+micro_2$CO2_filter <- gsignal::filtfilt(bpfilter,micro_2$CO2)
+micro$CO2_roll <- RcppRoll::roll_mean(micro$CO2,40,fill=NA)
+micro$CO2_fluct <- micro$CO2 - micro$CO2_roll
+#datelim <- ymd_hm("2022.04.04 16:00","2022.04.04 18:00")
+
+datelim <- ymd_hm("2022.04.06 14:48","2022.04.06 14:55")
+vorher <- ggplot(sub_daterange(micro_2,datelim))+
+  geom_line(aes(date,CO2_filter))+
+
+  geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
+  xlim(datelim)
+
+datelim <- ymd_hm("2022.04.06 16:00","2022.04.06 16:07")
+
+nachher <- ggplot(sub_daterange(micro_2,datelim))+
+  geom_line(aes(date,CO2_filter))+
+  #geom_line(aes(date,CO2_filter))+
+  geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
+  xlim(datelim)
+
+egg::ggarrange(vorher,nachher)
 range(micro$date)

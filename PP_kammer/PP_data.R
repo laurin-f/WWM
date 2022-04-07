@@ -8,12 +8,21 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr","svMisc")
 check.packages(packages)
 
+pp_bemerkungen <-  readODS::read_ods(paste0(metapfad_PP,"PP_Kammer_Bemerkungen.ods"))
+pp_bemerkungen$Start <- dmy_hm(pp_bemerkungen$Start)
 
 pp_chamber <- readODS::read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
-datelim <- t(pp_chamber[8,c("Start","Ende")])
-data <- read_PP(datelim = t(pp_chamber[8,c("Start","Ende")]),format="long")
+i<-9
+datelim <- t(pp_chamber[i,c("Start","Ende")]+(3600*2*c(-1,1)))
+pp_bemerkungen$Start <- pp_bemerkungen$Start - 3600
+pp_bemerkungen <- sub_daterange(pp_bemerkungen,datelim,"Start")
+
+data <- read_PP(datelim = datelim,format="long")
+data <- subset(data, id != 5)
+range(data$date)
+
 
 #data <- data[data$date %in% round_date(data$date,"secs"),]
 
@@ -38,12 +47,16 @@ data <- read_PP(datelim = t(pp_chamber[8,c("Start","Ende")]),format="long")
 # data_long <- tidyr::pivot_longer(data,matches("PPC|P|P_filter"),names_pattern = "(.+)_(\\d)",names_to = c(".value","id"))
 
 ggplot(data)+
-  geom_rect(data=pp_chamber[8,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  geom_text(data=pp_bemerkungen,aes(x=Start,y=Inf,label=Bemerkung),hjust=0,vjust=1)+
+  geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
   geom_line(aes(date,PPC,col=id))
-data_sub <- sub_daterange(data_long,ymd_hms("2022-04-04 12:00:00","2022-04-04 12:02:00"))
+
+data_sub <- sub_daterange(data,ymd_hms("2022-04-04 12:00:00","2022-04-04 12:02:00"))
+data_sub <- sub_daterange(data,ymd_hms("2022-04-06 14:30:00","2022-04-06 14:35:00"))
 ggplot(subset(data_sub,id %in% 1:4 ))+
-  geom_line(aes(date,P,col=id))+
-  geom_line(aes(date,P_filt,col=id))
+#  geom_line(aes(date,P,col=id))+
+  geom_line(aes(date,P_filter,col=id))
 #ppc <- fs*RcppRoll::rollmean(abs(diff(p)))
 
 pp_chamber

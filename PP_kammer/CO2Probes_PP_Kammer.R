@@ -47,16 +47,17 @@ data_probe1u2$tiefe <- abs(data_probe1u2$tiefe)
 ggplot(data_probe1u2)+
   geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
   geom_line(aes(date,CO2_smp2,col=as.factor(tiefe),linetype="smp2"))
-ggplot(subset(data_probe1u2,date > ymd_h("2022.03.09 01")))+
-  geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="probe1"))+
-  geom_point(data=data_probe3,aes(date,CO2,col=as.factor(-tiefe),linetype="probe3"))
-ggplot()+
-  geom_line(data=data_probe3,aes(date,temp,col=as.factor(-tiefe),linetype="probe3"))
+# ggplot(subset(data_probe1u2,date > ymd_h("2022.03.09 01")))+
+#   geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="probe1"))+
+#   geom_point(data=data_probe3,aes(date,CO2,col=as.factor(-tiefe),linetype="probe3"))
+# ggplot()+
+#   geom_line(data=data_probe3,aes(date,temp,col=as.factor(-tiefe),linetype="probe3"))
 
 
 
 
-for(i in 1:nrow(pp_chamber)){
+#for(i in 1:nrow(pp_chamber)){
+i <- nrow(pp_chamber)
 ggplot(data_probe1u2)+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
   geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
@@ -68,7 +69,7 @@ ggplot(data_probe1u2)+
   scale_fill_manual(values = "black")+
   labs(y = "",fill="",col="tiefe",title=pp_chamber$Bemerkung[i])+
   ggsave(paste0(plotpfad_PPchamber,"Messung",i,".png"),width = 8,height = 5)
-}
+#}
   
 ############################
 # probe 1 u2 vertauscht
