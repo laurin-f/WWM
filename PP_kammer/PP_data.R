@@ -15,72 +15,61 @@ pp_chamber <- readODS::read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 i<-9
+i<-nrow(pp_chamber)
 datelim <- t(pp_chamber[i,c("Start","Ende")]+(3600*2*c(-1,1)))
 pp_bemerkungen$Start <- pp_bemerkungen$Start - 3600
 pp_bemerkungen <- sub_daterange(pp_bemerkungen,datelim,"Start")
 
 data <- read_PP(datelim = datelim,format="long")
 data <- subset(data, id != 5)
-range(data$date)
 
+dt <- round(median(diff_time(data$date[data$id == 1]),na.rm=T),2)
+data <- data %>% 
+  group_by(id) %>%
+  mutate(P_roll = RcppRoll::roll_mean(P,3*60/dt,fill=NA))
 
-#data <- data[data$date %in% round_date(data$date,"secs"),]
-
-  
-
-#t_diff <- as.numeric(median(difftime(data$date[-1],data$date[-nrow(data)],"secs")))
-
-
-#####################
-#P_filter und PPC
-# fs <- 1 / round(t_diff,1)#1/s = Hz
-# fpass <- c(0.003,0.1)
-# wpass <- fpass / (fs /2)
-# 
-# 
-# bpfilter <- gsignal::butter(n=3,w=wpass,type="pass")
-# for(i in 1:6){
-#   data[,paste0("P_filter_",i)] <- gsignal::filtfilt(bpfilter,data[,paste0("P_",i)])
-#   abs_diff_i <- abs(c(NA,diff(data[,paste0("P_filter_",i)])))
-#   data[,paste0("PPC_",i)] <- fs*RcppRoll::roll_mean(abs_diff_i,30*60*fs,fill=NA)
-# }
-# data_long <- tidyr::pivot_longer(data,matches("PPC|P|P_filter"),names_pattern = "(.+)_(\\d)",names_to = c(".value","id"))
 
 ggplot(data)+
   geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
-  geom_text(data=pp_bemerkungen,aes(x=Start,y=Inf,label=Bemerkung),hjust=0,vjust=1)+
-  geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
+  #geom_text(data=pp_bemerkungen,aes(x=Start,y=Inf,label=Bemerkung),hjust=0,vjust=1)+
+  #geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
   geom_line(aes(date,PPC,col=id))
 
 data_sub <- sub_daterange(data,ymd_hms("2022-04-04 12:00:00","2022-04-04 12:02:00"))
 data_sub <- sub_daterange(data,ymd_hms("2022-04-06 14:30:00","2022-04-06 14:35:00"))
+data_sub <- sub_daterange(data,ymd_hms("2022-04-11 15:00:00","2022-04-11 16:27:00"))
+data_sub <- sub_daterange(data,ymd_hms("2022-04-12 13:00:00","2022-04-13 16:27:00"))
 ggplot(subset(data_sub,id %in% 1:4 ))+
-#  geom_line(aes(date,P,col=id))+
+  geom_line(aes(date,P,col=id),alpha=0.4)+
+  geom_line(aes(date,P_roll,col=id))+
   geom_line(aes(date,P_filter,col=id))
-#ppc <- fs*RcppRoll::rollmean(abs(diff(p)))
 
+
+#######################################################
+#######################################################
 pp_chamber
 datelim <- c("2022-03-30 13:00:00","2022-03-30 14:40:00")
+#datelim <- c("2022-03-30 11:00:00","2022-03-30 13:00:00")
 data <- read_PP(datelim = datelim)
 range(data$date)
-ggplot(subset(data,id!=6))+geom_line(aes(date,p_Pa,col=id))
+ggplot(subset(data,id!=6))+geom_line(aes(date,P,col=id))
 
 datelim <- c("2022-01-31 10:55:00","2022-01-31 11:00:00")
 data <- read_PP(datelim = datelim)
-ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
+ggplot(subset(data))+geom_line(aes(date,P,col=id))
 datelim <- "2022-02-01 13:40:00"
 datelim <- c("2022-03-08 11:40:00","2022-03-08 12:30:00")
 data <- read_PP(datelim = datelim)
-ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
+ggplot(subset(data))+geom_line(aes(date,P,col=id))
 datelim <- "2022-03-09 10:40:00"
 data <- read_PP(datelim = datelim)
-ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
+ggplot(subset(data))+geom_line(aes(date,P,col=id))
 datelim <- "2022-03-09 16:00:00"
 data <- read_PP(datelim = datelim)
-ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
+ggplot(subset(data))+geom_line(aes(date,P,col=id))
 datelim <- "2022-03-14 10:00:00"
 data <- read_PP(datelim = datelim)
-ggplot(subset(data))+geom_line(aes(date,p_Pa,col=id))
+ggplot(subset(data))+geom_line(aes(date,P,col=id))
 
 
 
@@ -93,3 +82,19 @@ off <- ifelse((0:59 -5 - 2 )%% 30 == 0,1,0)
 on <- ifelse((0:59 +2) %% 30 == 0,1,0)
 cbind(mins,on,off)
 ifelse((0:20 -5 - 2 )%% 30== 0 |(0:20 +2) %% 30 == 0,1,0)
+
+min_sec <- 0:59*3
+offset <- 0
+offset2 <- 10
+offset3 <- 20
+offset4 <- 30
+period <- 60
+Amp <- 100
+speed1 <- Amp * sin((min_sec-offset)/period*2*pi)
+speed2 <- Amp * sin((min_sec-offset2)/period*2*pi)
+speed3 <- Amp * sin((min_sec-offset3)/period*2*pi)
+speed4 <- Amp * sin((min_sec-offset4)/period*2*pi)
+plot(speed1,type="l")
+lines(speed2,col=2)
+lines(speed3,col=3)
+lines(speed4,col=4)

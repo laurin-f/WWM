@@ -4,6 +4,7 @@ detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 
+sqlpfad<-paste0(hauptpfad,"Daten/aufbereiteteDaten/SQLite/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad_PPchamber <- paste0(hauptpfad,"Dokumentation/Berichte/plots/PP_Kammer/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
@@ -20,12 +21,15 @@ check.packages(packages)
 pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
+
+load(file = paste(datapfad_FVAgarten,"klima_DWD.RData"))
 ################
 #daten einlesen
 #################
 datelim_falsch <- ymd_h("2021.07.21 06","2021.07.24 03")
 datelim <- ymd_h("2022.02.28 01")
 
+range(data_probe1u2$CO2_smp1,na.rm = T)
 
 #range1 <- ymd_h(c("2021.04.01 01","2021.04.28 00"))
 data_probe1u2falsch <- read_sampler("sampler1u2",datelim = datelim_falsch, format = "long")
@@ -47,6 +51,28 @@ data_probe1u2$tiefe <- abs(data_probe1u2$tiefe)
 ggplot(data_probe1u2)+
   geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
   geom_line(aes(date,CO2_smp2,col=as.factor(tiefe),linetype="smp2"))
+
+co2_plot <- ggplot(data_probe1u2)+
+  geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
+  geom_line(aes(date,CO2_smp2,col=as.factor(tiefe),linetype="smp2"))+
+  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  xlim(ymd_h("2022.04.12 08","2022.04.14 12"))
+  xlim(ymd_h("2022.04.12 10","2022.04.13 10"))
+  xlim(ymd_h("2022.04.02 10","2022.04.12 10"))
+
+w_plot <- ggplot(klima)+
+  geom_line(aes(date,wind))+
+  geom_ribbon(aes(date,ymin=0,ymax=P24tot),fill="blue",alpha=0.5)+
+  scale_y_continuous(sec.axis = sec_axis(~.,name=expression(italic(P)["24h"]*" (mm)")))+
+  theme(
+    axis.title.y.right = element_text(color = "blue"),
+    axis.text.y.right = element_text(color = "blue")
+  )+
+  xlim(ymd_h("2022.04.02 10","2022.04.12 10"))
+#p_plot <- ggplot(klima)+
+#  xlim(ymd_h("2022.04.02 10","2022.04.12 10"))
+
+egg::ggarrange(co2_plot,w_plot)
 # ggplot(subset(data_probe1u2,date > ymd_h("2022.03.09 01")))+
 #   geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="probe1"))+
 #   geom_point(data=data_probe3,aes(date,CO2,col=as.factor(-tiefe),linetype="probe3"))

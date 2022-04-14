@@ -15,7 +15,7 @@ chamber_arduino_pfad <- paste0(hauptpfad,"/Daten/Urdaten/Kammermessungen_Arduino
 metapfad_PP <- paste0(metapfad,"PP_Kammer/")
 detach("package:pkg.WWM", unload = TRUE)
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS","tidyquant")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS")
 check.packages(packages)
 theme_set(theme_classic())
 ##################
@@ -24,17 +24,22 @@ pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
-#i <- 9
+i <- 1
 i <- nrow(pp_chamber)
 #for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*2,pp_chamber$Ende[i]+3600*24*2)
 
 plot_ls <- list()
 
-
+load(file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))
+if(as.numeric(difftime(now(),max(klima$date),unit="hours")) > 24){
+  source("./PP_kammer/klima_dwd.R")
+}
+klima_sub <- sub_daterange(klima,datelim)
 ############
 #probe 1 u 2
 data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
+
 
 wechsel_date <- ymd_h("22.03.23 14","22.03.28 10")
 #CO2_wechsel <- sub_daterange(data_probe1u2,wechsel_date)
@@ -62,7 +67,9 @@ plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
 
 ############################
 #kammermessungen
+if(exists("flux")){
 rm(flux)
+}
 flux <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = F,t_init=2,plot="",t_offset = 60,t_min=4)
 
 
@@ -86,12 +93,21 @@ if(!is.null(flux)){
 
 ############
 #swc
-load(file = paste(datapfad_FVAgarten,"swc_long.RData"))
+load(file = paste(datapfad_PP_Kammer,"swc_long.RData"))
 swc_sub <- sub_daterange(swc_long,datelim)
 if(nrow(swc_sub) > 0){
+  sec_ax_fac <- 0.7
+  swc_min <- min(swc_sub$swc,na.rm = T)/1.1
   plot_ls[["swc"]] <- ggplot(swc_sub)+
+    geom_ribbon(data=klima_sub,aes(x=date,ymin=swc_min,ymax=P24tot/sec_ax_fac + swc_min),fill="blue",alpha=0.8)+
     geom_line(aes(date,swc,col=as.factor(tiefe)))+
     xlim(datelim)+
+    scale_y_continuous(sec.axis = sec_axis(~(. - swc_min)*sec_ax_fac,name=expression(italic(P)["24h"]*" (mm)")))+
+    theme(
+      axis.title.y.right = element_text(color = "blue"),
+      axis.text.y.right = element_text(color = "blue"),
+      axis.text.x = element_blank()
+    )+
     labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
 }
 
@@ -123,9 +139,13 @@ if(nrow(data_PPC) > 0){
 load(file = paste(datapfad_PP_Kammer,"data_ws.RData"))
 ws_sub <- sub_daterange(data_ws,datelim)
 
+plot_ls[["ws"]] <- ggplot(klima_sub)+
+  geom_line(aes(date,wind,col="atm"))
+  
+names(klima)
 if(nrow(ws_sub)>0){
-  plot_ls[["ws"]] <- ggplot(sub_daterange(data_ws,datelim))+
-    geom_line(aes(date,WS))+
+  plot_ls[["ws"]] <- plot_ls[["ws"]]+
+    geom_line(data = ws_sub,aes(date,WS,col="chamber"))+
     xlim(datelim)+
     labs(x="",y="windspeed (m/s)")
   
