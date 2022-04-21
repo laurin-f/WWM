@@ -83,18 +83,4 @@ on <- ifelse((0:59 +2) %% 30 == 0,1,0)
 cbind(mins,on,off)
 ifelse((0:20 -5 - 2 )%% 30== 0 |(0:20 +2) %% 30 == 0,1,0)
 
-min_sec <- 0:59*3
-offset <- 0
-offset2 <- 10
-offset3 <- 20
-offset4 <- 30
-period <- 60
-Amp <- 100
-speed1 <- Amp * sin((min_sec-offset)/period*2*pi)
-speed2 <- Amp * sin((min_sec-offset2)/period*2*pi)
-speed3 <- Amp * sin((min_sec-offset3)/period*2*pi)
-speed4 <- Amp * sin((min_sec-offset4)/period*2*pi)
-plot(speed1,type="l")
-lines(speed2,col=2)
-lines(speed3,col=3)
-lines(speed4,col=4)
+

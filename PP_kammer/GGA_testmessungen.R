@@ -29,12 +29,21 @@ micro <- read_GGA(table.name = "micro",datelim=t(pp_chamber[i,c("Start","Ende")]
 gga <- read_GGA(table.name = "gga",datelim=t(pp_chamber[i,c("Start","Ende")]))
 
 pp_bemerk <- sub_daterange(pp_bemerkungen,range(micro$date),"Start")
-ggplot(micro)+
+
+datelim1 <- ymd_hm("2022.04.06 14:48","2022.04.06 14:54")
+datelim2 <- ymd_hm("2022.04.06 16:00","2022.04.06 16:06")
+#gesamt <- 
+  ggplot(micro)+
   geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-#  geom_point(aes(date,CO2))+
+  geom_rect(xmin=datelim1[1],xmax=datelim1[2],ymin=-Inf,ymax=Inf,alpha=0.008)+
+  geom_rect(xmin=datelim2[1],xmax=datelim2[2],ymin=-Inf,ymax=Inf,alpha=0.008)+
   geom_vline(data=pp_bemerk,aes(xintercept=Start))+
-  geom_text(data=pp_bemerk,aes(x=Start,y=Inf,label=Bemerkung),hjust=0,vjust=1)+
-  geom_line(aes(date,CO2))
+  geom_text(data=pp_bemerk[1,],aes(x=Start,y=Inf,label="Extra Kammerbelüftung angeschaltet"),hjust=0,vjust=1)+
+  geom_line(aes(date,CO2))+
+  labs(x="",y=expression(CO[2]~(ppm)),fill="")#+
+#  xlim(ymd_hm("2022.04.13 13:40","2022.04.13 15:20"))
+
+
 
 
 date_seq <- seq(min(micro$date),max(micro$date),by=1)
@@ -57,20 +66,27 @@ micro$CO2_roll <- RcppRoll::roll_mean(micro$CO2,40,fill=NA)
 micro$CO2_fluct <- micro$CO2 - micro$CO2_roll
 #datelim <- ymd_hm("2022.04.04 16:00","2022.04.04 18:00")
 
-datelim <- ymd_hm("2022.04.06 14:48","2022.04.06 14:55")
-vorher <- ggplot(sub_daterange(micro_2,datelim))+
+
+vorher <- ggplot(sub_daterange(micro_2,datelim1))+
   geom_line(aes(date,CO2_filter))+
 
-  geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
-  xlim(datelim)
+  #geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
+  scale_x_datetime(date_breaks = "1 mins",date_labels = "%H:%M")+
+  labs(subtitle="ohne Belüftung",y=expression(CO["2 filter"]~(ppm)),x="")
 
-datelim <- ymd_hm("2022.04.06 16:00","2022.04.06 16:07")
 
-nachher <- ggplot(sub_daterange(micro_2,datelim))+
+
+nachher <- 
+  ggplot(sub_daterange(micro_2,datelim2))+
   geom_line(aes(date,CO2_filter))+
   #geom_line(aes(date,CO2_filter))+
-  geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
-  xlim(datelim)
+  #geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
+  scale_x_datetime(date_breaks = "1 mins",date_labels = "%H:%M")+
+  labs(subtitle="mit Belüftung",y=expression(CO["2 filter"]~(ppm)),x="")
 
-egg::ggarrange(vorher,nachher)
-range(micro$date)
+vor_nach <- egg::ggarrange(vorher,nachher,ncol=2)
+
+vor_nach <- ggpubr::ggarrange(vorher,nachher,ncol = 2)
+
+ggpubr::ggarrange(gesamt,vor_nach,ncol = 1)+ggsave(paste0(plotpfad_PPchamber,"Kammerbelüftung_CO2_fluctuations.png"),width=8,height=8)
+

@@ -24,8 +24,8 @@ pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
-i <- 1
-i <- nrow(pp_chamber)
+i <- 11
+#i <- nrow(pp_chamber)
 #for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*2,pp_chamber$Ende[i]+3600*24*2)
 
@@ -69,9 +69,13 @@ plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
 #kammermessungen
 if(exists("flux")){
 rm(flux)
+rm(flux_data)
 }
-flux <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = F,t_init=2,plot="",t_offset = 60,t_min=4)
 
+gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[i])
+flux_ls <- chamber_arduino(datelim=datelim,gga_data = gga_data_T,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=4,gga=pp_chamber$GGA_kammermessung[i])
+flux <- flux_ls[[1]]
+flux_data <- flux_ls[[2]]
 
 if(!is.null(flux)){
   flux_plot <- ggplot(flux)+
@@ -89,6 +93,7 @@ if(!is.null(flux)){
       geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))
   }
   plot_ls[["flux"]] <- flux_plot
+
 }
 
 ############
@@ -121,8 +126,14 @@ if(nrow(data_PPC) > 0){
     group_by(id) %>%
     mutate(dt = diff_time(date,"secs"))
   #dt <- diff_time(data_PPC$date,"secs")
-  data_PPC[which(data_PPC$dt > 3600),"PPC"] <- NA
   data_PPC$id[data_PPC$id == 6] <- "outside"
+  data_PPC[which(data_PPC$dt > 3600),"PPC"] <- NA
+  dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
+  
+  data_PPC <- data_PPC %>% 
+    group_by(id) %>%
+    mutate(P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
+  
   
   plot_ls[["PPC"]] <- ggplot(data_PPC)+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
@@ -130,28 +141,45 @@ if(nrow(data_PPC) > 0){
     geom_line(aes(date,PPC,col=id))+
     coord_cartesian(xlim=datelim)+
     scale_fill_grey()+
-    guides(fill=F)
+    guides(fill=F)+
     labs(x="",y="PPC (Pa/s)")
+  plot_ls[["P_roll"]] <- ggplot(subset(data_PPC,id %in% 1:4) )+
+    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_line(aes(date,P_roll,col=id),alpha=0.5, linetype=2)+
+    coord_cartesian(xlim=datelim)+
+    scale_fill_grey()+
+    guides(fill=F,col=F)+
+    labs(x="",y=expression(P["moving average"]))
 }
 
 #################
 #ws
 load(file = paste(datapfad_PP_Kammer,"data_ws.RData"))
+
 ws_sub <- sub_daterange(data_ws,datelim)
 
+
 plot_ls[["ws"]] <- ggplot(klima_sub)+
-  geom_line(aes(date,wind,col="atm"))
-  
-names(klima)
-if(nrow(ws_sub)>0){
+  geom_line(aes(date,wind,col="WS"))+
+  labs(x="",y="windspeed (m/s)")
+if(!is.null(flux_data)){
+  sec_ax_T <- 4
   plot_ls[["ws"]] <- plot_ls[["ws"]]+
-    geom_line(data = ws_sub,aes(date,WS,col="chamber"))+
-    xlim(datelim)+
-    labs(x="",y="windspeed (m/s)")
-  
-  
+    geom_line(data=flux_data,aes(date,T_C/sec_ax_T,col="T"))+
+    scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_T,name=expression(T["atm"]~"(°C)")))+
+    coord_cartesian(xlim=datelim)
 }
-png(paste0(plotpfad_PPchamber,"PP_Versuch",i,".png"),width = 9,height = 9,units = "in",res=300)
+# 
+# if(nrow(ws_sub)>0){
+#   plot_ls[["ws"]] <- plot_ls[["ws"]]+
+#     geom_line(data = ws_sub,aes(date,RcppRoll::roll_median(WS,60,fill=NA),col="WS chamber"))+
+#     geom_point(data = ws_sub,aes(date,RcppRoll::roll_median(WS,60,fill=NA),col="WS chamber"))+
+#     xlim(datelim)
+#   
+#   
+# }
+png(paste0(plotpfad_PPchamber,"PP_Versuch",i,".png"),width = 9,height = 10,units = "in",res=300)
 egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
 dev.off()
 #}
