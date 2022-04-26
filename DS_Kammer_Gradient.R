@@ -26,8 +26,9 @@ pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 i <- 4
 p <- list()
-for(i in 4:12){
+#for(i in 4:12){
   datelim <- c(pp_chamber$Start[i]-3600*10,pp_chamber$Ende[i]+3600*10)
+  datelim <- c(ymd_h("2022-04-13 18"),now())
 
 data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "wide")
 data_long <- read_sampler("sampler1u2",datelim = datelim, format = "long")
@@ -89,8 +90,61 @@ data$DSD0 <- data$DS / data$D0_m2_s
 p[[paste0("DSD0_",i)]] <- 
   ggplot(data)+
   geom_line(aes(date,DSD0))
-}
+#}
 
-j <- 7
-egg::ggarrange(plots=p[grep(paste0(j,"$"),names(p))])
+j <- 4
+egg::ggarrange(plots=p[grep(paste0(j,"$"),names(p))],ncol=1)
+  
+#####################
+#klima daten dazu
+
+load(file = paste(datapfad_PP_Kammer,"swc_long.RData"))
+swc_sub <- sub_daterange(swc_long,datelim)
+swc_wide_sub <- sub_daterange(swc_wide,datelim)
+
+load(file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))
+if(as.numeric(difftime(now(),max(klima$date),unit="hours")) > 24){
+  source("./PP_kammer/klima_dwd.R")
+}
+klima_sub <- sub_daterange(klima,datelim)
+
+data_merge <- merge(data,swc_wide_sub)
+data_merge <- merge(data_merge,klima_sub)
+names(data)
+
+sec_ax_T <- 4
+p[[paste0("ws",i)]] <- ggplot(data_merge)+
+  geom_line(aes(date,wind,col="WS"))+
+    geom_line(aes(date,T_C/sec_ax_T,col="T"))+
+    scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_T,name=expression(T["atm"]~"(°C)")))+
+    coord_cartesian(xlim=datelim)+
+  labs(x="",y="windspeed (m/s)")
+
+
+sec_ax_fac <- 0.7
+swc_min <- min(swc_sub$swc,na.rm = T)/1.1
+p[[paste0("swc",i)]] <- ggplot(swc_sub)+
+  geom_ribbon(data=klima_sub,aes(x=date,ymin=swc_min,ymax=P24tot/sec_ax_fac + swc_min),fill="blue",alpha=0.8)+
+  geom_line(aes(date,swc,col=as.factor(tiefe)))+
+  xlim(datelim)+
+  scale_y_continuous(sec.axis = sec_axis(~(. - swc_min)*sec_ax_fac,name=expression(italic(P)["24h"]*" (mm)")))+
+  theme(
+    axis.title.y.right = element_text(color = "blue"),
+    axis.text.y.right = element_text(color = "blue"),
+    axis.text.x = element_blank()
+  )+
+  labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
+ggplot(data_merge)+
+  #geom_point(aes(wind,CO2_mumol_per_s_m2))
+  geom_point(aes(swc_7,dC_0_10,col=wind))
+  geom_point(aes(swc_21,DSD0,col=wind))
+  geom_point(aes(wind,DSD0,col=swc_7))
+  geom_point(aes(wind,DSD0))
+
+  data_merge$DSD0_roll <- RcppRoll::roll_mean(data_merge$DSD0,20,fill=NA)
+  data_select <- data_merge[,c("DSD0_roll","wind","P24tot","T_C","swc_7")]
+  M <- cor(data_select)
+  corrplot::corrplot.mixed(M)
+  PerformanceAnalytics::chart.Correlation(data_select)
+  
   

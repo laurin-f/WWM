@@ -53,6 +53,6 @@ ggplot(swc_long)+
   
 swc_wide <- swc[grep("date|swc_\\d$",colnames(swc))] %>% as.data.frame()
 swc_wide[,-1] <- sapply(swc_wide[,-1],as.numeric,simplify = T)
-colnames(swc_wide) <- c("date",  "swc_30", "swc_10", "swc_20")
+colnames(swc_wide) <- c("date",  "swc_21", "swc_7", "swc_14")
 #swc_plot
 save(swc_long,swc_wide,file = paste(datapfad_PP_Kammer,"swc_long.RData"))
