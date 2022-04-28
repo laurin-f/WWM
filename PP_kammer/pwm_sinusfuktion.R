@@ -33,7 +33,7 @@ lines(x/p)
 #################################
 #
 min_sec <- 0:(59*3)
-offset <- 0
+offset <- 10
 offset2 <- 10
 offset3 <- 20
 offset4 <- 30
@@ -45,8 +45,8 @@ speed2 <- Amp * sin((min_sec-offset2)/period*2*pi)
 speed3 <- Amp * sin((min_sec-offset3)/period*2*pi)
 speed4 <- Amp * sin((min_sec-offset4)/period*2*pi)
 
-rel_time <- min_sec/period - floor(min_sec/period)
-rel_time_2 <- min_sec/period*2 - floor(min_sec/period*2)
+rel_time <- (min_sec-offset)/period - floor((min_sec-offset)/period)
+rel_time_2 <- (min_sec-offset)/period*2 - floor((min_sec-offset)/period*2)
 
 speed1_adj <- ifelse(rel_time_2 <= 0.5,ifelse(rel_time < 0.5,Amp,-Amp),(speed1))
 speed1_adj2 <- ifelse(speed1_adj <= 0, 

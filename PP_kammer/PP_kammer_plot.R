@@ -24,12 +24,12 @@ pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
+i <- nrow(pp_chamber)
 i <- 11
-#i <- nrow(pp_chamber)
-#for(i in 1:nrow(pp_chamber)){
-datelim <- c(pp_chamber$Start[i]-3600*24*2,pp_chamber$Ende[i]+3600*24*2)
-plot <-  F
-datelim <- c(ymd_h("2022-04-13 18"),now())
+for(i in 1:nrow(pp_chamber)){
+datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
+plot <-  T
+#datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
 
 plot_ls <- list()
 
@@ -82,7 +82,7 @@ flux_data <- flux_ls[[2]]
 if(!is.null(flux)){
   flux_plot <- ggplot(flux)+
     geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"),alpha=0.5)+
-    geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,5,fill=NA),col="Dynament"),lwd=1)+
+    geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,3,fill=NA),col="Dynament"),lwd=1)+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
@@ -189,4 +189,4 @@ egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
 if(plot){
 dev.off()
 }
-#}
+}
