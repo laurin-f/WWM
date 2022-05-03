@@ -25,11 +25,12 @@ pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 i <- nrow(pp_chamber)
-i <- 11
-for(i in 1:nrow(pp_chamber)){
+#i <- 13
+#for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
 plot <-  T
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
+#datelim <- ymd_hm("2022.05.02 00:00","2022.05.02 01:20")
 
 plot_ls <- list()
 
@@ -70,14 +71,22 @@ plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
 ############################
 #kammermessungen
 if(exists("flux")){
-rm(flux)
-rm(flux_data)
+  rm(flux)
+  rm(flux_data)
 }
 
 gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[i])
 flux_ls <- chamber_arduino(datelim=datelim,gga_data = gga_data_T,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=4,gga=pp_chamber$GGA_kammermessung[i])
 flux <- flux_ls[[1]]
 flux_data <- flux_ls[[2]]
+1:59 %% 30 > 5
+flux_data$atm <- ifelse(minute(flux_data$date) %% 30 > 5,0,1)
+
+if(!is.null(flux_data)){
+  plot_ls[["probe2"]] <- 
+    plot_ls[["probe2"]]+
+    geom_line(data=subset(flux_data,atm == 1),aes(date,RcppRoll::roll_mean(CO2,5,fill=NA),col="0"))
+}
 
 if(!is.null(flux)){
   flux_plot <- ggplot(flux)+
@@ -95,7 +104,7 @@ if(!is.null(flux)){
       geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))
   }
   plot_ls[["flux"]] <- flux_plot
-
+  
 }
 
 ############
@@ -122,29 +131,33 @@ if(nrow(swc_sub) > 0){
 #PPC
 
 data_PPC <- read_PP(datelim = datelim)
+
 if(nrow(data_PPC) > 0){
   data_PPC <- subset(data_PPC,id != 5)
-  data_PPC <- data_PPC %>% 
-    group_by(id) %>%
-    mutate(dt = diff_time(date,"secs"))
-  #dt <- diff_time(data_PPC$date,"secs")
-  data_PPC$id[data_PPC$id == 6] <- "outside"
-  data_PPC[which(data_PPC$dt > 3600),"PPC"] <- NA
   dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
   
   data_PPC <- data_PPC %>% 
     group_by(id) %>%
-    mutate(P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
+    mutate(dt = diff_time(date,"secs"),
+           P_diff = abs(c(NA,diff(P_filter)))/!!dt,
+           PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
+           P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
+  
+  data_PPC$id[data_PPC$id == 6] <- "outside"
+  data_PPC[which(data_PPC$dt > 3600),c("PPC","PPC5","P_roll")] <- NA
   
   
-  plot_ls[["PPC"]] <- ggplot(data_PPC)+
+  
+  plot_ls[["PPC"]] <- 
+    ggplot(data_PPC)+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_line(aes(date,PPC,col=id))+
+    geom_line(aes(date,PPC5,col=id))+
     coord_cartesian(xlim=datelim)+
     scale_fill_grey()+
     guides(fill=F)+
     labs(x="",y="PPC (Pa/s)")
+  
   plot_ls[["P_roll"]] <- ggplot(subset(data_PPC,id %in% 1:4) )+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
@@ -182,11 +195,11 @@ if(!is.null(flux_data)){
 #   
 # }
 if(plot){
-png(paste0(plotpfad_PPchamber,"PP_Versuch",i,".png"),width = 9,height = 10,units = "in",res=300)
+  png(paste0(plotpfad_PPchamber,"PP_Versuch",i,".png"),width = 9,height = 10,units = "in",res=300)
 }
 egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
 
 if(plot){
-dev.off()
+  dev.off()
 }
-}
+#}
