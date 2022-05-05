@@ -27,7 +27,7 @@ check.packages(packages)
 link <- selectDWD("Freiburg",res="10_minutes",var=c("wind","precipitation"),per="recent")
 
 klima_wind <- dataDWD(link[[1]],dir=datapfad_PP_Kammer,varnames=T,force=NA,overwrite = T)
-klima_P <- dataDWD(link[[2]],dir=datapfad_PP_Kammer,varnames=T,force=NA,overwrite = T)
+klima_P <- dataDWD(link[[2]],dir=datapfad_PP_Kammer,varnames=T,force=T,overwrite = T)
 
 klima <- merge(klima_P[,c(2,4,5,6)],klima_wind[,c(2,4,5)])
 klima$date <- ymd_hms(klima$MESS_DATUM)

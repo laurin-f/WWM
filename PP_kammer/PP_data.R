@@ -17,7 +17,7 @@ pp_chamber <- readODS::read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 i<-10
-#i<-nrow(pp_chamber)
+i<-nrow(pp_chamber)
 datelim <- t(pp_chamber[i,c("Start","Ende")]+(3600*2*c(-1,1)))
 pp_bemerkungen$Start <- pp_bemerkungen$Start - 3600
 pp_bemerkungen <- sub_daterange(pp_bemerkungen,datelim,"Start")
@@ -40,7 +40,7 @@ ggplot(data)+
   geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
   #geom_text(data=pp_bemerkungen,aes(x=Start,y=Inf,label=Bemerkung),hjust=0,vjust=1)+
   #geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
-  geom_line(aes(date,PPC,col=id))
+  geom_line(aes(date,P,col=id))
 
 data_sub <- sub_daterange(data,ymd_hms("2022-04-04 12:00:00","2022-04-04 12:02:00"))
 data_sub <- sub_daterange(data,ymd_hms("2022-04-06 14:30:00","2022-04-06 14:35:00"))
@@ -51,12 +51,60 @@ ggplot(subset(data_sub,id %in% 1:4 ))+
   geom_line(aes(date,P_roll,col=id))+
   geom_line(aes(date,P_filter,col=id))
 
+#############################
+#Kalibrierung Messung 14
+
+i<-14
+datelim <- ymd_hms(t(pp_chamber[i,c("Start","Ende")]+(3600*5*c(-1,1))))
+pp_bemerkungen$Start <- pp_bemerkungen$Start - 3600
+pp_bemerkungen <- sub_daterange(pp_bemerkungen,datelim,"Start")
+
+data <- read_PP(datelim = datelim,format="long",corfac = F)
+data <- data %>% 
+  group_by(id) %>%
+  mutate(P_roll = RcppRoll::roll_mean(P,3*60,fill=NA))
+data_sub <- subset(data,id!=6)
+start_datelim <- c(min(data$date),min(data$date)+2*60)
+end_datelim <- c(max(data$date)-3*60,max(data$date))
+ggplot(sub_daterange(data_sub,start_datelim))+
+  geom_line(aes(date,P,col=id),alpha=.2)+
+  geom_line(aes(date,P_roll,col=id))
+ggplot(sub_daterange(data_sub,end_datelim))+
+  geom_line(aes(date,P,col=id),alpha=.2)+
+  geom_line(aes(date,P_roll,col=id))
+ggplot(data_sub)+
+  #geom_line(aes(date,P,col=id))+
+  geom_line(aes(date,P_roll,col=id))
+#  xlim(ymd_hm("2022.05.03 10:00","2022.05.03 10:30"))
+
+P_cor_start <- sub_daterange(data_sub,start_datelim) %>% 
+  group_by(id) %>%
+  summarise(P_mean = mean(P))
+P_cor_end <- sub_daterange(data_sub,end_datelim) %>% 
+  group_by(id) %>%
+  summarise(P_mean = mean(P))
+
+ggplot()+
+  geom_point(data=P_cor_start,aes(id,P_mean,col="start"))+
+  geom_point(data=P_cor_end,aes(id,P_mean,col="end"))+
+  geom_point(data=P_corfac,aes(id,P_mean,col="corfac"))
 
 
+for(i in 1:5){
+  data_sub$P[data_sub$id == i] <- data_sub$P[data_sub$id == i] - P_cor_start$P_mean[i]
+  data_sub$P_roll[data_sub$id == i] <- data_sub$P_roll[data_sub$id == i] - P_cor_start$P_mean[i]
+}
+
+ggplot(data_sub)+
+  #geom_line(aes(date,P,col=id))+
+  geom_line(aes(date,P_roll,col=id))
+
+!(1==2&2==2)
+((2:23)-2) %% 3
 #######################################################
 #######################################################
 pp_chamber
-datelim <- c("2022-03-30 13:00:00","2022-03-30 14:40:00")
+ 
 datelim <- c("2022-03-30 13:38:42","2022-03-30 13:38:50")
 #datelim <- c("2022-03-30 11:00:00","2022-03-30 13:00:00")
 data <- read_PP(datelim = datelim)
@@ -83,15 +131,16 @@ data <- read_PP(datelim = datelim)
 ###################
 #kalibriermessung in der Werkstatt
 datelim <- c("2022-04-28 14:00:00","2022-04-28 15:00:00")
-data1 <- read_PP(datelim = datelim)
+data1 <- read_PP(datelim = datelim,corfac = F)
 datelim <- c("2022-04-27 13:40:00","2022-04-27 13:45:00")
-data <- read_PP(datelim = datelim)
+data <- read_PP(datelim = datelim,corfac = F)
 data <- data %>% 
   group_by(id) %>%
   mutate(P_roll = RcppRoll::roll_mean(P,10,fill=NA))
 ggplot(subset(data,id %in% 1:4))+geom_line(aes(date,P_roll,col=id))
 
 P_corfac <- data1 %>% 
+  filter(id != 6) %>% 
   group_by(id) %>%
   summarise(P_mean = mean(P))
 means2 <- data %>% 
@@ -101,6 +150,10 @@ ggplot(means[1:4,])+
   geom_point(aes(id,P_mean))+
   geom_point(data=means2[1:4,],aes(id,P_mean,col="2"))
 
+  
+for(i in 1:5){
+  data_sub[,paste0("P_",i)] <- data_sub[,paste0("P_",i)]-P_cor_start$P_mean[i]
+}
 #save(P_corfac,file=paste0(datapfad_PP_Kammer,"P_corfac.RData"))
 #####################
 #test von unterdruck in der Kammer
