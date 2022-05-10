@@ -31,6 +31,7 @@ datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
 plot <-  T
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
 #datelim <- ymd_hm("2022.05.02 00:00","2022.05.02 01:20")
+#datelim <- ymd_hm("2022.05.08 18:00","2022.05.10 13:20")
 
 plot_ls <- list()
 
@@ -133,7 +134,7 @@ if(nrow(swc_sub) > 0){
 data_PPC <- read_PP(datelim = datelim)
 
 if(nrow(data_PPC) > 0){
-  data_PPC <- subset(data_PPC,id != 5)
+  #data_PPC <- subset(data_PPC,id != 5)
   dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
   
   data_PPC <- data_PPC %>% 
@@ -158,7 +159,7 @@ if(nrow(data_PPC) > 0){
     guides(fill=F)+
     labs(x="",y="PPC (Pa/s)")
   
-  plot_ls[["P_roll"]] <- ggplot(subset(data_PPC,id %in% 1:4) )+
+  plot_ls[["P_roll"]] <- ggplot(subset(data_PPC,id %in% 1:6) )+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,P_roll,col=id),alpha=0.5, linetype=2)+

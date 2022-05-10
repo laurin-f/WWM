@@ -51,11 +51,14 @@ data_probe1u2$tiefe <- abs(data_probe1u2$tiefe)
 ggplot(data_probe1u2)+
   geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
   geom_line(aes(date,CO2_smp2,col=as.factor(tiefe),linetype="smp2"))
-
-co2_plot <- ggplot(data_probe1u2)+
+range(data_probe1u2$date)
+#co2_plot <- 
+  ggplot(subset(data_probe1u2,tiefe < 15))+
   geom_line(aes(date,CO2_smp1,col=as.factor(tiefe),linetype="smp1"))+
   geom_line(aes(date,CO2_smp2,col=as.factor(tiefe),linetype="smp2"))+
-  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+  #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+    ylim(300,4000)+
+  xlim(ymd_h("2022.05.09 08","2022.05.10 14"))
   xlim(ymd_h("2022.04.12 08","2022.04.14 12"))
   xlim(ymd_h("2022.04.12 10","2022.04.13 10"))
   xlim(ymd_h("2022.04.02 10","2022.04.12 10"))
