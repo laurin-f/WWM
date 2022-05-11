@@ -43,9 +43,11 @@ col2 <- cols[2]
 
 data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
 
+data_probe1u2$tiefe <- data_probe1u2$tiefe - 1
 
 
-plot_ls[["probe1"]] <- ggplot(data_probe1u2)+
+plot_ls[["probe1"]] <- 
+  ggplot(data_probe1u2)+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
   geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
   #geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
@@ -69,7 +71,12 @@ plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
 if(!is.null(flux_data)){
   plot_ls[["probe2"]] <- 
     plot_ls[["probe2"]]+
-    geom_line(data=subset(flux_data,atm == 1),aes(date,RcppRoll::roll_mean(CO2,50,fill=NA),col="0"))
+    geom_line(data=subset(flux_data,atm == 1),aes(date,RcppRoll::roll_mean(CO2,50,fill=NA),col=factor("0",levels = c("0",unique(data_probe1u2$tiefe)))))+
+      scale_color_discrete(limits = as.character(c(0,unique(-data_probe1u2$tiefe))))
+  plot_ls[["probe1"]] <- 
+    plot_ls[["probe1"]]+
+    geom_line(data=subset(flux_data,atm == 1),aes(date,RcppRoll::roll_mean(CO2,50,fill=NA),col="0"))+
+      scale_color_discrete(limits = as.character(c(0,unique(-data_probe1u2$tiefe))))
 }
 if(!is.null(flux)){
   flux_plot <- ggplot(flux)+

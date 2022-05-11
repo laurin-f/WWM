@@ -25,8 +25,8 @@ pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 i <- nrow(pp_chamber)
-#i <- 13
-#for(i in 1:nrow(pp_chamber)){
+i <- 12
+for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
 plot <-  T
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
@@ -80,10 +80,10 @@ gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[i])
 flux_ls <- chamber_arduino(datelim=datelim,gga_data = gga_data_T,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=4,gga=pp_chamber$GGA_kammermessung[i])
 flux <- flux_ls[[1]]
 flux_data <- flux_ls[[2]]
-1:59 %% 30 > 5
-flux_data$atm <- ifelse(minute(flux_data$date) %% 30 > 5,0,1)
+
 
 if(!is.null(flux_data)){
+flux_data$atm <- ifelse(minute(flux_data$date) %% 30 > 5,1,0)
   plot_ls[["probe2"]] <- 
     plot_ls[["probe2"]]+
     geom_line(data=subset(flux_data,atm == 1),aes(date,RcppRoll::roll_mean(CO2,5,fill=NA),col="0"))
@@ -134,7 +134,7 @@ if(nrow(swc_sub) > 0){
 data_PPC <- read_PP(datelim = datelim)
 
 if(nrow(data_PPC) > 0){
-  #data_PPC <- subset(data_PPC,id != 5)
+  data_PPC <- subset(data_PPC,id != 5)
   dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
   
   data_PPC <- data_PPC %>% 
@@ -159,7 +159,7 @@ if(nrow(data_PPC) > 0){
     guides(fill=F)+
     labs(x="",y="PPC (Pa/s)")
   
-  plot_ls[["P_roll"]] <- ggplot(subset(data_PPC,id %in% 1:6) )+
+  plot_ls[["P_roll"]] <- ggplot(subset(data_PPC,id %in% 1:4) )+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,P_roll,col=id),alpha=0.5, linetype=2)+
@@ -171,14 +171,14 @@ if(nrow(data_PPC) > 0){
 
 #################
 #ws
-load(file = paste(datapfad_PP_Kammer,"data_ws.RData"))
 
-ws_sub <- sub_daterange(data_ws,datelim)
-
-
+if(nrow(klima_sub) > 0){
 plot_ls[["ws"]] <- ggplot(klima_sub)+
   geom_line(aes(date,wind,col="WS"))+
   labs(x="",y="windspeed (m/s)")
+}else{
+plot_ls[["ws"]] <- ggplot()
+}
 if(!is.null(flux_data)){
   sec_ax_T <- 4
   plot_ls[["ws"]] <- plot_ls[["ws"]]+
@@ -186,6 +186,10 @@ if(!is.null(flux_data)){
     scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_T,name=expression(T["atm"]~"(°C)")))+
     coord_cartesian(xlim=datelim)
 }
+
+# load(file = paste(datapfad_PP_Kammer,"data_ws.RData"))
+# 
+# ws_sub <- sub_daterange(data_ws,datelim)
 # 
 # if(nrow(ws_sub)>0){
 #   plot_ls[["ws"]] <- plot_ls[["ws"]]+
@@ -203,4 +207,5 @@ egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
 if(plot){
   dev.off()
 }
-#}
+}
+

@@ -21,8 +21,10 @@ injection_dates$Start <- dmy_hm(injection_dates$Start)
 injection_dates$Ende <- dmy_hm(injection_dates$Ende)
 
 datelim <- ymd_hm("22/05/09 13:00","22/05/12 16:00")
-injection_arduino(datelim,plot="flux")
+datelim <- ymd_hm("22/04/12 00:00","22/04/15 16:00")
+inj <- injection_arduino(datelim,plot="timeline",return_ls = T,t_init=2)
 
+90 -(30*0:6)
   ##############################
 #ALT ##########################################
 

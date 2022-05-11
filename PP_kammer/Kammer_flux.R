@@ -38,17 +38,23 @@ datelim_ls[[4]] <- ymd_hm("2022.03.23 06:00","2022.03.24 23:00")
 datelim_ls[[5]] <- ymd_hm("2022.03.24 23:00","2022.03.29 15:00")
 datelim_ls[[6]] <- ymd_hm("2022.03.29 15:00","2022.04.04 10:00")
 datelim_ls[[7]] <- ymd_hm("2022.04.04 00:00","2022.04.07 10:00")
+datelim_ls[[8]] <- ymd_hm("2022-05-10 09:05", "2022-05-10 11:00")
 
 #for(i in 1:length(datelim)){
 
-i <- 7
+i <- 3
 flux_ls <- chamber_arduino(datelim=datelim_ls[[i]],
-                           gga_data = F,
+                           gga_data = T,
+                           gga="gga",
                            return_ls = T,
-                           t_init=0,
+                           t_init=2,
                            plot="flux",
                            t_offset = 60,
                            t_min=4)
+
+
+
+
 #flux_GGA <- chamber_arduino(datelim,gga_data = T,gas=c("CO2_GGA"),t_init = 0,plot="timeline",t_offset = 100)
 #flux_CH4 <- chamber_arduino(datelim,gga_data = T,gas=c("CH4_GGA"),t_init = 2,plot="timeline",t_offset = 100)
 flux <- flux_ls[[1]]
