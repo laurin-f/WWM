@@ -29,6 +29,10 @@ i <- 11
 datelim <- c(pp_chamber$Start[i]-3600*12*1,pp_chamber$Ende[i]+3600*12*1)
 plot_ls <- list()
 
+##################################
+#flux
+####################################
+
 gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[i])
 flux_ls <- chamber_arduino(datelim=datelim,gga_data = gga_data_T,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=4,gga=pp_chamber$GGA_kammermessung[i])
 flux <- flux_ls[[1]]
@@ -41,6 +45,31 @@ cols <- RColorBrewer::brewer.pal(3,"Dark2")
 col1 <- cols[1]
 col2 <- cols[2]
 
+
+if(!is.null(flux)){
+  flux_plot <- ggplot(flux)+
+    geom_point(aes(date,CO2_mumol_per_s_m2),col=col1,alpha=0.5)+
+    geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,1,fill=NA)),col=col1,lwd=1)+
+    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    labs(subtitle=expression(CO[2]~"efflux"),x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
+    scale_fill_grey()+
+    guides(fill  = F)+
+    theme(axis.text.x = element_blank())+
+    coord_cartesian(xlim=datelim)
+  if("CO2_GGA_mumol_per_s_m2" %in% names(flux)){
+    flux_plot <- flux_plot+
+      geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))+
+      geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))
+  }
+  plot_ls[["flux"]] <- flux_plot
+  
+}
+plot_ls[["flux"]]
+
+####################################################################
+#probe 1 u 2
+####################################################################
 data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
 
 data_probe1u2$tiefe <- data_probe1u2$tiefe - 1
@@ -65,7 +94,8 @@ plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
   scale_fill_manual(values = "black")+
   coord_cartesian(xlim=datelim)+
   guides(col=F)+
-  labs(y = expression(CO[2]~"(ppm)"),fill="",col="depth",subtitle = "profile 2")
+  theme(axis.text.x = element_blank())+
+  labs(x="", y = expression(CO[2]~"(ppm)"),fill="",col="depth",subtitle = "profile 2")
 
 
 if(!is.null(flux_data)){
@@ -78,30 +108,14 @@ if(!is.null(flux_data)){
     geom_line(data=subset(flux_data,atm == 1),aes(date,RcppRoll::roll_mean(CO2,50,fill=NA),col="0"))+
       scale_color_discrete(limits = as.character(c(0,unique(-data_probe1u2$tiefe))))
 }
-if(!is.null(flux)){
-  flux_plot <- ggplot(flux)+
-    geom_point(aes(date,CO2_mumol_per_s_m2),col=col1,alpha=0.5)+
-    geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,3,fill=NA)),col=col1,lwd=1)+
-    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
-    scale_fill_grey()+
-    guides(fill  = F)+
-    theme(axis.text.x = element_blank())+
-    coord_cartesian(xlim=datelim)
-  if("CO2_GGA_mumol_per_s_m2" %in% names(flux)){
-    flux_plot <- flux_plot+
-      geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))+
-      geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))
-  }
-  plot_ls[["flux"]] <- flux_plot
-  
-}
-plot_ls[["flux"]]
 
+###########################
+# PPC
+############################
 
 data_PPC <- read_PP(datelim = datelim)
 
+range(data_PPC$date[data_PPC$PPC5 != 0])
 if(nrow(data_PPC) > 0){
   data_PPC <- subset(data_PPC,!id %in% 5:6)
   dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
@@ -136,6 +150,7 @@ if(nrow(data_PPC) > 0){
     geom_ribbon(aes(date,ymax=PPC5,ymin=0),fill=col2,alpha=0.2)+
     coord_cartesian(xlim=datelim)+
     guides(fill=F)+
+    scale_y_continuous(breaks = c(0.1,0.3,0.5))+
     labs(x="",y="PPC (Pa/s)")
   
 }

@@ -25,13 +25,14 @@ pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 i <- nrow(pp_chamber)
-i <- 12
-for(i in 1:nrow(pp_chamber)){
+#i <- 17
+#for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
-plot <-  T
+plot <-  F
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
 #datelim <- ymd_hm("2022.05.02 00:00","2022.05.02 01:20")
 #datelim <- ymd_hm("2022.05.08 18:00","2022.05.10 13:20")
+datelim <- ymd_hm("2022.05.12 10:00","2022.05.16 16:00")
 
 plot_ls <- list()
 
@@ -207,5 +208,5 @@ egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
 if(plot){
   dev.off()
 }
-}
+#}
 

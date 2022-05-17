@@ -23,7 +23,7 @@ pp_bemerkungen$Start <- pp_bemerkungen$Start - 3600
 pp_bemerkungen <- sub_daterange(pp_bemerkungen,datelim,"Start")
 
 data <- read_PP(datelim = datelim,format="long")
-data <- subset(data, id != 5)
+data <- subset(data, id != 6)
 
 dt <- round(median(diff_time(data$date[data$id == 1]),na.rm=T),2)
 data <- data %>% 
@@ -31,16 +31,17 @@ data <- data %>%
   mutate(P_roll = RcppRoll::roll_mean(P,3*60/dt,fill=NA))
 
 #messung i=9 am Anfang alle P Sonden zusammen
-ggplot(subset(data[50000:100000,],id %in% 1:4 ))+
+ggplot(subset(data[1:50000,],id %in% 1:4 ))+
   geom_line(aes(date,P,col=id))
 
 
+255*0.99
 
 ggplot(data)+
   geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
   #geom_text(data=pp_bemerkungen,aes(x=Start,y=Inf,label=Bemerkung),hjust=0,vjust=1)+
   #geom_vline(data=pp_bemerkungen,aes(xintercept=Start))+
-  geom_line(aes(date,P,col=id))
+  geom_line(aes(date,P_roll,col=id))
 
 data_sub <- sub_daterange(data,ymd_hms("2022-04-04 12:00:00","2022-04-04 12:02:00"))
 data_sub <- sub_daterange(data,ymd_hms("2022-04-06 14:30:00","2022-04-06 14:35:00"))
