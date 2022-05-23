@@ -5,7 +5,9 @@ metapfad_comsol<- paste0(metapfad,"COMSOL/")
 datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad_harth <- paste0(hauptpfad,"Dokumentation/Berichte/plots/hartheim/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
-datapfad_FVAgarten <- paste0(hauptpfad,"Daten/aufbereiteteDaten/FVA_Garten/") 
+
+datapfad_PP_Kammer <- paste0(hauptpfad,"Daten/aufbereiteteDaten/PP_Kammer/") 
+
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
@@ -69,9 +71,6 @@ data <- data %>%
          CO2_inj = RcppRoll::roll_mean(CO2_smp2,5,fill=NA)
          )
 
-ggplot(data)+
-  geom_line(aes(date,CO2_ref,col=as.factor(tiefe)))+
-  geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))
 data_cal <- subset(data, cal == 1)
 
 data$CO2_refadj <- NA
@@ -85,14 +84,67 @@ for(i in 1:7){
 data$CO2_tracer_drift <- data$CO2_inj - (data$CO2_refadj)
 data$T_soil <- data$T_C
 
-data$half_hour <- round_date(data$date,"180 mins")
-mod_dates <- sort(unique(data$half_hour))
+data$half_hour <- round_date(data$date,"60 mins")
+mod_dates <- sort(unique(data$half_hour[data$inj == 1]))
 
+
+ggplot(data)+
+  geom_line(aes(date,CO2_refadj,col=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))
 #comsol<- run_comsol(data=data,mod_dates = mod_dates,offset_method = "drift",overwrite = F,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
-comsol<- run_comsol_nruns(data=data,mod_dates = mod_dates[1:10],offset_method = "drift",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",nruns=50,long=F)
-head(comsol)
-ggplot(comsol)
+
+comsol<- interp_comsol_inj(data=data,
+                          mod_dates = mod_dates,
+                          offset_method = "drift",
+                          overwrite = F,
+                          read_all = F,
+                          modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
+                          nruns=50,
+                          long=T)
+out_list[["min"]]<- run_comsol_nruns(data=data,
+                          mod_dates = mod_dates,
+                          offset_method = "drift",
+                          overwrite = F,
+                          read_all = F,
+                          modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
+                          nruns=50,
+                          long=T)
+out_list[["max"]]<- run_comsol_nruns(data=data,
+                          mod_dates = mod_dates,
+                          offset_method = "drift",
+                          overwrite = F,
+                          read_all = F,
+                          modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
+                          nruns=50,
+                          file_suffix = "max",
+                          long=T)
+data_sub <- subset(data,date %in% approx_df$date&tiefe %in% -3.5)
+summary(out_list[["min"]])
+summary(out_list[["max"]])
+summary(approx_df)
+which(is.na(approx_df$DSD0))
+
+which(approx_df$inj_mol_m2_s < out_list$min$mod_inj_rate |approx_df$inj_mol_m2_s > out_list$max$mod_inj_rate )
+ggplot()+
+  geom_line(data=out_list$min,aes(date,mod_inj_rate,col="min"))+
+  geom_line(data=out_list$max,aes(date,mod_inj_rate,col="max"))+
+  geom_line(data=approx_df,aes(date,inj_mol_m2_s,col="data"))
+  
+
+ggplot()+
+  geom_line(data=comsol,aes(date,DSD0,col=as.factor(tiefe)))#+
+  geom_line(data=max_comsol,aes(date,DSD0,col=as.factor(tiefe)),linetype=2)+
+  geom_line(data=min_comsol,aes(date,DSD0,col=as.factor(tiefe)),linetype=2)
+  
+DSD0_plt <- ggplot(comsol)+
+  geom_line(aes(date,DSD0,col=as.factor(tiefe)))
+
+tracer_plt <- ggplot(data)+
+  geom_line(aes(date,CO2_tracer_drift,col=as.factor(-tiefe)))+
+  xlim(range(mod_dates))
+
+egg::ggarrange(DSD0_plt,tracer_plt)
 ggplot(data)+
   geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
   geom_line(aes(date,CO2_refadj,col=as.factor(tiefe)))+
