@@ -31,6 +31,7 @@ injection_dates$Ende <- dmy_hm(injection_dates$Ende)
 # for(i in 1:nrow(injection_dates)){
 #   dates_ls[[i]] <- c(injection_dates$Start[i],injection_dates$Ende[i])
 # }
+#liste mit Start und Endzeitpunkten der injektionen
 dates_ls <- split(injection_dates[,-3],nrow(injection_dates)) %>% 
   lapply(.,function(x) as_datetime(as.numeric(x)))
 
@@ -50,13 +51,16 @@ save(inj,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #####################################
 #read probes
 i <- 1
+#CO2 Werte für i-te injektion inklusive 2 tage vorher und nachher
 data <- read_sampler(datelim = dates_ls[[i]] + (3600*24*2 * c(-1,1)))
 data$tiefe <- data$tiefe
+
 data$Versuch <- i
 inj$date <- round_date(inj$date,"10 mins")
-
+#Spalte in inj hat 1er während der injektion
 inj_id <- daterange_id(data,dates_ls[[i]])
 data$inj <- ifelse(inj_id,1,0)
+#Spalte cal hat 1er vor der injektion und danach mit 20 h Abstand nach der injektion da hier der Tracer noch sichtbar ist
 cal_id <- daterange_id(data,dates_ls[[i]] + (3600*20 * c(0,1)))
 data$cal <- ifelse(cal_id,0,1)
 data <- merge(data,inj[,c("date","CO2_mol_m2_s")],all = T)
@@ -89,6 +93,8 @@ mod_dates <- sort(unique(data$half_hour[data$inj == 1]))
 
 
 ggplot(data)+
+  geom_line(aes(date,CO2_refadj,col=as.factor(inj),group=tiefe))
+ggplot(data)+
   geom_line(aes(date,CO2_refadj,col=as.factor(tiefe)))+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))
 #comsol<- run_comsol(data=data,mod_dates = mod_dates,offset_method = "drift",overwrite = F,read_all = F,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
@@ -97,45 +103,26 @@ ggplot(data)+
 comsol<- interp_comsol_inj(data=data,
                           mod_dates = mod_dates,
                           offset_method = "drift",
-                          overwrite = F,
+                          overwrite = T,
                           read_all = F,
                           modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
                           nruns=50,
                           long=T)
-out_list[["min"]]<- run_comsol_nruns(data=data,
+
+
+comsol_old<- run_comsol(data=data,
                           mod_dates = mod_dates,
                           offset_method = "drift",
                           overwrite = F,
                           read_all = F,
-                          modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
-                          nruns=50,
+                          modelname = "Diffusion_freeSoil_anisotropy_optim_3DS",
                           long=T)
-out_list[["max"]]<- run_comsol_nruns(data=data,
-                          mod_dates = mod_dates,
-                          offset_method = "drift",
-                          overwrite = F,
-                          read_all = F,
-                          modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
-                          nruns=50,
-                          file_suffix = "max",
-                          long=T)
-data_sub <- subset(data,date %in% approx_df$date&tiefe %in% -3.5)
-summary(out_list[["min"]])
-summary(out_list[["max"]])
-summary(approx_df)
-which(is.na(approx_df$DSD0))
 
-which(approx_df$inj_mol_m2_s < out_list$min$mod_inj_rate |approx_df$inj_mol_m2_s > out_list$max$mod_inj_rate )
-ggplot()+
-  geom_line(data=out_list$min,aes(date,mod_inj_rate,col="min"))+
-  geom_line(data=out_list$max,aes(date,mod_inj_rate,col="max"))+
-  geom_line(data=approx_df,aes(date,inj_mol_m2_s,col="data"))
-  
+
 
 ggplot()+
-  geom_line(data=comsol,aes(date,DSD0,col=as.factor(tiefe)))#+
-  geom_line(data=max_comsol,aes(date,DSD0,col=as.factor(tiefe)),linetype=2)+
-  geom_line(data=min_comsol,aes(date,DSD0,col=as.factor(tiefe)),linetype=2)
+  geom_line(data=comsol,aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
+  geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))#+
   
 DSD0_plt <- ggplot(comsol)+
   geom_line(aes(date,DSD0,col=as.factor(tiefe)))
@@ -143,6 +130,8 @@ DSD0_plt <- ggplot(comsol)+
 tracer_plt <- ggplot(data)+
   geom_line(aes(date,CO2_tracer_drift,col=as.factor(-tiefe)))+
   xlim(range(mod_dates))
+names(data)
+
 
 egg::ggarrange(DSD0_plt,tracer_plt)
 ggplot(data)+
@@ -156,25 +145,60 @@ ggplot(data)+
   geom_line(aes(date,inj_mumol_s,col=as.factor(cal),group=1))
 
 
-cal_period <- 
-  data$preds_drift <- NA
-# data$preds_drift_amp <- NA
-#data$preds_no_ref <- NA
+####################
+#PP
 
-#unique(unlist(lapply(data_PSt0,"[","Position")))
-#for(j in j_78){
-for(j in seq_along(data_PSt0)[-c(5)]){
-  for(i in (1:7)*-3.5){
-    fm_drift <- glm(offset ~ poly(date_int,2),data=subset(data_PSt0[[j]],tiefe==i))
-    
-    pos <- na.omit(unique(data$Position))[j]
-    ID <- which(data$tiefe==i & data$Position == pos)
-    data$offset_drift[ID] <- predict(fm_drift,newdata = data[ID,])
-    data$preds_drift[ID] <- data$CO2_roll_ref[ID] + data$offset_drift[ID]
-    
-  }
-  #svMisc::progress(j,max.value = length(data_PSt0))
+##################
+#Metadata
+pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
+pp_chamber$Start <- dmy_hm(pp_chamber$Start)
+pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
+datelim <- range(mod_dates)
+data_PPC <- read_PP(datelim = range(data$date))
+
+if(nrow(data_PPC) > 0){
+  data_PPC <- subset(data_PPC,id != 5)
+  dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
+  
+  data_PPC <- data_PPC %>% 
+    group_by(id) %>%
+    mutate(dt = diff_time(date,"secs"),
+           P_diff = abs(c(NA,diff(P_filter)))/!!dt,
+           PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
+           PPC_diff = abs(c(NA,diff(PPC5))),
+           P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
+  
+  data_PPC$id[data_PPC$id == 6] <- "outside"
+  data_PPC[which(data_PPC$dt > 3600),c("PPC","PPC5","P_roll")] <- NA
+  
+  
+  
+  PP_plot <- 
+    ggplot(data_PPC)+
+    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_line(aes(date,PPC5,col=id))+
+    coord_cartesian(xlim=datelim)+
+    scale_fill_grey()+
+    guides(fill=F)+
+    labs(x="",y="PPC (Pa/s)")
+  
+  P_roll_plot <- ggplot(subset(data_PPC,id %in% 1:4) )+
+    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_line(aes(date,P_roll,col=id),alpha=0.5, linetype=2)+
+    coord_cartesian(xlim=datelim)+
+    scale_fill_grey()+
+    guides(fill=F,col=F)+
+    labs(x="",y=expression(P["moving average"]))
 }
+
+
+ggplot(subset(data_PPC,id %in% 1:4))+
+  geom_line(aes(date,PPC_diff,col=id))
+which(diff(data_PPC$PPC5))
+egg::ggarrange(DSD0_plt,PP_plot)
+egg::ggarrange(DSD0_plt,P_roll_plot)
 ########################
 data$CO2_tracer_drift <- data$CO2_roll_inj - (data$preds_drift)
 

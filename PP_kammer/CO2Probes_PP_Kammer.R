@@ -40,7 +40,9 @@ data_probe1u2 <- rbind(data_probe1u2falsch,data_probe1u2)
 data_probe1u2$tiefe <- abs(data_probe1u2$tiefe)
 
  data_probe3 <-  read_sampler("sampler3",datelim = datelim, format = "long")
-# range(data_probe3$date)
+
+
+ # range(data_probe3$date)
 # range(data_probe1u2$date)
 # names(data_probe3)
 # data_probe3_na <- subset(data_probe3,!is.na(CO2))
