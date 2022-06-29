@@ -27,23 +27,47 @@ injection_dates$Ende <- dmy_hm(injection_dates$Ende)
 #datelim <- c(injection_dates$Start[i],injection_dates$Ende[i])
 # datelim <- ymd_hm("22/05/09 13:00","22/05/12 16:00")
 # datelim <- ymd_hm("22/04/12 00:00","22/04/15 16:00")
+
+#liste mit Start und Endzeitpunkten der injektionen
+dates_ls <- split(injection_dates[-3],1:nrow(injection_dates)) %>% 
+  lapply(.,function(x) as_datetime(as.numeric(x)))
+
 # dates_ls <- vector("list",nrow(injection_dates))
+# 
 # for(i in 1:nrow(injection_dates)){
 #   dates_ls[[i]] <- c(injection_dates$Start[i],injection_dates$Ende[i])
 # }
-#liste mit Start und Endzeitpunkten der injektionen
-dates_ls <- split(injection_dates[,-3],nrow(injection_dates)) %>% 
-  lapply(.,function(x) as_datetime(as.numeric(x)))
+
 
 inj_ls <- lapply(dates_ls,injection_arduino,                                                               plot="facets",
                  return_ls = F,
-                 t_init=2)
+                 t_init=2,t_min=4,t_max=3)
+for(i in seq_along(dates_ls)){
+  inj_ls[[i]]$Versuch <- i
+}
 inj <- do.call(rbind,inj_ls)
-#inj <- injection_arduino(datelim,plot="flux",return_ls = T,t_init=2)
+
+  
 A_inj <- 1^2*pi /10^6 #m2
 CO2_mol_per_s <- inj$CO2_mumol_per_s / 10^6
 inj$CO2_mol_m2_s <- CO2_mol_per_s/A_inj
 
 
-save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
+#save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 
+test <- injection_arduino(datelim=dates_ls[[2]],
+                          plot="flux",
+                          return_ls = T,
+                          t_init=2,t_min=2)
+
+ggplot(subset(inj,Versuch==2 & messid != 7))+
+  geom_point(aes(date,CO2_ml_per_min,col=as.factor(messid)))#+
+  #facet_wrap(~Versuch,scales = "free_x")
+ggplot(test[[2]])+geom_line(aes(zeit,CO2,col=as.factor(messid)))+facet_wrap(~messid,scales="free")
+ggplot(data_sub)+
+  geom_line(aes(date,CO2,col=as.factor(inj)))+
+  geom_point(data= data_sub[openingID])
+plot(openingID)
+points(closingID,col=2)
+opening_IDalt <- openingID
+closingIDalt <- closingID

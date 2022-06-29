@@ -98,14 +98,23 @@ ggplot(data)+
 ## COMSOL
 ##########################################
 
-comsol<- interp_comsol_inj(data=data_mod,
-                           mod_dates = mod_dates,
+# comsol<- interp_comsol_inj(data=data_mod,
+#                            mod_dates = mod_dates[1:3],
+#                            offset_method = "drift",
+#                            overwrite = F,
+#                            read_all = F,
+#                            modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
+#                            nruns=50,
+#                            long=T)
+comsol<- run_comsol_nruns(data=data_mod,
+                           mod_dates = mod_dates[1:20],
                            offset_method = "drift",
-                           overwrite = F,
+                           overwrite = T,
                            read_all = F,
-                           modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
+                           modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs_injection_rate",
                            nruns=50,
                            long=T)
+
 
 comsol_old<- run_comsol(data=data,
                         mod_dates = mod_dates,
@@ -125,6 +134,10 @@ ggplot()+
   geom_line(data=comsol,aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
   geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))#+
 
+ggplot()+
+  geom_line(data=comsol,aes(date,mod_inj_rate,group=as.factor(tiefe),col="inter",linetype="inter"))+
+  geom_line(data=subset(data_mod,date %in% mod_dates),aes(date,inj_mol_m2_s,group=as.factor(tiefe),col="old",linetype="old"))#+
+
 
 
 
@@ -140,17 +153,14 @@ ggplot(sub_daterange(data,PPC_daterange))+
   geom_line(aes(date,CO2_refadj,col=as.factor(tiefe)))+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))
 
-DSD0_plt <- ggplot(sub_daterange(comsol_old,PPC_daterange))+
-  geom_line(aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
-  xlim(PPC_daterange)+
-  geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
-  labs(y=expression(D[S]/D[0]),col="tiefenstufe")
   
 
 
 
 ############
 #swc
+datelim <- range(mod_dates)
+
 load(file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))
 if(as.numeric(difftime(now(),max(klima$date),unit="hours")) > 24){
   source("./PP_kammer/klima_dwd.R")
@@ -182,7 +192,7 @@ if(nrow(swc_sub) > 0){
 pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
-datelim <- range(mod_dates)
+
 data_PPC <- read_PP(datelim = range(data$date))
 
 if(nrow(data_PPC) > 0){
@@ -254,11 +264,17 @@ data_merge <- merge(comsol_old,data_PPC[data_PPC$id == 1,],all.x = T)
 data_merge$step <- NA
 for(i in seq_along(step_date)){
   step_i <- step_date[i]
-  id <- daterange_id(data_merge,c(step_i-2*3600,step_i))
+  id <- daterange_id(data_merge,c(step_i-2*3600,step_i-600))
   data_merge$step[id] <- i
   
 }
 
+
+DSD0_plt <- ggplot(sub_daterange(comsol_old,PPC_daterange))+
+  geom_line(aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
+  xlim(PPC_daterange)+
+  geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
+  labs(y=expression(D[S]/D[0]),col="tiefenstufe")
 #########################
 #final plots
 

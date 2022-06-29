@@ -39,10 +39,11 @@ datelim_ls[[5]] <- ymd_hm("2022.03.24 23:00","2022.03.29 15:00")
 datelim_ls[[6]] <- ymd_hm("2022.03.29 15:00","2022.04.04 10:00")
 datelim_ls[[7]] <- ymd_hm("2022.04.04 00:00","2022.04.07 10:00")
 datelim_ls[[8]] <- ymd_hm("2022-05-10 09:05", "2022-05-10 11:00")
+datelim_ls[[9]] <- ymd_hm("2022-06-20 09:05", "2022-06-23 14:00")
 
 #for(i in 1:length(datelim)){
 
-i <- 3
+i <- 9
 flux_ls <- chamber_arduino(datelim=datelim_ls[[i]],
                            gga_data = T,
                            gga="gga",
