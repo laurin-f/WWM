@@ -107,7 +107,7 @@ ggplot(data)+
 #                            nruns=50,
 #                            long=T)
 comsol<- run_comsol_nruns(data=data_mod,
-                           mod_dates = mod_dates[1:20],
+                           mod_dates = mod_dates[1:10],
                            offset_method = "drift",
                            overwrite = T,
                            read_all = F,
@@ -130,8 +130,10 @@ save(comsol_old,comsol,file=paste0(datapfad_PP_Kammer,"DSD0_comsol.RData"))
 
 ###########
 #comsol old and new function vergleich
+wrong <- comsol$date != comsol$mod_date
 ggplot()+
   geom_line(data=comsol,aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
+  geom_point(data=comsol[wrong,],aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
   geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))#+
 
 ggplot()+

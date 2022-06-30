@@ -28,11 +28,11 @@ i <- nrow(pp_chamber)
 #i <- 17
 #for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
-plot <-  F
+plot <-  T
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
 #datelim <- ymd_hm("2022.05.02 00:00","2022.05.02 01:20")
 #datelim <- ymd_hm("2022.05.08 18:00","2022.05.10 13:20")
-datelim <- ymd_hm("2022.05.12 10:00","2022.05.16 16:00")
+#datelim <- ymd_hm("2022.05.12 10:00","2022.05.16 16:00")
 
 plot_ls <- list()
 
@@ -112,6 +112,7 @@ if(!is.null(flux)){
 ############
 #swc
 load(file = paste(datapfad_PP_Kammer,"swc_long.RData"))
+
 swc_sub <- sub_daterange(swc_long,datelim)
 if(nrow(swc_sub) > 0){
   sec_ax_fac <- 0.7
@@ -135,7 +136,7 @@ if(nrow(swc_sub) > 0){
 data_PPC <- read_PP(datelim = datelim)
 
 if(nrow(data_PPC) > 0){
-  data_PPC <- subset(data_PPC,id != 5)
+  data_PPC <- subset(data_PPC,id %in% c(1,4,5))
   dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
   
   data_PPC <- data_PPC %>% 
@@ -146,6 +147,7 @@ if(nrow(data_PPC) > 0){
            P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
   
   data_PPC$id[data_PPC$id == 6] <- "outside"
+  data_PPC$id[data_PPC$id == 5] <- "soil"
   data_PPC[which(data_PPC$dt > 3600),c("PPC","PPC5","P_roll")] <- NA
   
   
