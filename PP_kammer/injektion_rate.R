@@ -21,7 +21,7 @@ check.packages(packages)
 injection_dates <- read_ods(paste0(metapfad_PP,"injektionen.ods"))
 injection_dates$Start <- dmy_hm(injection_dates$Start)
 injection_dates$Ende <- dmy_hm(injection_dates$Ende)
-
+injection_dates$Ende[is.na(injection_dates$Ende)] <- Sys.time()
 #i <- nrow(injection_dates)
 
 #datelim <- c(injection_dates$Start[i],injection_dates$Ende[i])
@@ -39,7 +39,7 @@ dates_ls <- split(injection_dates[-3],1:nrow(injection_dates)) %>%
 # }
 
 
-inj_ls <- lapply(dates_ls,injection_arduino,                                                               plot="facets",
+inj_ls <- lapply(dates_ls,injection_arduino,                                                               plot="flux",
                  return_ls = F,
                  t_init=2,t_min=2,t_max=4)
 for(i in seq_along(dates_ls)){
@@ -55,9 +55,12 @@ inj$CO2_mol_m2_s <- CO2_mol_per_s/A_inj
 
 save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 
-# test <- injection_arduino(datelim=dates_ls[[2]],
-#                           plot="flux",
-#                           return_ls = T,
-#                           t_init=2,t_min=2)
+test <- injection_arduino(datelim=dates_ls[[4]],
+                          plot="flux",
+                          return_ls = T,
+                          t_init=2,
+                          t_min=2,
+                          t_max=4)
+range(test[[2]]$date)
 # 
 

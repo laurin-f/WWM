@@ -187,12 +187,16 @@ ifelse((0:20 -5 - 2 )%% 30== 0 |(0:20 +2) %% 30 == 0,1,0)
 
 
 datelim <- ymd_hms("2022-06-28 16:00:00 UTC", "2022-07-01 12:00:00 UTC")
+datelim <- ymd_hms("2022-07-05 10:00:00 UTC", "2022-07-05 14:00:00 UTC")
 data_PPC <- read_PP(datelim = datelim)
 range(data_PPC$date)
 ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
+  geom_line(aes(date,P,col=as.factor(id)))
+ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
   geom_line(aes(date,P,col=as.factor(id)))+
-  geom_vline(xintercept = ymd_hm("2022.06.29 16:08","2022.06.29 16:44","2022.06.29 16:51","2022.06.29 17:23"))+
-  xlim(ymd_hm("2022.06.29 13:40","2022.06.29 13:45"))+
+  #geom_vline(xintercept = ymd_hm("2022.06.29 16:08","2022.06.29 16:44","2022.06.29 16:51","2022.06.29 17:23"))+
+  xlim(ymd_hm("2022.06.30 12:40","2022.06.30 13:05"))
+  xlim(ymd_hm("2022.06.29 13:40","2022.06.29 13:45"))
   #xlim(ymd_hm("2022.06.30 00:40","2022.06.30 06:50"))
   #xlim(ymd_hm("2022.06.29 16:05","2022.06.29 16:15"))
   #xlim(ymd_hm("2022.06.29 15:40","2022.06.29 17:50"))

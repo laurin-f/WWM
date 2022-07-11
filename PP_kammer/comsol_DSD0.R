@@ -17,25 +17,26 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS")
 check.packages(packages)
 
+theme_set(theme_classic())
 ##
 load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #######################################
 #####################################
 #read probes
-i <- 1
+Versuch <- 3
 #CO2 Werte für i-te injektion inklusive 2 tage vorher und nachher
-data <- read_sampler(datelim = dates_ls[[i]] + (3600*24*2 * c(-1,1)))
+data <- read_sampler(datelim = dates_ls[[Versuch]] + (3600*24*2 * c(-1,1)))
 data$tiefe <- data$tiefe
 
-data$Versuch <- i
+data$Versuch <- Versuch
 inj$date <- round_date(inj$date,"10 mins")
 #Spalte in inj hat 1er während der injektion
-inj_id <- daterange_id(data,dates_ls[[i]])
+inj_id <- daterange_id(data,dates_ls[[Versuch]])
 data$inj <- ifelse(inj_id,1,0)
 #Spalte cal hat 1er vor der injektion und danach mit 20 h Abstand nach der injektion da hier der Tracer noch sichtbar ist
-cal_id <- daterange_id(data,dates_ls[[i]] + (3600*20 * c(0,1)))
+cal_id <- daterange_id(data,dates_ls[[Versuch]] + (3600*20 * c(0,1)))
 data$cal <- ifelse(cal_id,0,1)
-data <- merge(data,inj[,c("date","CO2_mol_m2_s")],all = T)
+data <- merge(data,inj[inj$Versuch == Versuch,c("date","CO2_mol_m2_s")],all = T)
 
 data <- data %>% 
   group_by(tiefe) %>% 
@@ -75,18 +76,21 @@ data_mod <- data %>%
   group_by(date,tiefe) %>%
   summarise(across(everything(),mean))
     
+
 #####################
 #CO2 inj un refadj plot
 ggplot(data_mod)+
   geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
-  geom_line(aes(date,CO2_refadj,col=as.factor(tiefe)))+
-  geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))
+  geom_line(aes(date,CO2_refadj,col=as.factor(tiefe),linetype="ref adj"))+
+  geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))+
+  geom_vline(xintercept = dates_ls[[Versuch]])
 
 
 ###################
 #tracer plot
 ggplot(data)+
-  geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))
+  geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))#+
+#  geom_vline(xintercept = ymd_hm("2022.07.06 15:00"))
 
 ######################
 #injection rate plot
@@ -107,9 +111,9 @@ ggplot(data)+
 #                            nruns=50,
 #                            long=T)
 comsol<- run_comsol_nruns(data=data_mod,
-                           mod_dates = mod_dates[1:10],
+                           mod_dates = mod_dates,
                            offset_method = "drift",
-                           overwrite = T,
+                           overwrite = F,
                            read_all = F,
                            modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs_injection_rate",
                            nruns=50,
@@ -131,14 +135,15 @@ save(comsol_old,comsol,file=paste0(datapfad_PP_Kammer,"DSD0_comsol.RData"))
 ###########
 #comsol old and new function vergleich
 wrong <- comsol$date != comsol$mod_date
-ggplot()+
-  geom_line(data=comsol,aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
-  geom_point(data=comsol[wrong,],aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
-  geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))#+
 
 ggplot()+
-  geom_line(data=comsol,aes(date,mod_inj_rate,group=as.factor(tiefe),col="inter",linetype="inter"))+
-  geom_line(data=subset(data_mod,date %in% mod_dates),aes(date,inj_mol_m2_s,group=as.factor(tiefe),col="old",linetype="old"))#+
+  geom_line(data=comsol,aes(mod_date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
+  #geom_point(data=comsol[wrong,],aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
+  geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))#+
+
+# ggplot()+
+#   geom_line(data=comsol,aes(mod_date,mod_inj_rate,group=as.factor(tiefe),col="inter",linetype="inter"))+
+#   geom_line(data=subset(data_mod,date %in% mod_dates),aes(date,inj_mol_m2_s,group=as.factor(tiefe),col="old",linetype="old"))#+
 
 
 
@@ -146,7 +151,12 @@ ggplot()+
 ###################################################################
 #genauerer Blick auf erste PPC Periode
 
-PPC_daterange <- ymd_h("2022.05.10 00","2022.05.11 15")
+pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
+pp_chamber$Start <- dmy_hm(pp_chamber$Start)
+pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
+
+PPC_daterange <-ymd_hms(t(sub_daterange(pp_chamber[,c("Start","Ende")],range(comsol$date),"Start")))+3600*10*c(-1,1)
+#PPC_daterange <- ymd_h("2022.05.10 00","2022.05.11 15")
 
 #####################
 #CO2 inj un refadj plot
@@ -197,6 +207,9 @@ pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 data_PPC <- read_PP(datelim = range(data$date))
 
+if(Versuch == 2){
+  data_PPC <- subset(data_PPC, id %in% c(1,4))
+}
 if(nrow(data_PPC) > 0){
   data_PPC <- subset(data_PPC,id != 5)
   dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
@@ -226,22 +239,20 @@ if(nrow(data_PPC) > 0){
     labs(x="",y="PPC (Pa/s)")
   
   P_roll_plot <- ggplot(subset(data_PPC,id %in% 1:4) )+
-    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,P_roll,col=id),alpha=0.5, linetype=2)+
-    coord_cartesian(xlim=datelim)+
-    scale_fill_grey()+
-    guides(fill=F,col=F)+
-    labs(x="",y=expression(P["moving average"]))
+    xlim(PPC_daterange)+
+    labs(x="",y=expression(P["moving average"]))#+
+    #ylim(c(-10,10))
 }
 data_PPC <- sub_daterange(data_PPC,PPC_daterange)
+step_thr <- 0.05
 PPC_steps <- data_PPC %>% 
   filter(id != "outside") %>% 
   mutate(date = round_date(date,"10 min")) %>% 
   group_by(id,date) %>%
   summarise(across(everything(),mean)) %>% 
   mutate(PPC_diff = abs(c(NA,diff(PPC5))),
-         step = ifelse(PPC_diff > 0.1,1,0))
+         step = ifelse(PPC_diff > step_thr,1,0))
 
 step_date <- unique(PPC_steps$date[PPC_steps$step == 1])
 step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
@@ -255,12 +266,14 @@ step_date <- step_date[!is.na(step_date)]
 #plot ppc steps
 ggplot(PPC_steps)+
   geom_line(aes(date,PPC_diff,col=as.factor(id)))+
-  geom_point(aes(date,PPC_diff,col=as.factor(step)))
+  geom_point(aes(date,PPC_diff,col=as.factor(step)))+
+  geom_hline(yintercept = step_thr)
 
 
 ####################################
 #merge comsol output with PPC
 data_merge <- merge(comsol_old,data_PPC[data_PPC$id == 1,],all.x = T)
+#data_merge <- merge(comsol,data_PPC[data_PPC$id == 1,],all.x = T)
 
 
 data_merge$step <- NA
@@ -273,6 +286,7 @@ for(i in seq_along(step_date)){
 
 
 DSD0_plt <- ggplot(sub_daterange(comsol_old,PPC_daterange))+
+#DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
   geom_line(aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
   xlim(PPC_daterange)+
   geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
@@ -285,15 +299,16 @@ DSD0_plt <- ggplot(sub_daterange(comsol_old,PPC_daterange))+
 ggpubr::ggarrange(DSD0_plt+
                  geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
-               swc_plot,heights = c(2,1,1),ncol=1,align = "v")+
-  ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_Sand_timeline",i,".png"),width=8,height=7)
+               P_roll_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
+               swc_plot,heights = c(2,1,1,1),ncol=1,align = "v")+
+  ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_Sand_timeline",Versuch,".png"),width=8,height=7)
 
 
 ####################
 #DSD0 PPC scatterplot
 ggplot(subset(data_merge,step %in% 1:6))+
   geom_point(aes(PPC,DSD0,col=as.factor(tiefe)))+
-  ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_scatterplot",i,".png"),width=6,height=5)
+  ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_scatterplot",Versuch,".png"),width=6,height=5)
 
 
 ########################

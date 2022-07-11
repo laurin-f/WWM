@@ -20,7 +20,7 @@ check.packages(packages)
 
 files <- list.files(datapfad_bf,pattern = "22-\\d{4}.xls$",full.names = T)
 
-read.Em50()
+
 
 swc_ls <- lapply(files,readxl::read_xls,skip=2,col_types = c("date",rep("numeric",5)))
 for(i in seq_along(swc_ls)){

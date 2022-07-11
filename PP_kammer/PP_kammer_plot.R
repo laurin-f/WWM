@@ -136,7 +136,7 @@ if(nrow(swc_sub) > 0){
 data_PPC <- read_PP(datelim = datelim)
 
 if(nrow(data_PPC) > 0){
-  data_PPC <- subset(data_PPC,id %in% c(1,4,5))
+  data_PPC <- subset(data_PPC,id %in% c(1:4,5))
   dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
   
   data_PPC <- data_PPC %>% 

@@ -30,13 +30,17 @@ load(paste0(aufbereitete_ds,"Labor_Vergleich.RData"))
 #aus "plots_COMSOL_out_Hartheim_sweep.R"
 #load(paste0(comsolpfad,"plotdata_Methodenpaper.RData"))
 #load(paste0(comsolpfad,"plotdata_Methodenpaper_drift.RData"))
+
 load(paste0(comsolpfad,"plotdata_Methodenpaper_roll.RData"))
+
 load(paste0(comsolpfad,"sandkiste_sweep_data_sub.RData"))
 load(paste0(samplerpfad,"tracereinspeisung_sandkiste_agg.RData"))
 load(paste0(datapfad_harth,"PPC_DS.RData"))
 #load(paste0(datapfad_harth,"DS_long_list_SWC_drift_minmax2.RData"))
 
+
 load(paste0(datapfad_harth,"DS_long_list_SWC_Ws_drift_minmax.RData"))
+
 DS_long$method[DS_long$method == "SWC_WS"] <- "SWC_T"
 
 #ggplot(ds_soil)+
@@ -502,3 +506,42 @@ jpeg(file=paste0(plotpfad_ms,"Fig_6_PPC_DS_WS_col2.jpg"),width=7,height = 7.5,un
 grid::grid.newpage()
 grid::grid.draw(combined)
 dev.off()
+
+
+load(file=paste0(comsolpfad,"DS_anisotrop_drift_30mins.RData"))
+
+ggplot(DS_long)+
+  geom_line(aes(date,DSD0,col=as.factor(id)))+
+  geom_line(data=DS_anisotrop_drift,aes(date,DSD0,col=as.factor(tiefe)),linetype=2)
+names(DS_anisotrop_drift)
+names(ds_sub)
+data_export_2 <- ds_sub %>% 
+  select(DSD0_roll_aniso,date,id,Versuch,method) %>% 
+  filter(id < 3 & method == "drift") %>% 
+  tidyr::pivot_wider(names_from = id,values_from = DSD0_roll_aniso,names_prefix = "DSD0_") %>% 
+  mutate(period = ifelse(Versuch == 2, "windy","calm")) %>% 
+  rename("DSD0_0_10cm" = "DSD0_1",
+         "DSD0_10_20cm" = "DSD0_2") %>%
+  select(!c(Versuch,method)) %>% 
+  filter(!is.na(DSD0_0_10cm))
+data_export <- DS_long_roll %>% 
+  select(DSD0_roll,date,id,Versuch) %>% 
+  filter(id < 3) %>% 
+  tidyr::pivot_wider(names_from = id,values_from = DSD0_roll,names_prefix = "DSD0_") %>% 
+  mutate(period = ifelse(Versuch == 2, "windy","calm")) %>% 
+  rename("DSD0_0_10cm" = "DSD0_1",
+         "DSD0_10_20cm" = "DSD0_2") %>%
+  select(!Versuch) %>% 
+  filter(!is.na(DSD0_0_10cm))
+  
+  
+data_export_sub <- subset(data_export,(period %in% "windy" & date > (Pumpzeiten$start[13] + h_steady*3600)) | date > (Pumpzeiten$start[17] + h_steady*3600))
+
+ggplot(data_export)+
+  geom_line(aes(date,DSD0_0_10cm))+
+  geom_line(data=data_export_2,aes(date,DSD0_0_10cm,col="2"))+
+  geom_line(data=data_export_2,aes(date,DSD0_10_20cm,col="2"))+
+  geom_line(data=data_export_sub,aes(date,DSD0_0_10cm,col="sub"))+
+  geom_line(data=data_export_sub,aes(date,DSD0_10_20cm,col="sub"))
+range(data_export_sub$date)
+write.csv(data_export_sub,file=paste0(datapfad_harth,"DSD0_Hartheim_20_07.txt"),row.names = F,quote=F)

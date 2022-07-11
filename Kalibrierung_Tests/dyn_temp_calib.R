@@ -11,7 +11,10 @@ codepfad<- paste0(hauptpfad,"Programme/Eigenentwicklung/RData/")
 #Daten laden
 
 #Zeitrahmen festlegen
-datelim<-c("2021-02-03 10:00:00","2021-02-03 14:40:00")
+#alte sensoren die kaputt sind
+#datelim<-c("2021-02-03 10:00:00","2021-02-03 14:40:00")
+
+datelim<-c("2022-06-29 09:00:00","2022-06-29 19:00:00")
 sampler <- "sampler3"
 
 # dyn_calib <- function(datelim,
@@ -26,9 +29,11 @@ data$temp_mean <- apply(data[,grep("temp",colnames(data))],1,mean,na.rm=F) #%>%
 data_long <-
   tidyr::pivot_longer(data,contains("_tiefe"),names_pattern = "(CO2|temp)_tiefe(\\d)",names_to = c(".value","tiefe"))
 
+data_long$temp[data_long$temp > 100] <- NA
+
 ggplot(data_long)+
   geom_line(aes(date,temp,col=tiefe))+
-  geom_point(aes(date,temp_mean))
+  geom_line(aes(date,temp_mean))
 ggplot(data_long)+geom_point(aes(temp,temp_mean,col=tiefe))
 
 
@@ -48,8 +53,13 @@ for (i in tiefen) {
 
 
 ggplot(data_long)+
-  geom_point(aes(date,temp,col=tiefe))+
+  geom_line(aes(date,temp,col=tiefe),alpha=0.3)+
   geom_line(aes(date,temp_korr,col=tiefe))
+
+ggplot(data_long)+
+  geom_line(aes(temp,temp_mean,col=tiefe),alpha=0.3)+
+  geom_point(aes(temp_korr,temp_mean,col=tiefe))
+
 names(offset)<-paste0("temp_tiefe",tiefen,"_",sampler)
 
 #falls es schon korrekturfaktoren gibt diese

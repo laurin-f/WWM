@@ -26,7 +26,7 @@ load(paste0(kammer_datapfad,"Kammer_flux.RData"))
 
 #data$CO2_tracer_drift2 <- data$CO2_tracer_drift
 
-data$date_hour <- round_date(data$date,"60 mins")
+data$date_hour <- round_date(data$date,"30 mins")
 data$date_3_hours <- round_date(data$date,"3 hours")
 
 
@@ -105,15 +105,18 @@ ggplot()+
   geom_line(data=loop,aes(date,DSD0,col="loop",group=tiefe))+
   geom_line(data=test,aes(date,DSD0,col="old",group=tiefe),linetype=2)
 
-DS_anisotrop_SWC_T <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "SWC_T",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+#DS_anisotrop_SWC_T <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "SWC_T",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
 DS_anisotrop_drift <- run_comsol(data=data,mod_dates = (mod_dates),offset_method = "drift",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
-DS_anisotrop_drift_max <- run_comsol(data=data_uncert,mod_dates = (mod_dates),offset_method = "drift_max",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
-DS_anisotrop_drift_min <- run_comsol(data=data_uncert,mod_dates = (mod_dates),offset_method = "drift_min",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+#DS_anisotrop_drift_max <- run_comsol(data=data_uncert,mod_dates = (mod_dates),offset_method = "drift_max",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
+#DS_anisotrop_drift_min <- run_comsol(data=data_uncert,mod_dates = (mod_dates),offset_method = "drift_min",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
 
 DS_anisotrop_roll <- run_comsol(data=data,mod_dates = (mod_dates_inj1),offset_method = "roll4",overwrite = F,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS")
 
+# files <- list.files(comsolpfad,pattern = "Diffusion_freeSoil_anisotropy_optim_3DS_drift_(\\d{2}_){3}\\d{2}.txt",full.names = T)
+# new.files <- str_replace(files,"Diffusion_freeSoil_anisotropy_optim_3DS_drift_","Diffusion_freeSoil_anisotropy_optim_3DS_drift_20_")
+# file.rename(files,new.files)
 # 
 # DS_anisotrop_drift_test <- run_comsol(data=data,mod_dates = (mod_dates_short[10]),offset_method = "drift2",overwrite = T,read_all = T,modelname = "Diffusion_freeSoil_anisotropy_optim_3DS",file_suffix = "test")
 
@@ -155,7 +158,8 @@ DS_anisotrop_long_roll <- tidyr::pivot_longer(DS_anisotrop_roll,matches("DS"),na
 # save(DS_anisotrop_long,DS_anisotrop,file=paste0(comsolpfad,"DS_anisotrop_gam.RData"))
 # save(DS_anisotrop_long_no_ref,DS_anisotrop_no_ref,file=paste0(comsolpfad,"DS_anisotrop_no_ref.RData"))
 
-save(DS_anisotrop_long_drift,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift.RData"))
+#save(DS_anisotrop_long_drift,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift.RData"))
+save(DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift_30mins.RData"))
 save(DS_anisotrop_long_roll,DS_anisotrop_roll,file=paste0(comsolpfad,"DS_anisotrop_roll.RData"))
 
 #save(DS_anisotrop_long_drift_amp,DS_anisotrop_drift,file=paste0(comsolpfad,"DS_anisotrop_drift_amp.RData"))
