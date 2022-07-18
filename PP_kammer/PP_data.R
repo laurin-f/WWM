@@ -188,10 +188,32 @@ ifelse((0:20 -5 - 2 )%% 30== 0 |(0:20 +2) %% 30 == 0,1,0)
 
 datelim <- ymd_hms("2022-06-28 16:00:00 UTC", "2022-07-01 12:00:00 UTC")
 datelim <- ymd_hms("2022-07-05 10:00:00 UTC", "2022-07-05 14:00:00 UTC")
+datelim <- ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-13 14:00:00 UTC")
+datelim <- ymd_hms("2022-07-13 14:00:00 UTC", "2022-07-14 14:00:00 UTC")
+datelim <- ymd_hms("2022-07-18 11:00:00 UTC", "2022-07-18 12:00:00 UTC")
+
 data_PPC <- read_PP(datelim = datelim)
+
+dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
+
+data_PPC <- data_PPC %>% 
+  group_by(id) %>%
+  mutate(dt = diff_time(date,"secs"),
+         P_diff = abs(c(NA,diff(P_filter)))/!!dt,
+         PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
+         P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
+
 range(data_PPC$date)
+
+
+ggplot(subset(data_PPC,id%in%c(1,2,3,4,5,6)))+
+  #xlim(ymd_hms("2022-07-12 14:58:00 UTC", "2022-07-12 16:30:00 UTC"))+
+  #geom_line(aes(date,P,col=as.factor(id)))
+  geom_line(aes(date,P,col=as.factor(id)))#+
+  
 ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
-  geom_line(aes(date,P,col=as.factor(id)))
+  #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
+  geom_line(aes(date,PPC,col=as.factor(id)))
 ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
   geom_line(aes(date,P,col=as.factor(id)))+
   #geom_vline(xintercept = ymd_hm("2022.06.29 16:08","2022.06.29 16:44","2022.06.29 16:51","2022.06.29 17:23"))+

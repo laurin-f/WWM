@@ -69,7 +69,7 @@ data$T_soil <- data$T_C
 
 data$half_hour <- round_date(data$date,"30 mins")
 
-mod_dates <- sort(unique(data$half_hour[data$inj == 1 & data$half_hour == data$date]))
+mod_dates <- sort(unique(data$half_hour[data$inj == 1 & data$half_hour == data$date & !is.na(data$CO2_tracer_drift)]))
 
 data_mod <- data %>% 
   mutate(date = round_date(date,"30 mins"))%>% 
@@ -110,7 +110,10 @@ ggplot(data)+
 #                            modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
 #                            nruns=50,
 #                            long=T)
-comsol<- run_comsol_nruns(data=data_mod,
+
+
+
+comsol <- run_comsol_nruns(data=data_mod,
                            mod_dates = mod_dates,
                            offset_method = "drift",
                            overwrite = F,
@@ -118,7 +121,6 @@ comsol<- run_comsol_nruns(data=data_mod,
                            modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs_injection_rate",
                            nruns=50,
                            long=T)
-
 
 comsol_old<- run_comsol(data=data,
                         mod_dates = mod_dates,
@@ -134,12 +136,24 @@ save(comsol_old,comsol,file=paste0(datapfad_PP_Kammer,"DSD0_comsol.RData"))
 
 ###########
 #comsol old and new function vergleich
-wrong <- comsol$date != comsol$mod_date
+wrong <- comsol_list[[1]]$date != comsol_list[[1]]$mod_date
+
+# ggplot()+
+#   geom_line(data=comsol_list[[1]],aes(mod_date,DSD0,group=as.factor(tiefe),col="1"))+
+#   geom_line(data=comsol_list[[1]],aes(date,DSD0,group=as.factor(tiefe),col="2"))
+# ggplot()+
+#   geom_point(data=subset(comsol_list[[1]],mod_date == date),aes(mod_date,DSD0,group=as.factor(tiefe),col="1"))+
+#   geom_point(data=subset(comsol_list[[2]],mod_date == date),aes(mod_date,DSD0+.01,group=as.factor(tiefe),col="2"))+
+#   #geom_line(data=comsol_list[[2]],aes(mod_date,DSD0+.01,group=as.factor(tiefe),col="2"))+
+#   geom_line(data=comsol_list[[3]],aes(mod_date,DSD0+.02,group=as.factor(tiefe),col="3"))+
+#   geom_line(data=comsol_list[[4]],aes(mod_date,DSD0-.01,group=as.factor(tiefe),col="4"))+
+#   geom_line(data=comsol_list[[5]],aes(mod_date,DSD0-.02,group=as.factor(tiefe),col="5"))
+
 
 ggplot()+
-  geom_line(data=comsol,aes(mod_date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
+  geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))+
+  geom_line(data=comsol[!wrong,],aes(mod_date,DSD0,group=as.factor(tiefe),col=as.factor(tiefe),linetype="inter"))#+
   #geom_point(data=comsol[wrong,],aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
-  geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))#+
 
 # ggplot()+
 #   geom_line(data=comsol,aes(mod_date,mod_inj_rate,group=as.factor(tiefe),col="inter",linetype="inter"))+
@@ -155,7 +169,7 @@ pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
-PPC_daterange <-ymd_hms(t(sub_daterange(pp_chamber[,c("Start","Ende")],range(comsol$date),"Start")))+3600*10*c(-1,1)
+PPC_daterange <-range(ymd_hms(t(sub_daterange(pp_chamber[,c("Start","Ende")],range(comsol_old$date),"Start"))))+3600*10*c(-1,1)
 #PPC_daterange <- ymd_h("2022.05.10 00","2022.05.11 15")
 
 #####################
@@ -300,7 +314,8 @@ ggpubr::ggarrange(DSD0_plt+
                  geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                P_roll_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
-               swc_plot,heights = c(2,1,1,1),ncol=1,align = "v")+
+               #swc_plot,
+               heights = c(2,1,1,1),ncol=1,align = "v")+
   ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_Sand_timeline",Versuch,".png"),width=8,height=7)
 
 

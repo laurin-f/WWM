@@ -21,7 +21,9 @@ check.packages(packages)
 injection_dates <- read_ods(paste0(metapfad_PP,"injektionen.ods"))
 injection_dates$Start <- dmy_hm(injection_dates$Start)
 injection_dates$Ende <- dmy_hm(injection_dates$Ende)
-injection_dates$Ende[is.na(injection_dates$Ende)] <- Sys.time()
+now <- now()
+tz(now) <- "UTC"
+injection_dates$Ende[is.na(injection_dates$Ende)] <- now
 #i <- nrow(injection_dates)
 
 #datelim <- c(injection_dates$Start[i],injection_dates$Ende[i])
@@ -55,8 +57,9 @@ inj$CO2_mol_m2_s <- CO2_mol_per_s/A_inj
 
 save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 
-test <- injection_arduino(datelim=dates_ls[[4]],
-                          plot="flux",
+
+test <- injection_arduino(datelim=dates_ls[[5]],
+                          plot="timeline",
                           return_ls = T,
                           t_init=2,
                           t_min=2,
