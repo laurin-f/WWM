@@ -59,7 +59,7 @@ save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 
 
 test <- injection_arduino(datelim=dates_ls[[5]],
-                          plot="timeline",
+                          plot="flux",
                           return_ls = T,
                           t_init=2,
                           t_min=2,

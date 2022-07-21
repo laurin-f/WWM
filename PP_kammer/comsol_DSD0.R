@@ -23,7 +23,7 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #######################################
 #####################################
 #read probes
-Versuch <- 3
+Versuch <- 2
 #CO2 Werte für i-te injektion inklusive 2 tage vorher und nachher
 data <- read_sampler(datelim = dates_ls[[Versuch]] + (3600*24*2 * c(-1,1)))
 data$tiefe <- data$tiefe
@@ -102,21 +102,29 @@ ggplot(data)+
 ## COMSOL
 ##########################################
 
-# comsol<- interp_comsol_inj(data=data_mod,
-#                            mod_dates = mod_dates[1:3],
-#                            offset_method = "drift",
-#                            overwrite = F,
-#                            read_all = F,
-#                            modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs",
-#                            nruns=50,
-#                            long=T)
 
+#mod_dates <- mod_dates[-c(1,length(mod_dates))]
+# data_mod <- rbind(data_mod[1,],
+#                   data_mod[1,],
+#                   data_mod[1,],
+#                   data_mod[1,],
+#                   data_mod[1,],
+#                   data_mod[1,],
+#                   data_mod[1,],
+#                   data_mod[1,],
+#                   data_mod[1,],
+#                   data_mod[1,]
+#                   )
+# mod_dates <- mod_dates[1:10]
+# data_mod$date <- mod_dates
+# data_mod$date_int <- as.numeric(data_mod$date)
 
+test <- subset(data_mod,date == mod_dates[20])
 
 comsol <- run_comsol_nruns(data=data_mod,
                            mod_dates = mod_dates,
                            offset_method = "drift",
-                           overwrite = F,
+                           overwrite = T,
                            read_all = F,
                            modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs_injection_rate",
                            nruns=50,
@@ -136,7 +144,7 @@ save(comsol_old,comsol,file=paste0(datapfad_PP_Kammer,"DSD0_comsol.RData"))
 
 ###########
 #comsol old and new function vergleich
-wrong <- comsol_list[[1]]$date != comsol_list[[1]]$mod_date
+wrong <- comsol$date != comsol$mod_date
 
 # ggplot()+
 #   geom_line(data=comsol_list[[1]],aes(mod_date,DSD0,group=as.factor(tiefe),col="1"))+
@@ -152,8 +160,9 @@ wrong <- comsol_list[[1]]$date != comsol_list[[1]]$mod_date
 
 ggplot()+
   geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))+
-  geom_line(data=comsol[!wrong,],aes(mod_date,DSD0,group=as.factor(tiefe),col=as.factor(tiefe),linetype="inter"))#+
-  #geom_point(data=comsol[wrong,],aes(date,DSD0,group=as.factor(tiefe),col="inter",linetype="inter"))+
+  # geom_point(data=comsol[wrong,],aes(date,DSD0,group=as.factor(tiefe),col="wrong"))+
+  # geom_point(data=comsol[!wrong,],aes(date,DSD0,group=as.factor(tiefe),col="right"))+
+  geom_line(data=comsol,aes(mod_date,DSD0,group=as.factor(tiefe),col=as.factor(tiefe),linetype="inter"))#+
 
 # ggplot()+
 #   geom_line(data=comsol,aes(mod_date,mod_inj_rate,group=as.factor(tiefe),col="inter",linetype="inter"))+
@@ -169,7 +178,23 @@ pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
-PPC_daterange <-range(ymd_hms(t(sub_daterange(pp_chamber[,c("Start","Ende")],range(comsol_old$date),"Start"))))+3600*10*c(-1,1)
+pp_chamber_sub <- sub_daterange(pp_chamber[,c("Start","Ende","step_hours","start_offset")],range(comsol_old$date),"Start")
+
+step_date_ls <- list()
+for(i in 1:nrow(pp_chamber_sub)){
+  if(is.na(pp_chamber_sub$step_hours[i])){
+    step_date_ls[[i]] <- c(pp_chamber_sub$Start[i],pp_chamber_sub$Ende[i])
+  }else{
+    step_date_ls[[i]] <- c(seq(pp_chamber_sub$Start[i],pp_chamber_sub$Ende[i],by=pp_chamber_sub$step_hours[i]*3600),pp_chamber_sub$Ende[i])
+  }
+  id_i <- c(1,length(step_date_ls[[i]]))
+  step_date_ls[[i]][-id_i] <- step_date_ls[[i]][-id_i] - pp_chamber_sub$start_offset[i]*60
+}
+step_date <- do.call(c,step_date_ls)
+
+PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2)
+
+  PPC_daterange <-range(ymd_hms(t(pp_chamber_sub[,c("Start","Ende")])))+3600*10*c(-1,1)
 #PPC_daterange <- ymd_h("2022.05.10 00","2022.05.11 15")
 
 #####################
@@ -215,9 +240,6 @@ if(nrow(swc_sub) > 0){
 
 ##################
 #Metadata
-pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
-pp_chamber$Start <- dmy_hm(pp_chamber$Start)
-pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 data_PPC <- read_PP(datelim = range(data$date))
 
@@ -259,20 +281,29 @@ if(nrow(data_PPC) > 0){
     #ylim(c(-10,10))
 }
 data_PPC <- sub_daterange(data_PPC,PPC_daterange)
-step_thr <- 0.05
-PPC_steps <- data_PPC %>% 
-  filter(id != "outside") %>% 
-  mutate(date = round_date(date,"10 min")) %>% 
-  group_by(id,date) %>%
-  summarise(across(everything(),mean)) %>% 
-  mutate(PPC_diff = abs(c(NA,diff(PPC5))),
-         step = ifelse(PPC_diff > step_thr,1,0))
+# step_thr <- 0.05
+# PPC_steps <- data_PPC %>% 
+#   filter(id != "outside") %>% 
+#   mutate(date = round_date(date,"10 min")) %>% 
+#   group_by(id,date) %>%
+#   summarise(across(everything(),mean)) %>% 
+#   mutate(PPC_diff = abs(c(NA,diff(PPC5))),
+#          step = ifelse(PPC_diff > step_thr,1,0))
+# 
 
-step_date <- unique(PPC_steps$date[PPC_steps$step == 1])
-step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
-step_date <- step_date[!is.na(step_date)]
+# step_date <- unique(PPC_steps$date[PPC_steps$step == 1])
+# step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
+# step_date <- step_date[!is.na(step_date)]
+
+#apply(pp_chamber_sub,1,function(x) seq(x[1],x[2],by=x[3]))
+
 #PPC_stable <- lapply(step_date,function(x) sub_daterange(data_merge,c(x-2*3600,x)))
 
+# ggpubr::ggarrange(
+   PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2)
+#   ,
+#   P_roll_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2)
+#   ,ncol=1)
 
 
 
@@ -325,5 +356,37 @@ ggplot(subset(data_merge,step %in% 1:6))+
   geom_point(aes(PPC,DSD0,col=as.factor(tiefe)))+
   ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_scatterplot",Versuch,".png"),width=6,height=5)
 
-
+save(data_merge,file=paste0(datapfad_PP_Kammer,"data_merge_",Versuch,".RData"))
 ########################
+Versuche <- list.files(datapfad_PP_Kammer,pattern = "data_merge_\\d.RData")
+data_merge_ls <- list()
+for(i in seq_along(Versuche)){
+load(file=paste0(datapfad_PP_Kammer,"data_merge_",i,".RData"))
+data_merge_ls[[i]] <- data_merge
+data_merge_ls[[i]]$Versuch <- i
+}
+data_merge <- do.call(rbind,data_merge_ls)
+
+
+range(data$inj_mol_m2_s[data$inj_mol_m2_s !=0])
+test <- data_merge %>%
+  filter(DSD0 <= 1) %>% 
+  group_by(tiefe) %>% 
+  summarise(DSmin=min(DS),
+            DSmax = max(DS))
+test$DSmin
+test$DSmax
+range(data$inj_mol)
+seq(1e-7,1e-6,by=1e-7)
+names(data_merge)
+ggplot(subset(data_merge,!is.na(step)&tiefe == 1))+
+  geom_point(aes(DSD0,PPC,col=P_roll))+
+  scale_color_viridis_c()
+  
+ggplot(subset(data_merge,!is.na(step)&tiefe == 1))+
+  geom_point(aes(DSD0,P_roll,col=PPC))#+
+#  facet_wrap(~Versuch)
+ggplot(subset(data_merge,!is.na(step)))+
+  geom_point(aes(DSD0,P_roll,col=PPC))+
+  facet_wrap(~tiefe,scales="free")
+
