@@ -58,12 +58,17 @@ inj$CO2_mol_m2_s <- CO2_mol_per_s/A_inj
 save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 
 
-test <- injection_arduino(datelim=dates_ls[[5]],
+test <- injection_arduino(datelim=dates_ls[[6]],
                           plot="flux",
-                          return_ls = T,
+                          return_ls = F,
                           t_init=2,
                           t_min=2,
                           t_max=4)
-range(test[[2]]$date)
+range(test$CO2_ml_per_min)
+range(test$date)
+ggplot(test)+
+  geom_point(aes(date,CO2_ml_per_min))
 # 
-
+# ml_min <- 0.5#
+# min <- 60*24*5
+# ml_min*min

@@ -8,6 +8,66 @@ datapfad_PP_Kammer <- paste0(hauptpfad,"Daten/aufbereiteteDaten/PP_Kammer/")
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr","svMisc")
 check.packages(packages)
+##########################################################
+###########################################################
+
+
+datelim <- ymd_hms("2022-06-28 16:00:00 UTC", "2022-07-01 12:00:00 UTC")
+datelim <- ymd_hms("2022-07-05 10:00:00 UTC", "2022-07-05 14:00:00 UTC")
+datelim <- ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-13 14:00:00 UTC")
+datelim <- ymd_hms("2022-07-13 14:00:00 UTC", "2022-07-14 14:00:00 UTC")
+datelim <- ymd_hms("2022-07-18 11:00:00 UTC", "2022-07-18 12:00:00 UTC")
+datelim <- ymd_hms("2022-07-19 10:00:00 UTC", "2022-07-19 15:00:00 UTC")
+datelim <- ymd_hms("2022-07-19 14:00:00 UTC", "2022-07-20 15:00:00 UTC")
+datelim <- ymd_hms("2022-07-20 10:00:00 UTC", "2022-07-20 17:00:00 UTC")
+datelim <- ymd_hms("2022-07-26 10:00:00 UTC", "2022-07-26 17:00:00 UTC")
+datelim <- ymd_hms("2022-07-26 10:00:00 UTC", "2022-07-27 17:00:00 UTC")
+datelim <- ymd_hms("2022-07-27 10:00:00 UTC", "2022-07-28 12:00:00 UTC")
+
+data_PPC <- read_PP(datelim = datelim)
+
+dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
+
+data_PPC <- data_PPC %>% 
+  group_by(id) %>%
+  mutate(dt = diff_time(date,"secs"),
+         P_diff = abs(c(NA,diff(P_filter)))/!!dt,
+         PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
+         P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
+
+range(data_PPC$date)
+
+
+ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
+  #xlim(ymd_hms("2022-07-12 14:58:00 UTC", "2022-07-12 16:30:00 UTC"))+
+  #geom_line(aes(date,P,col=as.factor(id)))
+  geom_line(aes(date,P_roll,col=as.factor(id)))#+
+
+
+
+ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
+  #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
+  geom_line(aes(date,PPC5,col=as.factor(id)))+
+  geom_vline(xintercept = ymd_hm("2022.07.28 09:20"))
+
+ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
+  geom_line(aes(date,P,col=as.factor(id)))+
+
+  #geom_vline(xintercept = ymd_hm("2022.06.29 16:08","2022.06.29 16:44","2022.06.29 16:51","2022.06.29 17:23"))+
+  xlim(ymd_hm("2022.07.26 13:45","2022.07.26 13:50"))
+xlim(ymd_hm("2022.06.30 12:40","2022.06.30 13:05"))
+xlim(ymd_hm("2022.06.29 13:40","2022.06.29 13:45"))
+#xlim(ymd_hm("2022.06.30 00:40","2022.06.30 06:50"))
+#xlim(ymd_hm("2022.06.29 16:05","2022.06.29 16:15"))
+#xlim(ymd_hm("2022.06.29 15:40","2022.06.29 17:50"))
+
+
+
+
+##############################
+#ALT
+###############################
+
 
 pp_bemerkungen <-  readODS::read_ods(paste0(metapfad_PP,"PP_Kammer_Bemerkungen.ods"))
 pp_bemerkungen$Start <- dmy_hm(pp_bemerkungen$Start)
@@ -186,44 +246,3 @@ cbind(mins,on,off)
 ifelse((0:20 -5 - 2 )%% 30== 0 |(0:20 +2) %% 30 == 0,1,0)
 
 
-datelim <- ymd_hms("2022-06-28 16:00:00 UTC", "2022-07-01 12:00:00 UTC")
-datelim <- ymd_hms("2022-07-05 10:00:00 UTC", "2022-07-05 14:00:00 UTC")
-datelim <- ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-13 14:00:00 UTC")
-datelim <- ymd_hms("2022-07-13 14:00:00 UTC", "2022-07-14 14:00:00 UTC")
-datelim <- ymd_hms("2022-07-18 11:00:00 UTC", "2022-07-18 12:00:00 UTC")
-datelim <- ymd_hms("2022-07-19 10:00:00 UTC", "2022-07-19 15:00:00 UTC")
-datelim <- ymd_hms("2022-07-19 14:00:00 UTC", "2022-07-20 15:00:00 UTC")
-datelim <- ymd_hms("2022-07-20 10:00:00 UTC", "2022-07-20 17:00:00 UTC")
-
-data_PPC <- read_PP(datelim = datelim)
-
-dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
-
-data_PPC <- data_PPC %>% 
-  group_by(id) %>%
-  mutate(dt = diff_time(date,"secs"),
-         P_diff = abs(c(NA,diff(P_filter)))/!!dt,
-         PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
-         P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
-
-range(data_PPC$date)
-
-
-ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
-  #xlim(ymd_hms("2022-07-12 14:58:00 UTC", "2022-07-12 16:30:00 UTC"))+
-  #geom_line(aes(date,P,col=as.factor(id)))
-  geom_line(aes(date,P_roll,col=as.factor(id)))#+
-  
-
-
-ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
-  #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
-  geom_line(aes(date,PPC5,col=as.factor(id)))
-ggplot(subset(data_PPC,id%in%c(1,2,3,4,5)))+
-  geom_line(aes(date,P,col=as.factor(id)))+
-  #geom_vline(xintercept = ymd_hm("2022.06.29 16:08","2022.06.29 16:44","2022.06.29 16:51","2022.06.29 17:23"))+
-  xlim(ymd_hm("2022.06.30 12:40","2022.06.30 13:05"))
-  xlim(ymd_hm("2022.06.29 13:40","2022.06.29 13:45"))
-  #xlim(ymd_hm("2022.06.30 00:40","2022.06.30 06:50"))
-  #xlim(ymd_hm("2022.06.29 16:05","2022.06.29 16:15"))
-  #xlim(ymd_hm("2022.06.29 15:40","2022.06.29 17:50"))

@@ -23,45 +23,33 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #######################################
 #####################################
 #read probes
-Versuch <- 1
+Versuch <- 6
 load(file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 data_all <- data
-for(Versuch in na.omit(unique(data_all$Versuch))){
+#for(Versuch in na.omit(unique(data_all$Versuch))){
 
 data <- data_all[data_all$Versuch == Versuch & !is.na(data_all$Versuch),]
 
+# 
 # data$half_hour <- round_date(data$date,"30 mins")
 # 
 # mod_dates <- sort(unique(data$half_hour[data$inj == 1 & data$half_hour == data$date & !is.na(data$CO2_tracer_drift)]))
 # 
-# data_mod <- data %>% 
-#   mutate(date = round_date(date,"30 mins"))%>% 
+# data_mod <- data %>%
+#   mutate(date = round_date(date,"30 mins"))%>%
 #   group_by(date,tiefe) %>%
 #   summarise(across(everything(),mean))
+
+
 #     
 ##########################################
 ## COMSOL
 ##########################################
 
 
+
 comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeSoil_anisotropy_sweep_3DS.txt",extend = T,byout= 5e-7)
 #comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeSoil_anisotropy_sweep_2DS.txt",extend = F)
-
-#mod_dates <- mod_dates[-c(1,length(mod_dates))]
-# data_mod <- rbind(data_mod[1,],
-#                   data_mod[1,],
-#                   data_mod[1,],
-#                   data_mod[1,],
-#                   data_mod[1,],
-#                   data_mod[1,],
-#                   data_mod[1,],
-#                   data_mod[1,],
-#                   data_mod[1,],
-#                   data_mod[1,]
-#                   )
-# mod_dates <- mod_dates[1:10]
-# data_mod$date <- mod_dates
-# data_mod$date_int <- as.numeric(data_mod$date)
 
 
 
@@ -92,8 +80,8 @@ comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeS
 
 
 
-# ggplot()+
-#   geom_line(data=comsol_sweep,aes(date,DSD0,group=as.factor(tiefe),col="sweep",linetype="sweep"))+
+ ggplot()+
+   geom_line(data=comsol_sweep,aes(date,DSD0,group=as.factor(tiefe),col=as.factor(tiefe)))
 # geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))
   # geom_point(data=comsol[wrong,],aes(date,DSD0,group=as.factor(tiefe),col="wrong"))+
   # geom_point(data=comsol[!wrong,],aes(date,DSD0,group=as.factor(tiefe),col="right"))+
@@ -143,32 +131,32 @@ ggplot(sub_daterange(data,PPC_daterange))+
 
 
 
-############
-#swc
-datelim <- range(mod_dates)
-
-load(file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))
-if(as.numeric(difftime(now(),max(klima$date),unit="hours")) > 24){
-  source("./PP_kammer/klima_dwd.R")
-}
-klima_sub <- sub_daterange(klima,datelim)
-load(file = paste(datapfad_PP_Kammer,"swc_long.RData"))
-swc_sub <- sub_daterange(swc_long,datelim)
-if(nrow(swc_sub) > 0){
-  sec_ax_fac <- 0.7
-  swc_min <- min(swc_sub$swc,na.rm = T)/1.1
-  swc_plot <- ggplot(swc_sub)+
-    geom_ribbon(data=klima_sub,aes(x=date,ymin=swc_min,ymax=P24tot/sec_ax_fac + swc_min),fill="blue",alpha=0.8)+
-    geom_line(aes(date,swc,col=as.factor(tiefe)))+
-    xlim(PPC_daterange)+
-    scale_y_continuous(sec.axis = sec_axis(~(. - swc_min)*sec_ax_fac,name=expression(italic(P)["24h"]*" (mm)")))+
-    theme(
-      axis.title.y.right = element_text(color = "blue"),
-      axis.text.y.right = element_text(color = "blue"),
-      #axis.text.x = element_blank()
-    )+
-    labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
-}
+# ############
+# #swc
+# datelim <- range(mod_dates)
+# 
+# load(file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))
+# if(as.numeric(difftime(now(),max(klima$date),unit="hours")) > 24){
+#   source("./PP_kammer/klima_dwd.R")
+# }
+# klima_sub <- sub_daterange(klima,datelim)
+# load(file = paste(datapfad_PP_Kammer,"swc_long.RData"))
+# swc_sub <- sub_daterange(swc_long,datelim)
+# if(nrow(swc_sub) > 0){
+#   sec_ax_fac <- 0.7
+#   swc_min <- min(swc_sub$swc,na.rm = T)/1.1
+#   swc_plot <- ggplot(swc_sub)+
+#     geom_ribbon(data=klima_sub,aes(x=date,ymin=swc_min,ymax=P24tot/sec_ax_fac + swc_min),fill="blue",alpha=0.8)+
+#     geom_line(aes(date,swc,col=as.factor(tiefe)))+
+#     xlim(PPC_daterange)+
+#     scale_y_continuous(sec.axis = sec_axis(~(. - swc_min)*sec_ax_fac,name=expression(italic(P)["24h"]*" (mm)")))+
+#     theme(
+#       axis.title.y.right = element_text(color = "blue"),
+#       axis.text.y.right = element_text(color = "blue"),
+#       #axis.text.x = element_blank()
+#     )+
+#     labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
+# }
 
 ####################
 #PP
@@ -307,22 +295,16 @@ data_merge <- do.call(rbind,data_merge_ls)
 
 
 range(data$inj_mol_m2_s[data$inj_mol_m2_s !=0])
-test <- data_merge %>%
-  filter(DSD0 <= 1) %>% 
-  group_by(tiefe) %>% 
-  summarise(DSmin=min(DS),
-            DSmax = max(DS))
-test$DSmin
-test$DSmax
-range(data$inj_mol)
 
-names(data_merge)
+
 ggplot(subset(data_merge,!is.na(step)&tiefe == 1))+
   geom_point(aes(DSD0,PPC,col=P_roll))+
-  scale_color_viridis_c()
+  facet_wrap(~Versuch)+
+  scale_color_viridis_c(limits=c(-2,2))
 
 ggplot(subset(data_merge,!is.na(step)&tiefe == 1))+
   geom_point(aes(DSD0,P_roll,col=PPC5))#+
+  #ylim(c(-1,1))
 #  facet_wrap(~Versuch)
 ggplot(subset(data_merge,!is.na(step)))+
   geom_point(aes(DSD0,P_roll,col=PPC))+
@@ -338,4 +320,3 @@ ggplot(data_t1)+
   facet_wrap(~Versuch,scales = "free",ncol=1)
 
   geom_point(aes(DSD0,DSD0_pred,col=P_roll))
-

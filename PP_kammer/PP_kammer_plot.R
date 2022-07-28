@@ -6,6 +6,7 @@ datapfad<- paste0(hauptpfad,"Daten/Urdaten/Dynament/")
 plotpfad_PPchamber <- paste0(hauptpfad,"Dokumentation/Berichte/plots/PP_Kammer/")
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 
+
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
@@ -25,7 +26,7 @@ pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 i <- nrow(pp_chamber)
-#i <- 23
+#i <- 26
 #for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
 plot <-  T
@@ -111,7 +112,7 @@ if(!is.null(flux)){
 
 ############
 #swc
-load(file = paste(datapfad_PP_Kammer,"swc_long.RData"))
+source("./PP_kammer/Bodenfeuchte_PP_Kammer.R")
 
 swc_sub <- sub_daterange(swc_long,datelim)
 if(nrow(swc_sub) > 0){

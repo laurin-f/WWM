@@ -29,24 +29,29 @@ check.packages(packages)
 
 load(paste0(samplerpfad, "Hartheim_CO2.RData"))
 
-                       tiefe)))
+                       #tiefe)))
 
 #td_long_1 <- td_long
 sub <- subset(data, Position == 8 & Pumpstufe != 0)
 
-ggplot(sub) + geom_line(aes(date, CO2_tracer_gam, col = as.factor(tiefe)))
+ggplot(sub) + geom_line(aes(date, CO2_tracer_drift, col = as.factor(tiefe)))
 
 mod_dates = unique(round_date(sub$date, "hours"))[2:4]
 timeperiod_s <-
   difftime(mod_dates[-1], mod_dates[-length(mod_dates)], units = "secs") %>% as.numeric() %>% unique
 
-
+offset_method <- "drift"
 timeperiod_s = 3600#s
 overwrite = T
 read_all = F
 n_DS = 3
 
-offset_method = "gam"
+CO2_mod <- read.csv(paste0(comsolpfad,"CO2_optim_td.txt"),skip=9,sep="",header = F)
+CO2_mod_long <- tidyr::pivot_longer(CO2_mod,matches("^c"),names_to = "t",names_prefix = "c",values_to = "c")
+ggplot(CO2_mod_long)+
+  geom_point(aes(t,c,col=as.factor(z)))
+names(CO2_mod) <- c("r","z",paste0("c",1:7))
+offset_method = "drift"
 #which optimization method should be used nelder or snopt
 
 modelname = "time_dependent_freeSoil_anisotropy_optim_3DS"
@@ -98,6 +103,18 @@ names(data_sub) <- mod_dates
 #Comsol ausführen
 ##############################################
 #
+
+
+# data_agg$tiefe <- data_agg$tiefe
+# data_agg$step <- 1
+# tracer_wide <- data_agg %>% 
+#   filter(tiefe!=0) %>%
+#   ungroup() %>% 
+#   mutate(minutes = (date_int - min(date_int))/60) %>% 
+#   tidyr::pivot_wider(c("minutes","step"),names_from = "tiefenstufe",names_prefix = "tiefe_",values_from = "tracer_mol",names_sort=T)
+# 
+# write.table(subset(tracer_wide,step == 1)[,-2],file = paste0(metapfad_comsol,"LeastSquares_timedependent.txt"),row.names = F,col.names = F,sep=",")
+
 for (j in seq_along(data_sub)) {
   sub_j <- data_sub[[j]]
   sub_j$t_secs <-
@@ -222,11 +239,13 @@ CO2_optim_list <- lapply(mod_dates_all, function (x) {
 CO2_optim <- do.call(rbind, CO2_optim_list)
 unique(CO2_optim$t)
 CO2_optim$tiefe <- CO2_optim$z -150
+
+data_sub <- subset(data, date < max(mod_dates_all) + 3600 &
+         date > min(mod_dates_all))
 ggplot(CO2_optim) +
-  geom_line(aes(date, CO2_mod, col = as.factor(tiefe))) +
-  geom_line(data = subset(data, date < max(mod_dates_all) + 3600 &
-                            date > min(mod_dates_all)),
-            aes(date, CO2_mol_per_m3, col = as.factor(tiefe)))#+
+  geom_line(aes(date, CO2_mod, col = as.factor(tiefe))) #+
+  #geom_line(data = data_sub,
+  #          aes(date, CO2_mol_per_m3, col = as.factor(tiefe)))#+
   facet_wrap(~tiefe,scales="free_y")
 ggplot(CO2_optim) +
   geom_line(aes(date, DS_1, col = "DS_1")) +

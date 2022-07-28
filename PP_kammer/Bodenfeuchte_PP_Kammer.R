@@ -18,10 +18,22 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr")
 check.packages(packages)
 
+logfile <- paste0(datapfad_bf,"swc_FVAgarten.txt")
+swcfile <- paste0(datapfad_PP_Kammer,"swc_long.RData")
+if(file.exists(logfile)){
+  load(logfile)
+  files_old <- files
+}
 files <- list.files(datapfad_bf,pattern = "22-\\d{4}.xls$",full.names = T)
+if(exists("files_old")){
+  files_new <- files[!files %in% files_old]
+}else{
+  files_new <- files
+}
 
+save(files,file=logfile)
 
-
+if(length(files_new) > 0){
 swc_ls <- lapply(files,readxl::read_xls,skip=2,col_types = c("date",rep("numeric",5)))
 for(i in seq_along(swc_ls)){
   if(any(grepl("m³",colnames(swc_ls[[i]])))){
@@ -54,7 +66,18 @@ swc_long$tiefe <- as.numeric(swc_long$tiefenstufe) * 7
 swc_wide <- swc[grep("date|swc_\\d$",colnames(swc))] %>% as.data.frame()
 swc_wide[,-1] <- sapply(swc_wide[,-1],as.numeric,simplify = T)
 colnames(swc_wide) <- c("date",  "swc_21", "swc_7", "swc_14")
+
+if(file.exists(swcfile)){
+  swc_long_new <- swc_long
+  swc_wide_new <- swc_wide
+  load(swcfile)
+  swc_long <- rbind(swc_long,swc_long_new)
+  swc_wide <- rbind(swc_wide,swc_wide_new)
+}
+save(swc_long,swc_wide,file = swcfile)
+}else{
+  load(swcfile)
+}
 #swc_plot
-save(swc_long,swc_wide,file = paste(datapfad_PP_Kammer,"swc_long.RData"))
 
 
