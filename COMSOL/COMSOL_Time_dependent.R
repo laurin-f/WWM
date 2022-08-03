@@ -33,12 +33,13 @@ load(paste0(samplerpfad, "Hartheim_CO2.RData"))
 
 #td_long_1 <- td_long
 sub <- subset(data, Position == 8 & Pumpstufe != 0)
+rm(data)
+range(sub$date)
+#ggplot(sub[1:200,]) + geom_line(aes(date, CO2_tracer_drift, col = as.factor(tiefe)))
 
-ggplot(sub) + geom_line(aes(date, CO2_tracer_drift, col = as.factor(tiefe)))
-
-mod_dates = unique(round_date(sub$date, "hours"))[2:4]
-timeperiod_s <-
-  difftime(mod_dates[-1], mod_dates[-length(mod_dates)], units = "secs") %>% as.numeric() %>% unique
+mod_dates = unique(round_date(sub$date, "hours"))[2]
+#timeperiod_s <-
+#  difftime(mod_dates[-1], mod_dates[-length(mod_dates)], units = "secs") %>% as.numeric() %>% unique
 
 offset_method <- "drift"
 timeperiod_s = 3600#s
@@ -46,11 +47,11 @@ overwrite = T
 read_all = F
 n_DS = 3
 
-CO2_mod <- read.csv(paste0(comsolpfad,"CO2_optim_td.txt"),skip=9,sep="",header = F)
-CO2_mod_long <- tidyr::pivot_longer(CO2_mod,matches("^c"),names_to = "t",names_prefix = "c",values_to = "c")
-ggplot(CO2_mod_long)+
-  geom_point(aes(t,c,col=as.factor(z)))
-names(CO2_mod) <- c("r","z",paste0("c",1:7))
+# CO2_mod <- read.csv(paste0(comsolpfad,"CO2_optim_td.txt"),skip=9,sep="",header = F)
+# CO2_mod_long <- tidyr::pivot_longer(CO2_mod,matches("^c"),names_to = "t",names_prefix = "c",values_to = "c")
+# ggplot(CO2_mod_long)+
+#   geom_point(aes(t,c,col=as.factor(z)))
+# names(CO2_mod) <- c("r","z",paste0("c",1:7))
 offset_method = "drift"
 #which optimization method should be used nelder or snopt
 
@@ -60,42 +61,52 @@ modelname = "time_dependent_freeSoil_anisotropy_optim_3DS"
 n_DS_ch <- paste0(n_DS, "DS")
 
 #CO2 in tracer in mol pro m3
-if (!any(grepl("PressureActual_hPa", names(data)))) {
+if (!any(grepl("PressureActual_hPa", names(sub)))) {
   print("no Pressure Data available using 101.3 kPa as default")
-  data$PressureActual_hPa <- 1013
+  sub$PressureActual_hPa <- 1013
 }
-if (!any(grepl("T_soil", names(data)))) {
+if (!any(grepl("T_soil", names(sub)))) {
   print("no T_soil Data available using 20 °C as default")
-  data$T_soil <- 20
+  sub$T_soil <- 20
 }
-data$D0 <-
-  D0_T_p(data$T_soil, p_kPa = data$PressureActual_hPa / 10, "m^2/s")
-data$CO2_mol_per_m3 <-
-  ppm_to_mol(data[, paste0("CO2_tracer_", offset_method)],
+sub$D0 <-
+  D0_T_p(sub$T_soil, p_kPa = sub$PressureActual_hPa / 10, "m^2/s")
+sub$CO2_mol_per_m3 <-
+  ppm_to_mol(sub[, paste0("CO2_tracer_", offset_method)],
              "ppm",
-             p_kPa = data$PressureActual_hPa / 10,
-             T_C = data$T_soil)
+             p_kPa = sub$PressureActual_hPa / 10,
+             T_C = sub$T_soil)
 #negative werte auf null setzen
-data$CO2_mol_per_m3[data$tiefe == 0] <- 0
-data$CO2_mol_per_m3[(data$CO2_mol_per_m3) < 0] <- 0
+sub$CO2_mol_per_m3[sub$tiefe == 0] <- 0
+sub$CO2_mol_per_m3[(sub$CO2_mol_per_m3) < 0] <- 0
 
 #model coordinates
 z_soil_cm <-  150
-data$z <- z_soil_cm + data$tiefe
-data$r <- 0
+sub$z <- z_soil_cm + sub$tiefe
+sub$r <- 0
 
+cols <- c(
+  "tiefe",
+  "date",
+  "CO2_mol_per_m3",
+  "inj_mol_m2_s",
+  "T_soil",
+  "PressureActual_hPa",
+  "CO2_ref"
+)
+
+
+sub1 <- sub[sub$date <= max(mod_dates)+timeperiod_s,cols]
+
+
+data_agg <- sub1 %>% 
+  mutate(date = round_date(date,"10 mins")) %>% 
+  group_by(date,tiefe) %>% 
+  summarise(across(everything(),mean,na.rm=T))
 data_sub <-
   lapply(mod_dates, function(x)
-    data[data$date >= x &
-           data$date < x + timeperiod_s, c(
-             "tiefe",
-             "date",
-             "CO2_mol_per_m3",
-             "inj_mol_m2_s",
-             "T_soil",
-             "PressureActual_hPa",
-             "CO2_ref"
-           )])
+    data_agg[data_agg$date >= x &
+           data_agg$date < x + timeperiod_s,])
 names(data_sub) <- mod_dates
 
 
@@ -115,7 +126,8 @@ names(data_sub) <- mod_dates
 # 
 # write.table(subset(tracer_wide,step == 1)[,-2],file = paste0(metapfad_comsol,"LeastSquares_timedependent.txt"),row.names = F,col.names = F,sep=",")
 
-for (j in seq_along(data_sub)) {
+#for (j in seq_along(data_sub)) {
+j <- 1
   sub_j <- data_sub[[j]]
   sub_j$t_secs <-
     as.numeric(difftime(sub_j$date, min(sub_j$date), units = "secs"))
@@ -174,7 +186,7 @@ for (j in seq_along(data_sub)) {
       file.rename(comsoloutfiles_raw, outfile_full_name)
     }
   }
-}
+#}
 
 
 ##########################################
@@ -240,19 +252,19 @@ CO2_optim <- do.call(rbind, CO2_optim_list)
 unique(CO2_optim$t)
 CO2_optim$tiefe <- CO2_optim$z -150
 
-data_sub <- subset(data, date < max(mod_dates_all) + 3600 &
+data_sub <- subset(sub, date < max(mod_dates_all) + 3600 &
          date > min(mod_dates_all))
 ggplot(CO2_optim) +
-  geom_line(aes(date, CO2_mod, col = as.factor(tiefe))) #+
-  #geom_line(data = data_sub,
-  #          aes(date, CO2_mol_per_m3, col = as.factor(tiefe)))#+
-  facet_wrap(~tiefe,scales="free_y")
+  geom_line(aes(date, CO2_mod, col = as.factor(tiefe))) +
+  geom_point(data = data_sub,
+            aes(date, CO2_mol_per_m3, col = as.factor(tiefe)))#+
+  #facet_wrap(~tiefe,scales="free_y")
 ggplot(CO2_optim) +
   geom_line(aes(date, DS_1, col = "DS_1")) +
   geom_line(aes(date, DS_2, col = "DS_2")) +
   geom_line(aes(date, DS_3, col = "DS_3"))
 
-unique(CO2_optim$DS_3)
+
 slope_0_7cm <-
   glm(CO2_ref ~ tiefe, data = subset(obs_j, tiefe >= -7))#ppm/cm
 #plot(obs_j$tiefe,obs_j$CO2_ref)

@@ -23,13 +23,20 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #######################################
 #####################################
 #read probes
-Versuch <- 6
+Versuch <- 7
+overwrite <-  F
 load(file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 data_all <- data
 #for(Versuch in na.omit(unique(data_all$Versuch))){
 
 data <- data_all[data_all$Versuch == Versuch & !is.na(data_all$Versuch),]
+data <- data %>% 
+  group_by(tiefe) %>% 
+  mutate(CO2_tracer_roll = RcppRoll::roll_mean(CO2_tracer_drift,5,fill=NA))
 
+ggplot(data)+
+  geom_line(aes(date,CO2_tracer_roll,col=as.factor(tiefe)))+
+  geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)),alpha=0.3)
 # 
 # data$half_hour <- round_date(data$date,"30 mins")
 # 
@@ -46,10 +53,22 @@ data <- data_all[data_all$Versuch == Versuch & !is.na(data_all$Versuch),]
 ## COMSOL
 ##########################################
 
+file_i <- paste0(datapfad_PP_Kammer,"DSD0_comsol_,",Versuch,".RData")
+if(file.exists(file_i) & overwrite == F){
+load(file_i)
+  }else{
 
+comsol <- comsol_sweep(data = data,
+                       tracer_colname = "CO2_tracer_roll",
+                       intervall = "30 mins",
+                       filename = "freeSoil_anisotropy_sweep_2DS.txt",
+                       extend = T,
+                       byout= 1e-7)
 
-comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeSoil_anisotropy_sweep_3DS.txt",extend = T,byout= 5e-7)
-#comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeSoil_anisotropy_sweep_2DS.txt",extend = F)
+save(comsol,file=file_i)
+
+}
+#comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeSoil_anisotropy_sweep_2DS.txt",extend = T,byout= 1e-7)
 
 
 
@@ -70,7 +89,7 @@ comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeS
 #                         modelname = "Diffusion_freeSoil_anisotropy_optim_3DS",
 #                         long=T)
 
-#save(comsol_old,comsol,comsol_sweep,file=paste0(datapfad_PP_Kammer,"DSD0_comsol.RData"))
+
 
 
 
@@ -80,9 +99,9 @@ comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeS
 
 
 
- ggplot()+
-   geom_line(data=comsol_sweep,aes(date,DSD0,group=as.factor(tiefe),col=as.factor(tiefe)))
-# geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))
+#  ggplot()+
+#    geom_line(data=comsol,aes(date,DSD0,group=as.factor(tiefe),col=as.factor(tiefe)))
+# # geom_line(data=comsol_old,aes(date,DSD0,group=as.factor(tiefe),col="old",linetype="old"))
   # geom_point(data=comsol[wrong,],aes(date,DSD0,group=as.factor(tiefe),col="wrong"))+
   # geom_point(data=comsol[!wrong,],aes(date,DSD0,group=as.factor(tiefe),col="right"))+
   #geom_line(data=comsol,aes(mod_date,DSD0,group=as.factor(tiefe),col=as.factor(tiefe),linetype="inter"))#+
@@ -93,7 +112,7 @@ comsol_sweep <- comsol_sweep(data = data,intervall = "30 mins",filename = "freeS
 
 
 
-comsol <- comsol_sweep
+
 ###################################################################
 #genauerer Blick auf erste PPC Periode
 
@@ -101,7 +120,7 @@ pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
-pp_chamber_sub <- sub_daterange(pp_chamber[,c("Start","Ende","step_hours","start_offset")],range(comsol$date),"Start")
+pp_chamber_sub <- sub_daterange(pp_chamber[,c("Start","Ende","step_hours","start_offset","Modus")],range(comsol$date),"Start")
 
 step_date_ls <- list()
 for(i in 1:nrow(pp_chamber_sub)){
@@ -252,18 +271,40 @@ for(i in seq_along(step_date)){
   
 }
 
+titles <- c("2D PP - Über-Unterdruck",
+            "2D PP",
+            "1D PP",
+            "2D PP and P mov.mean",
+            "2D PP",
+            "2d PP - 2D PP",
+            "1D PP")
 
 DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
 #DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
-  geom_line(aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
+  geom_line(aes(date,DSD0,col=factor(tiefe,levels=1:2,labels=c("0-20",">20"))))+
+  #geom_line(aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
   xlim(PPC_daterange)+
-  geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
-  labs(y=expression(D[S]/D[0]),col="tiefenstufe")
+  geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:2,labels=c("0-20",">20"))))+
+  #geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
+  labs(title=titles[Versuch],y=expression(D[S]/D[0]),col="tiefenstufe")
+
+# tracer_plt <- ggplot(sub_daterange(data,PPC_daterange))+
+# #DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
+#   geom_line(aes(date,CO2_tracer_drift,col=factor(-tiefe)))+
+#   xlim(PPC_daterange)+
+#   labs(y=expression(CO[2]~"(ppm)"),col="tiefe")
 #########################
 #final plots
 
 #######################
 #DSD0 PPC timeline
+# ggpubr::ggarrange(tracer_plt+
+#                     geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
+#                   PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
+#                   P_roll_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
+#                   #swc_plot,
+#                   heights = c(2,1,1,1),ncol=1,align = "v")
+
 ggpubr::ggarrange(DSD0_plt+
                  geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
@@ -282,41 +323,4 @@ ggplot(subset(data_merge,!is.na(step)))+
 
 save(data_merge,file=paste0(datapfad_PP_Kammer,"data_merge_",Versuch,".RData"))
 
-}
-########################
-Versuche <- list.files(datapfad_PP_Kammer,pattern = "data_merge_\\d.RData")
-data_merge_ls <- list()
-for(i in seq_along(Versuche)){
-load(file=paste0(datapfad_PP_Kammer,"data_merge_",i,".RData"))
-data_merge_ls[[i]] <- data_merge
-data_merge_ls[[i]]$Versuch <- i
-}
-data_merge <- do.call(rbind,data_merge_ls)
-
-
-range(data$inj_mol_m2_s[data$inj_mol_m2_s !=0])
-
-
-ggplot(subset(data_merge,!is.na(step)&tiefe == 1))+
-  geom_point(aes(DSD0,PPC,col=P_roll))+
-  facet_wrap(~Versuch)+
-  scale_color_viridis_c(limits=c(-2,2))
-
-ggplot(subset(data_merge,!is.na(step)&tiefe == 1))+
-  geom_point(aes(DSD0,P_roll,col=PPC5))#+
-  #ylim(c(-1,1))
-#  facet_wrap(~Versuch)
-ggplot(subset(data_merge,!is.na(step)))+
-  geom_point(aes(DSD0,P_roll,col=PPC))+
-  facet_wrap(~tiefe,scales="free")
-
-data_t1 <- subset(data_merge, tiefe == 1)
-DSD0_fm <- glm(DSD0 ~ PPC5 + P_roll + (PPC5 * P_roll),data=data_t1)
-summary(DSD0_fm)
-data_t1$DSD0_pred <- predict(DSD0_fm,newdata = data.frame(data_t1))
-ggplot(data_t1)+
-  geom_line(aes(date,DSD0_pred,col="preds"))+
-  geom_line(aes(date,DSD0,col="obs"))+
-  facet_wrap(~Versuch,scales = "free",ncol=1)
-
-  geom_point(aes(DSD0,DSD0_pred,col=P_roll))
+#}

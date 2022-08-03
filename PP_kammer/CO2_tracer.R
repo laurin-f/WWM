@@ -24,7 +24,7 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #####################################
 #read probes
 data_ls <- vector("list",length = length(dates_ls))
-Versuch <- 6
+Versuch <- 7
 for(Versuch in seq_along(dates_ls)){
 
 #CO2 Werte für i-te injektion inklusive 2 tage vorher und nachher
@@ -79,14 +79,14 @@ save(data,file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 #########################
 #plots
 
-Versuch_x <- 6
+Versuch_x <- 7
 #####################
 #CO2 inj un refadj plot
 ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
   geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
   geom_line(aes(date,CO2_refadj,col=as.factor(tiefe),linetype="ref adj"))+
-  geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))+
-  geom_vline(xintercept = ymd_h("2022.07.26 15","2022.07.26 21","2022.07.27 03","2022.07.27 09"))
+  geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))#+
+#  geom_vline(xintercept = ymd_h("2022.07.26 15","2022.07.26 21","2022.07.27 03","2022.07.27 09"))
 #  facet_wrap(~Versuch,scales = "free_x",ncol=1)
 
 
