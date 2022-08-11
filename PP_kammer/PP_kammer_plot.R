@@ -26,7 +26,7 @@ pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 i <- nrow(pp_chamber)
-#i <- 26
+i <- 30
 #for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
 plot <-  T
@@ -119,16 +119,20 @@ if(nrow(swc_sub) > 0){
   sec_ax_fac <- 0.7
   swc_min <- min(swc_sub$swc,na.rm = T)/1.1
   plot_ls[["swc"]] <- ggplot(swc_sub)+
-    geom_ribbon(data=klima_sub,aes(x=date,ymin=swc_min,ymax=P24tot/sec_ax_fac + swc_min),fill="blue",alpha=0.8)+
     geom_line(aes(date,swc,col=as.factor(tiefe)))+
     xlim(datelim)+
+    labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
+  if(nrow(klima_sub) > 0){
+  plot_ls[["swc"]] <- plot_ls[["swc"]]+
     scale_y_continuous(sec.axis = sec_axis(~(. - swc_min)*sec_ax_fac,name=expression(italic(P)["24h"]*" (mm)")))+
     theme(
       axis.title.y.right = element_text(color = "blue"),
       axis.text.y.right = element_text(color = "blue"),
       axis.text.x = element_blank()
     )+
-    labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
+    geom_ribbon(data=klima_sub,aes(x=date,ymin=swc_min,ymax=P24tot/sec_ax_fac + swc_min),fill="blue",alpha=0.8)
+    
+  }
 }
 
 ###############

@@ -58,8 +58,8 @@ inj$CO2_mol_m2_s <- CO2_mol_per_s/A_inj
 save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 
 
-test <- injection_arduino(datelim=dates_ls[[7]][2]-c(5*3600,0),
-                          plot="timeline",
+test <- injection_arduino(datelim=dates_ls[[8]],
+                          plot="flux",
                           return_ls = F,
                           t_init=2,
                           t_min=2,

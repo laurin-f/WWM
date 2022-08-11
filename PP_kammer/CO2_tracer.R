@@ -24,7 +24,7 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #####################################
 #read probes
 data_ls <- vector("list",length = length(dates_ls))
-Versuch <- 7
+Versuch <- 8
 for(Versuch in seq_along(dates_ls)){
 
 #CO2 Werte für i-te injektion inklusive 2 tage vorher und nachher
@@ -75,11 +75,60 @@ data_ls[[Versuch]] <- data
 
 data <- do.call(rbind,data_ls)
 
-save(data,file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
+data$flag <- 0
+flagid <- daterange_id(data,ymd_hm("2022.07.02 21:00","2022.07.03 10:00"))
+data$flag[flagid & data$tiefe == -3.5] <- 1
+
+names(data)
+data_uncert <- data %>% 
+  #select(matches("(date|tiefe|CO2_(ref|inj)|cal|CO2_tracer_|Versuch|flag)")) %>% 
+  filter(!is.na(tiefe) & flag == 0) %>% 
+  group_by(tiefe,Versuch) %>% 
+  mutate(across(c("CO2_refadj"),
+                list(
+                  min = ~. + max(CO2_inj[cal==1] - .[cal==1],na.rm=T),
+                  #q25 = ~. + quantile(CO2_inj[cal==1] - .[cal==1],probs=0.75,na.rm=T),
+                  #q75 = ~. + quantile(CO2_inj[cal==1] - .[cal==1],probs=0.25,na.rm=T),
+                  max = ~. + min(CO2_inj[cal==1] - .[cal==1],na.rm=T)
+                )
+  )
+  ) %>% 
+  mutate(across(matches("CO2_refadj_(max|min|q\\d+)"),
+                list(
+                  CO2_tracer= ~CO2_inj - .
+                ),
+                .names="{.fn}_{.col}"
+  )
+  ) %>% 
+  rename_with(~str_remove(.,"CO2_refadj_"),matches("^CO2_tracer_CO2_refadj")) %>% 
+  #select(-matches("preds_")) %>% 
+  ungroup() %>%
+  as.data.frame()
+# 
+# data_uncert <- data_uncert %>% 
+#   mutate(
+#     CO2_tracer_mingradient = case_when(
+#       tiefe >= -7 ~ CO2_tracer_max,
+#       tiefe == -10.5 ~ CO2_tracer_q75,
+#       tiefe == -14 ~ CO2_tracer_drift,
+#       tiefe == -17.5 ~ CO2_tracer_q25,
+#       tiefe <= -21 ~ CO2_tracer_min
+#     ),
+#     CO2_tracer_maxgradient = case_when(
+#       tiefe >= -7 ~ CO2_tracer_min,
+#       tiefe == -10.5 ~ CO2_tracer_q25,
+#       tiefe == -14 ~ CO2_tracer_drift,
+#       tiefe == -17.5 ~ CO2_tracer_q75,
+#       tiefe <= -21 ~ CO2_tracer_max
+#     )
+#   )
+
+
+save(data,data_uncert,file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 #########################
 #plots
 
-Versuch_x <- 7
+Versuch_x <- 8
 #####################
 #CO2 inj un refadj plot
 ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
@@ -89,7 +138,26 @@ ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
 #  geom_vline(xintercept = ymd_h("2022.07.26 15","2022.07.26 21","2022.07.27 03","2022.07.27 09"))
 #  facet_wrap(~Versuch,scales = "free_x",ncol=1)
 
+#####################
+#uncert
+ggplot(subset(data_uncert,!is.na(Versuch) & Versuch==Versuch_x))+
+  #geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
+  geom_ribbon(aes(date,ymin=CO2_refadj_min,ymax=CO2_refadj_max,fill=as.factor(tiefe)),alpha=0.2)+
+  geom_line(aes(date,CO2_refadj,col=as.factor(tiefe),linetype="ref adj"))+
+  geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))#+
+#  geom_vline(xintercept = step_date,linetype=2,alpha=0.2)
 
+ggplot(subset(data_uncert,!is.na(Versuch) & Versuch==Versuch_x))+
+  #geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
+  geom_ribbon(aes(date,ymin=CO2_tracer_min,ymax=CO2_tracer_max,fill=as.factor(tiefe)),alpha=0.2)+
+  geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))#+
+# 
+# ggplot(subset(data_uncert,!is.na(Versuch) & Versuch==Versuch_x & date %in% round_date(date,"3 hours") & inj==1)[1:63,])+
+#   geom_line(aes(CO2_tracer_drift,tiefe,col=as.factor(date),linetype="a"),orientation = "y")+
+#   geom_line(aes(CO2_tracer_min,tiefe,col=as.factor(date),linetype="min"),orientation = "y")+
+#   geom_line(aes(CO2_tracer_max,tiefe,col=as.factor(date),linetype="max"),orientation = "y")+
+#   facet_wrap(~date_int)+
+#   guides(col=F)
 ###################
 #tracer plot
 
