@@ -26,7 +26,7 @@ pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 i <- nrow(pp_chamber)
-i <- 30
+#i <- 30
 #for(i in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
 plot <-  T
@@ -217,3 +217,11 @@ if(plot){
 }
 #}
 
+
+plot_ls[["flux"]] <- ggplot(flux)+
+    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))+
+  geom_line(aes(date,RcppRoll::roll_mean(CO2_GGA_mumol_per_s_m2,5,fill=NA),col="GGA"))+
+    coord_cartesian(xlim=datelim)+
+  labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
+    scale_fill_grey()

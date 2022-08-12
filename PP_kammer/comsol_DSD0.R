@@ -23,7 +23,7 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #######################################
 #####################################
 #read probes
-Versuch <- 7
+Versuch <- 8
 overwrite <-  F
 load(file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 data_all <- data
@@ -290,7 +290,8 @@ titles <- c("2D PP - Über-Unterdruck",
             "2D PP and P mov.mean",
             "2D PP",
             "2D PP - 2D PP",
-            "1D PP")
+            "1D PP",
+            "1D PP - 2D PP")
 names(comsol)
 DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
 #DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+

@@ -1,7 +1,8 @@
 library(RSQLite)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 sqlpath<-paste0(hauptpfad,"Daten/aufbereiteteDaten/SQLite/")
-con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,"dynament.db"))
+con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,"GGA.db"))
+#con<-dbConnect(RSQLite::SQLite(),paste0(sqlpath,"dynament.db"))
 
 #falls tabelle in db nicht vorhanden wird sie hier erstellt
 createquery<-paste0("CREATE TABLE IF NOT EXISTS ",testtable," (date_int INTEGER PRIMARY KEY",

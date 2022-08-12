@@ -32,6 +32,7 @@ data_merge <- data_merge %>%
   filter(tiefe == 1) %>% 
   group_by(Versuch) %>%
   mutate(
+    Proll_meanr12 = RcppRoll::roll_meanr(P_roll,12,fill=NA),
     PPC_meanr12 = RcppRoll::roll_meanr(PPC5,12,fill=NA),
     PPC_meanr6 = RcppRoll::roll_meanr(PPC5,6,fill=NA),
     PPC_meanr3 = RcppRoll::roll_meanr(PPC5,3,fill=NA),
