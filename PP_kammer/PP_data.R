@@ -71,17 +71,29 @@ flux_ls <- chamber_arduino(datelim=datelim,gga_data = F,return_ls = T,t_init=2,p
 flux <- flux_ls[[1]]
 flux_data <- flux_ls[[2]]
 
-ggpubr::ggarrange(Prollplt,PPCplt,tplt,ncol=1,heights = c(2:1,1),align = "v",common.legend = T,legend = "right")+
-  ggsave(paste0(plotpfad_PPchamber,"p_roll_T_dependency.png"),width = 7,height = 5)
 PPCplt <- ggplot(subset(data_PPC,id%in%c(1,2,3,4)))+
   #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
   geom_line(aes(date,PPC5,col=as.factor(id)))+
   guides(col=F)
 #  geom_vline(xintercept = ymd_hm("2022.07.28 09:20"))
+data_ws_ppc <- merge(klima_sub,subset(data_PPC,id==6))
+PPCatmplt <- ggplot(data_ws_ppc)+
+  #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
+  geom_line(aes(date,PPC,col=as.factor(id)))+
+  guides(col=F)
+#  geom_vline(xintercept = ymd_hm("2022.07.28 09:20"))
 
+P_roll_atm <- ggplot(data_ws_ppc)+
+  #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
+  geom_line(aes(date,P_roll,col=as.factor(id)))
+egg::ggarrange(wsplt,PPCatmplt,P_roll_atm)
+ggplot(data_ws_ppc)+
+  geom_point(aes(wind,PPC5))
 ggplot(subset(data_PPC,id%in%c(1,2,3,4,5,6)))+
   geom_line(aes(date,P,col=as.factor(id)))
 
+ggpubr::ggarrange(Prollplt,PPCplt,tplt,ncol=1,heights = c(2:1,1),align = "v",common.legend = T,legend = "right")+
+  ggsave(paste0(plotpfad_PPchamber,"p_roll_T_dependency.png"),width = 7,height = 5)
 #######################
 #atm PPC
 

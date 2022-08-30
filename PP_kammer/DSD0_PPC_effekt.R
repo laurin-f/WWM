@@ -53,7 +53,7 @@ source("./PP_kammer/Bodenfeuchte_PP_Kammer.R")
 swc_sub <- subset(swc_wide,date %in% (data_depth1$date))
 
 data_DS <- merge(data_depth1,swc_sub,all.x = T)
-
+data_DS <- subset(data_DS,P_roll > -1 & P_roll < 1)
 
 ggplot(subset(data_merge))+
   geom_line(aes(date,PPC5))+
@@ -61,30 +61,36 @@ ggplot(subset(data_merge))+
   geom_line(aes(date,PPC_meanr6),col=3)+
   geom_line(aes(date,PPC_meanr3),col=4)+
   facet_wrap(~Versuch,scales="free")
-ggplot(subset(data_DS,P_roll > -2 & P_roll < 2))+
+ggplot(data_DS)+
   #geom_point(aes(DSD0,PPC5,col=factor(Versuch))))
   #geom_point(aes(DSD0,PPC_meanr3,col=factor(Versuch)))
   #geom_point(aes(DSD0,PPC_meanr6,col=factor(Versuch)))
   geom_point(aes(PPC_meanr12,DSD0,col=factor(Versuch)))+
   ggsave(paste0(plotpfad_PPchamber,"PPC_DSD0_meanr12.png"),width = 6,height = 5)
-ggplot(subset(data_DS,P_roll > -2 & P_roll < 2))+
+ggplot(data_DS)+
   geom_point(aes(PPC,DSD0,col=factor(Versuch)))+
   ggsave(paste0(plotpfad_PPchamber,"PPC_DSD0_Versuche.png"),width = 6,height = 5)
-ggplot(subset(data_DS,P_roll > -2 & P_roll < 2))+
+
+ggplot(data_DS)+
   geom_point(aes(PPC,DSD0,col=swc_7))+
   scale_color_continuous(trans="reverse")+
-  #scale_color_distiller(palette = "RdBu",trans="reverse")
-  #scale_color_viridis_c()
   ggsave(paste0(plotpfad_PPchamber,"PPC_DSD0_swc.png"),width = 6,height = 5)
-ggplot(subset(data_DS,P_roll > -2 & P_roll < 2))+
+
+ggplot(data_DS)+
   geom_point(aes(DSD0,PPC,col=P_roll))+
   scale_color_viridis_c()
-  ggsave(paste0(plotpfad_PPchamber,"PPC_DSD0_P_roll.png"),width = 6,height = 5)
-cor(data_depth1$DSD0,data_depth1$PPC5,use="complete.obs")
-cor(data_depth1$DSD0,data_depth1$P_roll,use="complete.obs")
+  #ggsave(paste0(plotpfad_PPchamber,"PPC_DSD0_P_roll.png"),width = 6,height = 5)
+ggplot(data_DS)+
+  geom_point(aes(P_roll,DSD0,col=as.factor(Versuch)))+
+  facet_wrap(~Versuch)
+  #ggsave(paste0(plotpfad_PPchamber,"PPC_DSD0_P_roll.png"),width = 6,height = 5)
+
+cor(data_DS$DSD0,data_DS$PPC5,use="complete.obs")
+cor(data_DS$DSD0,data_DS$P_roll,use="complete.obs")
+
 ggplot(data_depth1)+geom_point(aes(date,DSD0,col=step))+facet_wrap(~Versuch,scales="free")
 
-ggplot(subset(data_merge,!is.na(step)&tiefe == 1))+
+ggplot(subset(data_DS,P_roll > -2 & P_roll < 2))+
   geom_point(aes(DSD0,P_roll,col=PPC5))#+
 #ylim(c(-1,1))
 #  facet_wrap(~Versuch)

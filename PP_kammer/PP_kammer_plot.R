@@ -25,10 +25,10 @@ pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
-i <- nrow(pp_chamber)
-#i <- 30
+Versuch <- nrow(pp_chamber)
+Versuch <- 6
 #for(i in 1:nrow(pp_chamber)){
-datelim <- c(pp_chamber$Start[i]-3600*24*1,pp_chamber$Ende[i]+3600*24*1)
+datelim <- c(pp_chamber$Start[Versuch]-3600*24*1,pp_chamber$Ende[Versuch]+3600*24*1)
 plot <-  T
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
 #datelim <- ymd_hm("2022.05.02 00:00","2022.05.02 01:20")
@@ -54,16 +54,16 @@ data_probe1u2[daterange_id(data_probe1u2,wechsel_date),paste0("CO2_smp",1:2)] <-
 
 plot_ls[["probe1"]] <- ggplot(data_probe1u2)+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
   #geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
   geom_line(aes(date,CO2_smp1,col=as.factor(-tiefe)))+
   scale_fill_manual(values = "black")+
   coord_cartesian(xlim=datelim)+
   guides(fill=F)+
-  labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",title=pp_chamber$Bemerkung[i],subtitle = "probe 1")
+  labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",title=pp_chamber$Bemerkung[Versuch],subtitle = "probe 1")
 plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
   geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe)))+
   #geom_line(aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
   scale_fill_manual(values = "black")+
@@ -78,8 +78,8 @@ if(exists("flux")){
   rm(flux_data)
 }
 
-gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[i])
-flux_ls <- chamber_arduino(datelim=datelim,gga_data = gga_data_T,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=4,gga=pp_chamber$GGA_kammermessung[i])
+gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[Versuch])
+flux_ls <- chamber_arduino(datelim=datelim,gga_data = gga_data_T,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=4,gga=pp_chamber$GGA_kammermessung[Versuch])
 flux <- flux_ls[[1]]
 flux_data <- flux_ls[[2]]
 
@@ -96,7 +96,7 @@ if(!is.null(flux)){
     geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"),alpha=0.5)+
     geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,3,fill=NA),col="Dynament"),lwd=1)+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
     scale_fill_grey()+
     guides(fill  = F)+
@@ -160,7 +160,7 @@ if(nrow(data_PPC) > 0){
   plot_ls[["PPC"]] <- 
     ggplot(data_PPC)+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,PPC5,col=id))+
     coord_cartesian(xlim=datelim)+
     scale_fill_grey()+
@@ -169,7 +169,7 @@ if(nrow(data_PPC) > 0){
   
   plot_ls[["P_roll"]] <- ggplot(subset(data_PPC,id %in% 1:4) )+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,P_roll,col=id),alpha=0.5, linetype=2)+
     coord_cartesian(xlim=datelim)+
     scale_fill_grey()+
@@ -208,7 +208,7 @@ if(!is.null(flux_data)){
 #   
 # }
 if(plot){
-  png(paste0(plotpfad_PPchamber,"PP_Versuch",i,".png"),width = 9,height = 10,units = "in",res=300)
+  png(paste0(plotpfad_PPchamber,"PP_Versuch",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
 }
 egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
 
@@ -218,10 +218,32 @@ if(plot){
 #}
 
 
-plot_ls[["flux"]] <- ggplot(flux)+
+CO2_GGA_flux <- ggplot(flux)+
     geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="GGA"))+
-  geom_line(aes(date,RcppRoll::roll_mean(CO2_GGA_mumol_per_s_m2,5,fill=NA),col="GGA"))+
+  geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"))+
+  geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"),alpha=0.3)+
+  geom_line(aes(date,RcppRoll::roll_mean(CO2_GGA_mumol_per_s_m2,5,fill=NA),col="CO2"))+
     coord_cartesian(xlim=datelim)+
   labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
     scale_fill_grey()
+
+CH4_GGA_flux <- ggplot(flux)+
+    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_point(aes(date,CH4_mumol_per_s_m2*10^3,col="CH4"))+
+  geom_line(aes(date,(CH4_mumol_per_s_m2*10^3),col="CH4"),alpha=0.3)+
+  geom_line(aes(date,RcppRoll::roll_mean(CH4_mumol_per_s_m2*10^3,5,fill=NA),col="CH4"))+
+    coord_cartesian(xlim=datelim)+
+  labs(x="",y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
+    scale_fill_grey()+
+  guides(fill=F)+
+  scale_color_manual(values = scales::hue_pal()(2)[2])
+
+if(plot & "CH4_R2" %in% names(flux)){
+  png(paste0(plotpfad_PPchamber,"GGA_Versuch",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
+}
+#egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,plot_ls$PPC,ncol=1,heights=c(2,2,1))
+egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,ncol=1)
+
+if(plot & "CH4_R2" %in% names(flux)){
+  dev.off()
+}

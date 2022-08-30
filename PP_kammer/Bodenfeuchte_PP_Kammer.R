@@ -1,4 +1,5 @@
 #pfade definieren
+#rm(list=ls())
 detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
@@ -18,7 +19,8 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr")
 check.packages(packages)
 
-logfile <- paste0(datapfad_bf,"swc_FVAgarten.txt")
+
+logfile <- paste0(datapfad_bf,"swc_FVAgarten.RData")
 swcfile <- paste0(datapfad_PP_Kammer,"swc_long.RData")
 if(file.exists(logfile)){
   load(logfile)
@@ -41,9 +43,8 @@ for(i in seq_along(swc_ls)){
   }
   colnames(swc_ls[[i]])<- c("date",paste0("swc_",c("1a","1b","2a","2b","3")))
 }
-swc_ls[[1]]
+
 swc <- do.call(rbind,swc_ls)
-colnames(swc) 
 
 #swc$date <- ymd_hms(swc$date)
 for(i in 1:2){
