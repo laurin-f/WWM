@@ -23,8 +23,9 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #######################################
 #####################################
 #read probes
-Versuch <- 2
+Versuch <- 1
 overwrite <-  F
+plot <- F
 load(file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 data_all <- data
 names(data_all)
@@ -47,14 +48,7 @@ tracerplt <- ggplot(data)+
   geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))
 #   
 # 
-# data$half_hour <- round_date(data$date,"30 mins")
-# 
-# mod_dates <- sort(unique(data$half_hour[data$inj == 1 & data$half_hour == data$date & !is.na(data$CO2_tracer_drift)]))
-# 
-# data_mod <- data %>%
-#   mutate(date = round_date(date,"30 mins"))%>%
-#   group_by(date,tiefe) %>%
-#   summarise(across(everything(),mean))
+
 
 
 #     
@@ -99,14 +93,22 @@ if(file.exists(file_i) & overwrite == F){
 #                            modelname = "Diffusion_freeSoil_anisotropy_optim_3DS_50runs_injection_rate",
 #                            nruns=50,
 #                            long=T)
+data$half_hour <- round_date(data$date,"30 mins")
 
-# comsol_old<- run_comsol(data=data_mod,
-#                         mod_dates = mod_dates,
-#                         offset_method = "drift",
-#                         overwrite = F,
-#                         read_all = F,
-#                         modelname = "Diffusion_freeSoil_anisotropy_optim_3DS",
-#                         long=T)
+mod_dates <- sort(unique(data$half_hour[data$inj == 1 & data$half_hour == data$date & !is.na(data$CO2_tracer_drift)]))
+
+data_mod <- data %>%
+  mutate(date = round_date(date,"30 mins"))%>%
+  group_by(date,tiefe) %>%
+  summarise(across(everything(),mean))
+
+comsol_old<- run_comsol(data=data_mod,
+                        mod_dates = mod_dates,
+                        offset_method = "drift",
+                        overwrite = F,
+                        read_all = F,
+                        modelname = paste0("Diffusion_freeSoil_anisotropy_optim_",nDS,"DS"),
+                        long=T)
 
 
 
@@ -115,8 +117,8 @@ if(file.exists(file_i) & overwrite == F){
 ###########
 #comsol old and new function vergleich
 #wrong <- comsol$date != comsol$mod_date
-range(subset(comsol,tiefe==2)$DS)
-range(DS_mod$V2)
+range(subset(comsol,tiefe==1)$DS)
+
 comsol$DSD0_min <- comsol_min$DSD0
 comsol$DSD0_max <- comsol_max$DSD0
 DSD0plt <- ggplot(comsol)+
@@ -166,32 +168,6 @@ ggplot(sub_daterange(data,PPC_daterange))+
 
 
 
-# ############
-# #swc
-# datelim <- range(mod_dates)
-# 
-# load(file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))
-# if(as.numeric(difftime(now(),max(klima$date),unit="hours")) > 24){
-#   source("./PP_kammer/klima_dwd.R")
-# }
-# klima_sub <- sub_daterange(klima,datelim)
-# load(file = paste(datapfad_PP_Kammer,"swc_long.RData"))
-# swc_sub <- sub_daterange(swc_long,datelim)
-# if(nrow(swc_sub) > 0){
-#   sec_ax_fac <- 0.7
-#   swc_min <- min(swc_sub$swc,na.rm = T)/1.1
-#   swc_plot <- ggplot(swc_sub)+
-#     geom_ribbon(data=klima_sub,aes(x=date,ymin=swc_min,ymax=P24tot/sec_ax_fac + swc_min),fill="blue",alpha=0.8)+
-#     geom_line(aes(date,swc,col=as.factor(tiefe)))+
-#     xlim(PPC_daterange)+
-#     scale_y_continuous(sec.axis = sec_axis(~(. - swc_min)*sec_ax_fac,name=expression(italic(P)["24h"]*" (mm)")))+
-#     theme(
-#       axis.title.y.right = element_text(color = "blue"),
-#       axis.text.y.right = element_text(color = "blue"),
-#       #axis.text.x = element_blank()
-#     )+
-#     labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
-# }
 
 ####################
 #PP
@@ -200,6 +176,10 @@ ggplot(sub_daterange(data,PPC_daterange))+
 #Metadata
 
 data_PPC <- read_PP(datelim = range(data$date))
+PPC_wide <- read_PP(datelim = PPC_daterange_short,format="wide")
+PPC_wide <- PPC_wide %>% 
+  mutate(dP_horiz_raw = (abs(P_1 - P_2) + abs(P_2 - P_3))/2,
+         dP_horiz = RcppRoll::roll_mean(dP_horiz_raw,10*60,fill=NA))
 
 if(Versuch == 2){
   data_PPC <- subset(data_PPC, id %in% c(1,4))
@@ -239,8 +219,11 @@ if(nrow(data_PPC) > 0){
     xlim(PPC_daterange)+
     labs(x="",y=expression(P["moving average"]~"(Pa)"))#+
   #ylim(c(-10,10))
+dP_horiz_plot <- ggplot(PPC_wide)+
+    xlim(PPC_daterange)+
+  geom_line(aes(date,dP_horiz))
 }
-data_PPC <- sub_daterange(data_PPC,PPC_daterange)
+#data_PPC <- sub_daterange(data_PPC,PPC_daterange)
 # step_thr <- 0.05
 # PPC_steps <- data_PPC %>% 
 #   filter(id != "outside") %>% 
@@ -278,6 +261,7 @@ data_PPC <- sub_daterange(data_PPC,PPC_daterange)
 ####################################
 #merge comsol output with PPC
 data_merge <- merge(comsol,data_PPC[data_PPC$id == 1,],all.x = T)
+data_merge <- merge(data_merge,PPC_wide[,c("date","dP_horiz")],all.x = T)
 #data_merge <- merge(comsol,data_PPC[data_PPC$id == 1,],all.x = T)
 
 
@@ -288,7 +272,7 @@ for(i in seq_along(step_date)){
   data_merge$step[id] <- i
   
 }
-
+if(plot){
 titles <- c("2D PP - Über-Unterdruck",
             "2D PP",
             "1D PP",
@@ -297,7 +281,7 @@ titles <- c("2D PP - Über-Unterdruck",
             "2D PP - 2D PP",
             "1D PP",
             "1D PP - 2D PP")
-names(comsol)
+
 DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
   #DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
   geom_ribbon(aes(x=date,ymin=DSD0_min,ymax=DSD0_max,fill=factor(tiefe,levels=1:2,labels=c("0-20",">20"))),alpha=0.2)+
@@ -340,7 +324,9 @@ ggplot(subset(data_merge,!is.na(step)))+
   geom_point(aes(PPC,DSD0,col=as.factor(tiefe)))+
   ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_scatterplot",Versuch,".png"),width=6,height=5)
 
+}
 
+#save(data_merge,file=paste0(datapfad_PP_Kammer,"data_merge_",Versuch,".RData"))
 save(data_merge,file=paste0(datapfad_PP_Kammer,"data_merge_",nDS,"DS_",Versuch,".RData"))
 
 #}
