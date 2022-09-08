@@ -58,8 +58,8 @@ inj$CO2_mol_m2_s <- CO2_mol_per_s/A_inj
 save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 
 
-test <- injection_arduino(datelim=dates_ls[[9]],
-                          plot="timeline",
+test <- injection_arduino(datelim=dates_ls[[10]],
+                          plot="flux",
                           return_ls = T,
                           t_init=2,
                           t_min=1,
@@ -83,4 +83,5 @@ ggplot(subset(inj,Versuch != 1))+
 
 ggplot(subset(inj,Versuch != 1))+
   geom_point(aes(T_C,CO2_ml_per_min,col=factor(Versuch)))+
-  facet_wrap(~Versuch)
+  facet_wrap(~Versuch,scales="free")
+

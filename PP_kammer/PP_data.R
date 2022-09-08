@@ -29,6 +29,7 @@ datelim <- ymd_hms("2022-08-03 15:00:00 UTC", "2022-08-03 17:00:00 UTC")
 datelim <- ymd_hms("2022-08-06 15:00:00 UTC", "2022-08-10 17:00:00 UTC")
 datelim <- ymd_hms("2022-08-10 15:00:00 UTC", "2022-08-11 17:00:00 UTC")
 datelim <- ymd_hms("2022-08-10 13:00:00 UTC", "2022-08-12 15:00:00 UTC")
+datelim <- ymd_hms("2022-08-29 13:00:00 UTC", "2022-09-05 15:00:00 UTC")
 
 data_PPC <- read_PP(datelim = datelim)
 
@@ -44,9 +45,9 @@ data_PPC <- data_PPC %>%
 #range(data_PPC$date)
 
 
-Prollplt <- ggplot(subset(data_PPC,id%in%c(1,2,3,4)))+
+Prollplt <- ggplot(subset(data_PPC,id%in%c(6)))+
   #xlim(ymd_hms("2022-07-12 14:58:00 UTC", "2022-07-12 16:30:00 UTC"))+
-  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
   geom_line(aes(date,P_roll,col=factor(id)))+
   geom_line(data=subset(data_PPC,id%in%c(5)),aes(date,P_roll,linetype=""))+
   labs(col="id",linetype="outside")+
@@ -64,29 +65,34 @@ wsplt <- ggplot(klima_sub)+
   labs(x="",y="windspeed (m/s)")+
   xlim(range(data_PPC$date))
 
-tplt <- ggplot()+
-  geom_line(data=flux_data,aes(date,T_C,col="T"))
 
 flux_ls <- chamber_arduino(datelim=datelim,gga_data = F,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=4,gga=pp_chamber$GGA_kammermessung[i])
 flux <- flux_ls[[1]]
 flux_data <- flux_ls[[2]]
 
-PPCplt <- ggplot(subset(data_PPC,id%in%c(1,2,3,4)))+
+tplt <- ggplot()+
+  geom_line(data=flux_data,aes(date,T_C,col="T"))
+
+PPCplt <- ggplot(subset(data_PPC,id%in%c(6)))+
   #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
-  geom_line(aes(date,PPC5,col=as.factor(id)))+
+  geom_line(aes(date,PPC,col=as.factor(id)))+
   guides(col=F)
 #  geom_vline(xintercept = ymd_hm("2022.07.28 09:20"))
 data_ws_ppc <- merge(klima_sub,subset(data_PPC,id==6))
 PPCatmplt <- ggplot(data_ws_ppc)+
   #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
   geom_line(aes(date,PPC,col=as.factor(id)))+
-  guides(col=F)
+  guides(col=F)+
+  xlim(range(data_PPC$date))
 #  geom_vline(xintercept = ymd_hm("2022.07.28 09:20"))
 
 P_roll_atm <- ggplot(data_ws_ppc)+
   #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
-  geom_line(aes(date,P_roll,col=as.factor(id)))
+  geom_line(aes(date,P_roll,col=as.factor(id)))+
+  xlim(range(data_PPC$date))
 egg::ggarrange(wsplt,PPCatmplt,P_roll_atm)
+ggplot(data_ws_ppc)+
+  geom_point(aes(wind,PPC))
 ggplot(data_ws_ppc)+
   geom_point(aes(wind,PPC5))
 ggplot(subset(data_PPC,id%in%c(1,2,3,4,5,6)))+

@@ -27,7 +27,7 @@ pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 Versuch <- nrow(pp_chamber)
 Versuch <- 6
-#for(i in 1:nrow(pp_chamber)){
+for(Versuch in 20:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[Versuch]-3600*24*1,pp_chamber$Ende[Versuch]+3600*24*1)
 plot <-  T
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
@@ -215,7 +215,7 @@ egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
 if(plot){
   dev.off()
 }
-#}
+}
 
 
 CO2_GGA_flux <- ggplot(flux)+
