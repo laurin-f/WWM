@@ -46,6 +46,7 @@ data_merge <- data_merge %>%
     P_roll_int = imputeTS::na_interpolation(P_roll),
     Proll_meanr12 = RcppRoll::roll_meanr(P_roll_int,12,fill=NA),
     Proll_maxr6 = RcppRoll::roll_maxr(abs(P_roll_int),6,fill=NA),
+    Proll_meanr6 = RcppRoll::roll_meanr((P_roll_int),6,fill=NA),
     Proll_maxr6 = ifelse(is.na(P_roll),NA,Proll_maxr6),
     PPC_meanr12 = RcppRoll::roll_meanr(PPC5_int,12,fill=NA),
     PPC_meanr6 = RcppRoll::roll_meanr(PPC5_int,6,fill=NA),
@@ -122,7 +123,7 @@ data_DS_swc <- merge(data_merge,swc_sub,all.x = T)
 
 data_DS2 <- subset(data_DS_swc,P_roll > -1 & P_roll < 1)
 
-data_DS3 <- subset(data_DS_swc,Proll_maxr6 > -1.5 & Proll_maxr6 < 1.5)
+data_DS3 <- subset(data_DS_swc, Proll_maxr6 < 1.5)
 # ggplot(subset(data_merge))+
 #   geom_line(aes(date,PPC5))+
 #   geom_line(aes(date,PPC_meanr12),col=2)+
@@ -208,7 +209,6 @@ ggplot(subset(data_merge,Versuch %in% Versuche_auswahl & !is.na(PPC5)))+
 
 
 
-
 ggplot(subset(data_DS3,Versuch %in% Versuche_auswahl))+
   geom_smooth(aes(PPC_meanr6,DSD0),formula=(y~exp(x)),method="glm",col=1,lwd=0.7,linetype=2)+
   geom_point(aes(PPC_meanr6,DSD0,col=swc_14))+
@@ -276,3 +276,52 @@ ggplot(data_t1)+
   facet_wrap(~Versuch,scales = "free",ncol=1)
 
 geom_point(aes(DSD0,DSD0_pred,col=P_roll))
+
+
+##############################
+#P_roll Versuch
+
+
+P_roll_data <- subset(data_merge,Versuch == 1.2)
+P_roll_data$P_roll_offset <- c(NA,P_roll_data$P_roll_int[-nrow(P_roll_data)])
+P_roll_data$Proll_meanr3 <- RcppRoll::roll_meanr((P_roll_data$P_roll_int),3,fill=NA)
+P_roll_data$Proll_meanr3 <- imputeTS::na_interpolation(P_roll_data$Proll_meanr3)
+#P_roll_data_2 <- subset(P_roll_data, Proll_maxr6 < 2.5)
+P_roll_data_2 <- subset(P_roll_data, Proll_meanr3 < 1 & Proll_meanr3 > -2.5)
+
+fm_Proll <- glm(DSD0 ~ Proll_meanr3,data=P_roll_data)
+fm_Proll_2 <- glm(DSD0 ~ Proll_meanr3,data=P_roll_data_2)
+R2_Proll <- 1- fm_Proll$deviance/fm_Proll$null.deviance
+R2_Proll_2 <- 1- fm_Proll_2$deviance/fm_Proll_2$null.deviance
+R2_Proll
+R2_Proll_2
+fm_Proll$coefficients
+fm_Proll_2$coefficients
+ggplot(P_roll_data)+
+  geom_hline(yintercept = 0,col="grey",linetype=1)+
+  geom_hline(yintercept = c(2,1,-1,-2),col="grey",linetype=2)+
+  #geom_line(aes(date,Proll_meanr6))+
+  geom_point(aes(date,P_roll_int))+
+  geom_point(aes(date,Proll_meanr3),col="grey")+
+  #geom_point(aes(date,Proll_meanr6),col="blue")+
+  geom_point(aes(date,Proll_maxr6),col="blue")+
+#  geom_point(aes(date,P_roll_offset),col="grey")+
+  geom_line(aes(date,DSD0*10),col=2)+
+  geom_point(aes(date,DSD0*10),col=2)
+
+ggplot(P_roll_data)+
+  geom_smooth(aes(Proll_meanr3,DSD0),method="glm")+
+  geom_point(aes(Proll_meanr3,DSD0))+
+  geom_smooth(data=P_roll_data_2,aes(Proll_meanr3,DSD0,col="sub"),method = "glm")+
+  geom_point(data=P_roll_data_2,aes(Proll_meanr3,DSD0,col="sub"))
+
+ggplot(P_roll_data)+
+  geom_smooth(aes(P_roll,DSD0),method="glm")+
+  geom_point(aes(P_roll,DSD0))+
+  geom_smooth(data=subset(P_roll_data, Proll_maxr6 < 2.5),aes(P_roll,DSD0,col="sub"),method = "glm")+
+  geom_point(data=subset(P_roll_data, Proll_maxr6 < 2.5),aes(P_roll,DSD0,col="sub"))
+
+ggplot(subset(P_roll_data, Proll_maxr6 < 2.5))+
+  geom_point(aes(P_roll,DSD0))
+ggplot(P_roll_data_2)+
+  geom_point(aes(P_roll,DSD0))

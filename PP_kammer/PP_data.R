@@ -4,13 +4,15 @@ hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<- paste0(hauptpfad,"Daten/Metadaten/")
 metapfad_PP <- paste0(metapfad,"PP_Kammer/")
 datapfad_PP_Kammer <- paste0(hauptpfad,"Daten/aufbereiteteDaten/PP_Kammer/") 
+datapfad_bf<- paste0(hauptpfad,"Daten/Urdaten/Bodenfeuchte_FVA_Garten/")
 #Packages laden
 library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr","svMisc")
 check.packages(packages)
 ##########################################################
 ###########################################################
-
+ws_data <- read.csv(paste0(datapfad_bf,"jaegerbrunnen_sub.csv"))
+ws_data$date <- ymd_hms(ws_data$time)
 
 datelim <- ymd_hms("2022-06-28 16:00:00 UTC", "2022-07-01 12:00:00 UTC")
 datelim <- ymd_hms("2022-07-05 10:00:00 UTC", "2022-07-05 14:00:00 UTC")
@@ -59,9 +61,11 @@ load(file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))
 if(as.numeric(difftime(now(),max(klima$date),unit="hours")) > 24){
   source("./PP_kammer/klima_dwd.R")
 }
+ws_sub <- sub_daterange(ws_data,datelim)
 klima_sub <- sub_daterange(klima,datelim)
-wsplt <- ggplot(klima_sub)+
-  geom_line(aes(date,wind,col="WS"))+
+wsplt <- ggplot(ws_sub)+
+  geom_line(aes(date,wind_ms,col="WS"),alpha=0.3)+
+  geom_line(aes(date,RcppRoll::roll_mean(wind_ms,10,fill=NA),col="WS"))+
   labs(x="",y="windspeed (m/s)")+
   xlim(range(data_PPC$date))
 
@@ -78,7 +82,7 @@ PPCplt <- ggplot(subset(data_PPC,id%in%c(6)))+
   geom_line(aes(date,PPC,col=as.factor(id)))+
   guides(col=F)
 #  geom_vline(xintercept = ymd_hm("2022.07.28 09:20"))
-data_ws_ppc <- merge(klima_sub,subset(data_PPC,id==6))
+data_ws_ppc <- merge(ws_sub,subset(data_PPC,id==6))
 PPCatmplt <- ggplot(data_ws_ppc)+
   #xlim(ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-12 15:30:00 UTC"))+
   geom_line(aes(date,PPC,col=as.factor(id)))+
@@ -92,7 +96,8 @@ P_roll_atm <- ggplot(data_ws_ppc)+
   xlim(range(data_PPC$date))
 egg::ggarrange(wsplt,PPCatmplt,P_roll_atm)
 ggplot(data_ws_ppc)+
-  geom_point(aes(wind,PPC))
+#  geom_smooth(aes(wind_ms,PPC),method="glm")+
+  geom_point(aes(wind_ms,PPC))
 ggplot(data_ws_ppc)+
   geom_point(aes(wind,PPC5))
 ggplot(subset(data_PPC,id%in%c(1,2,3,4,5,6)))+
