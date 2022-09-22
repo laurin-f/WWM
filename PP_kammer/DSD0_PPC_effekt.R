@@ -47,11 +47,12 @@ data_merge <- data_merge %>%
     Proll_meanr12 = RcppRoll::roll_meanr(P_roll_int,12,fill=NA),
     Proll_maxr6 = RcppRoll::roll_maxr(abs(P_roll_int),6,fill=NA),
     Proll_meanr6 = RcppRoll::roll_meanr((P_roll_int),6,fill=NA),
-    Proll_maxr6 = ifelse(is.na(P_roll),NA,Proll_maxr6),
+    #Proll_maxr6 = ifelse(is.na(P_roll),NA,Proll_maxr6),
     PPC_meanr12 = RcppRoll::roll_meanr(PPC5_int,12,fill=NA),
     PPC_meanr6 = RcppRoll::roll_meanr(PPC5_int,6,fill=NA),
     PPC_meanr3 = RcppRoll::roll_meanr(PPC5_int,3,fill=NA),
   )
+test <- subset(data_merge,Versuch==1)
 
 for(i in na.omit(unique(data_merge$Versuch))){
   notNAdates <- range(subset(data_merge,Versuch == i & !is.na(P_roll))$date)+(3600*3*c(-1,1))
@@ -282,12 +283,14 @@ geom_point(aes(DSD0,DSD0_pred,col=P_roll))
 #P_roll Versuch
 
 
+devtools::install_github("thomasp85/ggforce", ref = '4008a2e')
 P_roll_data <- subset(data_merge,Versuch == 1.2)
+
 P_roll_data$P_roll_offset <- c(NA,P_roll_data$P_roll_int[-nrow(P_roll_data)])
 P_roll_data$Proll_meanr3 <- RcppRoll::roll_meanr((P_roll_data$P_roll_int),3,fill=NA)
 P_roll_data$Proll_meanr3 <- imputeTS::na_interpolation(P_roll_data$Proll_meanr3)
-#P_roll_data_2 <- subset(P_roll_data, Proll_maxr6 < 2.5)
-P_roll_data_2 <- subset(P_roll_data, Proll_meanr3 < 1 & Proll_meanr3 > -2.5)
+P_roll_data_2 <- subset(P_roll_data, Proll_maxr6 < 2.5)
+#P_roll_data_2 <- subset(P_roll_data, Proll_meanr3 < 1 & Proll_meanr3 > -2.5)
 
 fm_Proll <- glm(DSD0 ~ Proll_meanr3,data=P_roll_data)
 fm_Proll_2 <- glm(DSD0 ~ Proll_meanr3,data=P_roll_data_2)
@@ -297,23 +300,58 @@ R2_Proll
 R2_Proll_2
 fm_Proll$coefficients
 fm_Proll_2$coefficients
-ggplot(P_roll_data)+
+Proll_plot <- ggplot(P_roll_data)+
   geom_hline(yintercept = 0,col="grey",linetype=1)+
-  geom_hline(yintercept = c(2,1,-1,-2),col="grey",linetype=2)+
+  geom_hline(yintercept = c(2.5,-2.5),col="grey",linetype=2)+
   #geom_line(aes(date,Proll_meanr6))+
-  geom_point(aes(date,P_roll_int))+
-  geom_point(aes(date,Proll_meanr3),col="grey")+
+  geom_point(data=P_roll_data_2,aes(date,P_roll_int))+
+  geom_line(aes(date,P_roll_int))+
+#  geom_point(aes(date,Proll_meanr3),col="grey")+
   #geom_point(aes(date,Proll_meanr6),col="blue")+
-  geom_point(aes(date,Proll_maxr6),col="blue")+
+  geom_ribbon(aes(date,ymax=Proll_maxr6,ymin=P_roll_int),alpha=0.2)+
 #  geom_point(aes(date,P_roll_offset),col="grey")+
+  
+  scale_y_continuous(sec.axis = sec_axis(~./10,name=expression(D[S]/D[0])))+ 
+  theme_bw()+
+  theme(
+    axis.title.y.right = element_text(color = "red"),
+    axis.text.y.right = element_text(color = "red")
+  )+
+  labs(y=expression(P["moving average"]~"(Pa)"),x="")+
   geom_line(aes(date,DSD0*10),col=2)+
-  geom_point(aes(date,DSD0*10),col=2)
+  geom_point(data=P_roll_data_2,aes(date,DSD0*10),col=2)
 
-ggplot(P_roll_data)+
-  geom_smooth(aes(Proll_meanr3,DSD0),method="glm")+
-  geom_point(aes(Proll_meanr3,DSD0))+
-  geom_smooth(data=P_roll_data_2,aes(Proll_meanr3,DSD0,col="sub"),method = "glm")+
-  geom_point(data=P_roll_data_2,aes(Proll_meanr3,DSD0,col="sub"))
+# P_roll_scatter <- 
+#   ggplot(P_roll_data)+
+#   geom_smooth(aes(P_roll_int,DSD0),col=1,linetype=2,lwd=.7,method="glm")+
+#   geom_point(aes(P_roll_int,DSD0))+
+#   geom_smooth(data=P_roll_data_2,aes(P_roll,DSD0,col=""),method = "glm")+
+#   geom_point(data=P_roll_data_2,aes(P_roll,DSD0,col=""),alpha=0.7)+
+#   labs(y=expression(D[S]/D[0]),x=expression(P["moving average"]~"(Pa)"),col="subset")+
+#   theme_bw()
+P_roll_scatter_zoom <- 
+  ggplot(P_roll_data)+
+  geom_smooth(aes(P_roll_int,DSD0),col=1,linetype=2,lwd=.7,method="glm")+
+  geom_point(aes(P_roll_int,DSD0))+
+  #geom_smooth(data=P_roll_data_2,aes(P_roll,DSD0,col=""),method = "glm")+
+  geom_point(data=P_roll_data_2,aes(P_roll,DSD0,col=""),alpha=0.7)+
+  ggforce::facet_zoom(Proll_maxr6 < 2.5,ylim=range(P_roll_data_2$DSD0),zoom.size = 0.8)+
+  labs(y=expression(D[S]/D[0]),x=expression(P["moving average"]~"(Pa)"),col="subset")+
+  theme_bw()
+#P_roll_scatter_zoom <- 
+  ggplot(P_roll_data)+
+  geom_smooth(data=P_roll_data_2,aes(P_roll,DSD0,col=""),method = "glm")+
+  geom_point(data=P_roll_data_2,aes(P_roll,DSD0,col=""))+
+  labs(y=expression(D[S]/D[0]),x=expression(P["moving average"]~"(Pa)"),col="subset")
+#scatters <- egg::ggarrange(P_roll_scatter,P_roll_scatter_zoom,widths = c(2,1))
+
+#egg::ggarrange(Proll_plot,P_roll_scatter,ncol = 2,widths = c(3,1))
+# png(paste0(plotpfad_PPchamber,"P_roll_Versuch.png"),width = 7,height=3,units = "in",res=300)
+# egg::ggarrange(Proll_plot,P_roll_scatter,widths = c(3,1))
+# dev.off()
+png(paste0(plotpfad_PPchamber,"P_roll_Versuch_zoom.png"),width = 7,height=6,units = "in",res=300)
+egg::ggarrange(Proll_plot,P_roll_scatter_zoom,ncol = 1)
+dev.off()
 
 ggplot(P_roll_data)+
   geom_smooth(aes(P_roll,DSD0),method="glm")+

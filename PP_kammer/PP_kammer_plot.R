@@ -26,7 +26,7 @@ pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 6
+Versuch <- 1
 for(Versuch in 20:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[Versuch]-3600*24*1,pp_chamber$Ende[Versuch]+3600*24*1)
 plot <-  T

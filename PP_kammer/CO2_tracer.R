@@ -135,14 +135,14 @@ save(data,data_uncert,file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 #########################
 #plots
 
-Versuch_x <- 9
+Versuch_x <- 10
 #####################
 #CO2 inj un refadj plot
 ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
   geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
   geom_line(aes(date,CO2_refadj,col=as.factor(tiefe),linetype="ref adj"))+
-  geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))+
-  geom_vline(xintercept = ymd_h("2022.06.26 10","2022.06.27 17","2022.07.01 20","2022.07.02 10","2022.07.02 22","2022.07.03 10"))
+  geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))#+
+#  geom_vline(xintercept = ymd_h("2022.06.26 10","2022.06.27 17","2022.07.01 20","2022.07.02 10","2022.07.02 22","2022.07.03 10"))
 #  facet_wrap(~Versuch,scales = "free_x",ncol=1)
 
 #####################
