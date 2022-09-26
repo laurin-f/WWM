@@ -26,7 +26,7 @@ if(file.exists(logfile)){
   load(logfile)
   files_old <- files
 }
-files <- list.files(datapfad_bf,pattern = "22-\\d{4}.xls$",full.names = T)
+files <- list.files(datapfad_bf,pattern = "2\\d-\\d{4}.xls$",full.names = T)
 if(exists("files_old")){
   files_new <- files[!files %in% files_old]
 }else{

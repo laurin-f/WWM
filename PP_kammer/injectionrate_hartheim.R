@@ -58,13 +58,14 @@ inj$CO2_mol_m2_s <- CO2_mol_per_s/A_inj
 save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates_hartheim.RData"))
 
 
-test <- injection_arduino(datelim=dates_ls[[10]],
-                          plot="flux",
+test <- injection_arduino(datelim=dates_ls[[2]],
+                          plot="timeline",
                           return_ls = T,
                           t_init=2,
                           t_min=1,
                           t_max=4)
-range(test$CO2_ml_per_min)
+
+range(test[[1]]$CO2_ml_per_min)
 range(test[[2]]$date)
 data_test <- test[[2]]
 ggplot(test)+
