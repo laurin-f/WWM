@@ -23,13 +23,13 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
 #######################################
 #####################################
 #read probes
-Versuch <- 5
+Versuch <- 8
 overwrite <-  F
 plot <- T
 load(file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 data_all <- data
 
-for(Versuch in 1:8){
+#for(Versuch in 1:8){
 
 data <- data_all[data_all$Versuch == Versuch & !is.na(data_all$Versuch),]
 data_uncert_sub <- data_uncert[data_uncert$Versuch == Versuch & !is.na(data_uncert$Versuch),] %>% 
@@ -42,7 +42,7 @@ data_uncert_sub <- data_uncert[data_uncert$Versuch == Versuch & !is.na(data_unce
 data <- data %>% 
   group_by(tiefe) %>% 
   #filter(tiefe > -21) %>% 
-  mutate(CO2_tracer_roll = RcppRoll::roll_mean(CO2_tracer_drift,10,fill=NA),
+  mutate(CO2_tracer_roll = RcppRoll::roll_mean(CO2_tracer_drift,5,fill=NA),
          inj_meanr6 = RcppRoll::roll_meanr(inj_mol_m2_s,6*6,fill=NA),
          inj_meanr12 = RcppRoll::roll_meanr(inj_mol_m2_s,12*6,fill=NA),
          )
@@ -51,10 +51,15 @@ data <- data %>%
 #   geom_line(aes(date,inj_mol_m2_s,col=""))+
 #   geom_line(aes(date,inj_meanr12,col="meanr12"))+
 #   geom_line(aes(date,inj_meanr6,col="meanr6"))
+CO2_plot <- 
+  ggplot(data)+
+  geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(-tiefe)),alpha=0.2)+
+  geom_line(aes(date,CO2_refadj,col=as.factor(-tiefe),linetype="ref adj"))+
+  geom_line(aes(date,CO2_inj,col=as.factor(-tiefe),linetype="inj"))+
+  theme(axis.title.x = element_blank())+
+  labs(y=expression(CO[2]~(ppm)),linetype="profile",col="depth (cm)",fill="depth (cm)")
 
-tracerplt <- ggplot(data)+
-  #  geom_line(aes(date,CO2_tracer_roll,col=as.factor(tiefe)))+
-  geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))
+
  # ggplot(data_uncert_sub)+
  #   geom_ribbon(aes(date,ymax=CO2_tracer_max,ymin=ifelse(CO2_tracer_min > 0,CO2_tracer_min,0),fill=as.factor(tiefe)),alpha=0.2)+
  #  geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))
@@ -68,8 +73,8 @@ tracerplt <- ggplot(data)+
 ## COMSOL
 ##########################################
 
-nDS <- 2
-file_suffix <- "_40cm"
+nDS <- 1
+file_suffix <- ""
 #file_suffix <- ""
 file_i <- paste0(datapfad_PP_Kammer,"DSD0_comsol_",nDS,"DS_",Versuch,file_suffix,".RData")
 if(file.exists(file_i) & overwrite == F){
@@ -117,9 +122,15 @@ range(subset(comsol,tiefe==1)$DS)
 
 comsol$DSD0_min <- comsol_min$DSD0
 comsol$DSD0_max <- comsol_max$DSD0
+datelim_Versuch8 <- ymd_h("22.08.10 12","22.08.12 14")
+if(Versuch == 8){
+  comsol <- sub_daterange(comsol,datelim_Versuch8)
+}
 DSD0plt <- ggplot(comsol)+
   geom_ribbon(aes(x=date,ymin=DSD0_min,ymax=DSD0_max,fill=as.factor(tiefe)),alpha=0.3)+
-  geom_line(aes(date,DSD0,col=as.factor(tiefe)))
+  geom_line(aes(date,DSD0,col=as.factor(tiefe)))+
+  guides(col=F,fill=F)+
+  labs(y=expression(D[S]/D[0]))
   #  geom_line(aes(date,DSD0_min,col=as.factor(tiefe)),linetype=2)+
   #  geom_line(aes(date,DSD0_max,col=as.factor(tiefe)),linetype=2)+
 #  geom_vline(xintercept = step_date,linetype=2,alpha=0.2)
@@ -138,18 +149,39 @@ pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 pp_chamber_sub <- sub_daterange(pp_chamber[,c("Start","Ende","step_hours","start_offset","Modus")],range(data$date),"Start")
 
-step_date_ls <- list()
-for(i in 1:nrow(pp_chamber_sub)){
-  if(is.na(pp_chamber_sub$step_hours[i])){
-    step_date_ls[[i]] <- c(pp_chamber_sub$Start[i],pp_chamber_sub$Ende[i])
-  }else{
-    step_date_ls[[i]] <- c(seq(pp_chamber_sub$Start[i],pp_chamber_sub$Ende[i],by=pp_chamber_sub$step_hours[i]*3600),pp_chamber_sub$Ende[i])
-  }
-  id_i <- c(1,length(step_date_ls[[i]]))
-  step_date_ls[[i]][-id_i] <- step_date_ls[[i]][-id_i] - pp_chamber_sub$start_offset[i]*60
-}
-step_date <- do.call(c,step_date_ls)
+# step_date_ls <- list()
+# for(i in 1:nrow(pp_chamber_sub)){
+#   if(is.na(pp_chamber_sub$step_hours[i])){
+#     step_date_ls[[i]] <- c(pp_chamber_sub$Start[i],pp_chamber_sub$Ende[i])
+#   }else{
+#     step_date_ls[[i]] <- c(seq(pp_chamber_sub$Start[i],pp_chamber_sub$Ende[i],by=pp_chamber_sub$step_hours[i]*3600),pp_chamber_sub$Ende[i])
+#   }
+#   id_i <- c(1,length(step_date_ls[[i]]))
+#   step_date_ls[[i]][-id_i] <- step_date_ls[[i]][-id_i] - pp_chamber_sub$start_offset[i]*60
+# }
+# step_date <- do.call(c,step_date_ls)
+step_thr <- 0.05
+PPC_steps <- data_PPC %>%
+  filter(id %in% 1:4) %>%
+  mutate(date = round_date(date,"10 min")) %>%
+  group_by(id,date) %>%
+  summarise(across(everything(),mean)) %>%
+  mutate(PPC_diff = abs(c(NA,diff(PPC5))),
+         step = ifelse(PPC_diff > step_thr,1,0))
 
+
+step_date <- unique(PPC_steps$date[PPC_steps$step == 1])
+step_date <- sort(step_date)
+step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
+step_date <- step_date[!is.na(step_date)]
+
+if(Versuch == 8){
+modes_df <- data.frame(start = step_date[c(1,5)], stop = step_date[c(4,8)],mode = c("1D","2D"))
+}
+# ggplot(PPC_steps)+
+#   geom_line(aes(date,PPC_diff))+
+#   geom_line(aes(date,PPC))+
+#   geom_vline(xintercept = step_date,linetype=2,alpha=0.2)
 #PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2)
 
 PPC_daterange_short <-range(ymd_hms(t(pp_chamber_sub[,c("Start","Ende")])))+3600*1*c(-1,1)
@@ -205,10 +237,11 @@ PPC_daterange <-range(ymd_hms(t(pp_chamber_sub[,c("Start","Ende")])))+3600*10*c(
 
 #####################
 #CO2 inj un refadj plot
-ggplot(sub_daterange(data,PPC_daterange))+
-  geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
-  geom_line(aes(date,CO2_refadj,col=as.factor(tiefe)))+
-  geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))
+# ggplot(sub_daterange(data,PPC_daterange))+
+#   geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
+#   geom_line(aes(date,CO2_refadj,col=as.factor(tiefe)))+
+#   geom_line(aes(date,CO2_inj,col=as.factor(tiefe)))
+# 
 
 
 
@@ -248,14 +281,15 @@ if(nrow(data_PPC) > 0){
   
   data_PPC <- sub_daterange(data_PPC,PPC_daterange_short)
   
-  
+  subset(data_PPC,date %in% round_date(date,"mins"))
   PP_plot <- 
-    ggplot(subset(data_PPC,id != "outside"))+
+    ggplot(subset(data_PPC,date %in% round_date(date,"mins") & id == 1))+
+    geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
     #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     #geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_line(aes(date,PPC5,col=id))+
+    geom_line(aes(date,RcppRoll::roll_mean(PPC5,15,fill = NA)))+
     xlim(PPC_daterange)+
-    scale_fill_grey()+
+    #scale_fill_grey()+
     guides(fill=F)+
     labs(x="",y="PPC (Pa/s)")
   
@@ -340,14 +374,27 @@ titles <- c("2D PP - Über-Unterdruck",
             "1D PP",
             "1D PP - 2D PP")
 
-DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
+
+tracerplt <- ggplot(subset(data,tiefe != 0))+
+  #  geom_line(aes(date,CO2_tracer_roll,col=as.factor(tiefe)))+
+  geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
+  geom_line(aes(date,(CO2_tracer_roll),col=as.factor(-tiefe)))+
+  theme(axis.title.x = element_blank())+
+  labs(y=expression("tracer CO"[2]~(ppm)),col="depth (cm)")
+
+DSD0_plt <- 
+  ggplot(sub_daterange(comsol,PPC_daterange))+
+  geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
+  #geom_rect(aes(fill="2D"),xmin=step_date[5],xmax= step_date[8],ymin=-Inf,ymax=Inf,alpha=0.1)+
   #DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
-  geom_ribbon(aes(x=date,ymin=DSD0_min,ymax=DSD0_max,fill=factor(tiefe,levels=1:2,labels=c("0-20",">20"))),alpha=0.2)+
-  geom_line(aes(date,DSD0,col=factor(tiefe,levels=1:2,labels=c("0-20",">20"))))+
+  geom_ribbon(aes(x=date,ymin=DSD0_min,ymax=DSD0_max),alpha=0.2)+#,fill=factor(tiefe,levels=1:2,labels=c("0-20",">20"))),alpha=0.2)+
+  geom_line(aes(date,DSD0))+#,col=factor(tiefe,levels=1:2,labels=c("0-20",">20"))))+
   #geom_line(aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
   xlim(PPC_daterange)+
-  geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:2,labels=c("0-20",">20"))))+
+  #geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:2,labels=c("0-20",">20"))))+
   #geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
+  guides(col=F)+
+  theme(axis.title.x = element_blank())+
   labs(y=expression(D[S]/D[0]),col="tiefenstufe",fill="tiefenstufe")
 
 # tracer_plt <- ggplot(sub_daterange(data,PPC_daterange))+
@@ -366,14 +413,16 @@ DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
 #                   P_roll_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
 #                   #swc_plot,
 #                   heights = c(2,1,1,1),ncol=1,align = "v")
-
-ggpubr::ggarrange(tracerplt+labs(title=titles[Versuch])+
+range(comsol$date)
+ggpubr::ggarrange(tracerplt+#labs(title=titles[Versuch])+
                     xlim(PPC_daterange)+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
+                  #CO2_plot+
+                  #  xlim(PPC_daterange)+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                   DSD0_plt+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                   PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
-                  P_roll_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
+                  #P_roll_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                   #swc_plot,
-                  heights = c(2,2,1,1),ncol=1,align = "v")+
+                  heights = c(2,2,1),ncol=1,common.legend=T,legend = "right",align="v")+
   ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_Sand_timeline_",nDS,"DS_",Versuch,file_suffix,".png"),width=8,height=7)
 
 
@@ -386,6 +435,6 @@ ggpubr::ggarrange(tracerplt+labs(title=titles[Versuch])+
 }
 #save(data_merge,file=paste0(datapfad_PP_Kammer,"data_merge_",Versuch,".RData"))
 save(data_merge,step_date,file=paste0(datapfad_PP_Kammer,"data_merge_",nDS,"DS_",Versuch,file_suffix,".RData"))
-}
+#}
 
 #}

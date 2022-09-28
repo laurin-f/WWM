@@ -44,7 +44,27 @@ ggplot(subset(data_sub_2d,id %in% 1:4 ))+
 t_diff <- 1
 datelim <- c(date_start,date_start + 60)
 
+############
+#png
+data_sub_2d$date <- as.numeric(data_sub_2d$date - min(data_sub_2d$date))
+data_sub_1d$date <- as.numeric(data_sub_1d$date - min(data_sub_1d$date))
 
+range(data_sub_2d$P_filter)
+ggplot(subset(data_sub_2d,id %in% 1:4 ))+
+  geom_line(aes(date,P_filter,col=id))+
+  labs(x = "t (s)", y = "pressure (Pa)", col = "") +
+  scale_x_continuous(breaks = 0:4*30)+
+  theme_grey()+
+  theme(legend.position = "none")+
+  ggsave(paste0(plotpfad_PPchamber,"2D_PP.png"),width=3,height=2)
+
+ggplot(subset(data_sub_1d,id %in% 1:4 ))+
+  geom_line(aes(date,P_filter,col=id))+
+  labs(x = "t (s)", y = "pressure (Pa)", col = "") +
+  scale_x_continuous(breaks = 0:4*30)+
+  theme_grey()+
+  theme(legend.position = "none")+
+  ggsave(paste0(plotpfad_PPchamber,"1D_PP.png"),width=3,height=2)
 
 ############
 #gganimate

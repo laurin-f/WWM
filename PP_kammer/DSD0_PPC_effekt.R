@@ -23,7 +23,7 @@ theme_set(theme_classic())
 Versuche <- list.files(datapfad_PP_Kammer,pattern = "data_merge_\\d.RData")
 data_merge_ls <- list()
 step_date_ls <- list()
-nDS <- 2
+nDS <- 1
 file_suffix <- "_40cm"
 #file_suffix <- ""
 for(i in seq_along(Versuche)){
@@ -46,6 +46,7 @@ data_merge <- data_merge %>%
     P_roll_int = imputeTS::na_interpolation(P_roll),
     Proll_meanr12 = RcppRoll::roll_meanr(P_roll_int,12,fill=NA),
     Proll_maxr6 = RcppRoll::roll_maxr(abs(P_roll_int),6,fill=NA),
+    Proll_maxr6_int = RcppRoll::roll_maxr(abs(P_roll_int),6,fill=NA),
     Proll_meanr6 = RcppRoll::roll_meanr((P_roll_int),6,fill=NA),
     #Proll_maxr6 = ifelse(is.na(P_roll),NA,Proll_maxr6),
     PPC_meanr12 = RcppRoll::roll_meanr(PPC5_int,12,fill=NA),
@@ -53,7 +54,7 @@ data_merge <- data_merge %>%
     PPC_meanr3 = RcppRoll::roll_meanr(PPC5_int,3,fill=NA),
   )
 test <- subset(data_merge,Versuch==1)
-
+data_merge$Proll_maxr6[is.na(data_merge$P_roll)] <- NA
 for(i in na.omit(unique(data_merge$Versuch))){
   notNAdates <- range(subset(data_merge,Versuch == i & !is.na(P_roll))$date)+(3600*3*c(-1,1))
   dateIDs <- daterange_id(data_merge,notNAdates)
@@ -63,10 +64,10 @@ for(i in na.omit(unique(data_merge$Versuch))){
 
 data_probe <- read_sampler(datelim =range(data_merge$date),format="wide")
 
-ggplot(data_merge)+
-  geom_point(aes(date,PPC5_int))+
-  geom_point(aes(date,PPC5,col=as.factor(Versuch)))+
-  facet_wrap(~Versuch,scales = "free_x")
+# ggplot(data_merge)+
+#   geom_point(aes(date,PPC5_int))+
+#   geom_point(aes(date,PPC5,col=as.factor(Versuch)))+
+#   facet_wrap(~Versuch,scales = "free_x")
 data_merge <- merge(data_merge,data_probe,all.x = T)
 
 data_steps <- subset(data_merge, !is.na(step))
@@ -124,7 +125,7 @@ data_DS_swc <- merge(data_merge,swc_sub,all.x = T)
 
 data_DS2 <- subset(data_DS_swc,P_roll > -1 & P_roll < 1)
 
-data_DS3 <- subset(data_DS_swc, Proll_maxr6 < 1.5)
+data_DS3 <- subset(data_DS_swc, Proll_maxr6 < 1.5 & P_roll < 0.5)
 # ggplot(subset(data_merge))+
 #   geom_line(aes(date,PPC5))+
 #   geom_line(aes(date,PPC_meanr12),col=2)+
@@ -135,7 +136,7 @@ data_DS3 <- subset(data_DS_swc, Proll_maxr6 < 1.5)
 #   geom_point(aes(P_roll,DSD0,col=factor(Versuch)))+
 #   facet_wrap(~mode)
 
-Versuche_auswahl <- c(1,2,3,5,6,7,8,9)
+Versuche_auswahl <- c(2,3,5,6,7,8,9)
 
 data_1D <- subset(data_DS2,mode == "1D PP" & Versuch  %in% Versuche_auswahl)
 data_2D <- subset(data_DS2,mode == "2D PP" & Versuch  %in% Versuche_auswahl)
@@ -168,10 +169,16 @@ R2_1D <- 1- fm_1D$deviance/fm_1D$null.deviance
 #   geom_line(aes(date,P_roll))+
 #   facet_wrap(~Versuch,scales="free")
 
+
+   
  
 slope_1D <- round(fm_1D$coefficients[1],2)
 slope_2D <- round(fm_2D$coefficients[1],2)
 data_DS3$mode <- factor(data_DS3$mode,levels=c("1D PP","2D PP"))
+
+################################
+#PPC_DSD0 plot
+
 ggplot(subset(data_DS3,Versuch %in% Versuche_auswahl))+
   geom_smooth(aes(PPC_meanr6,DSD0),formula=(y~exp(x)),method="glm",col=1,lwd=0.7,linetype=2)+
   #geom_smooth(aes(PPC_meanr6,DSD0,col=factor(Versuch,levels=Versuche_auswahl,labels=1:length(Versuche_auswahl))),formula=(y~exp(x)),method="glm",lwd=0.7,linetype=2)+
@@ -192,6 +199,23 @@ ggplot(subset(data_DS3,Versuch %in% Versuche_auswahl))+
   scale_color_brewer(palette = 2,type="qual")+
   theme_bw()+
   ggsave(paste0(plotpfad_PPchamber,"PPC_DSD0_modes",nDS,"DS",file_suffix,".png"),width = 7,height = 4)
+
+###########################################
+#P_roll_plot
+ggplot(subset(data_DS3,Versuch %in% Versuche_auswahl))+
+  geom_point(aes(P_roll,DSD0,col=factor(Versuch)))+
+  #geom_line(aes(date,DSD0,col=factor(Versuch,levels=Versuche_auswahl,labels=1:length(Versuche_auswahl))))+
+  facet_wrap(~mode)+
+  labs(x="PPC (Pa/s)",y=expression(D[eff]/D[0]),col="experiment")+
+  scale_color_brewer(palette = 2,type="qual")+
+  theme_bw()
+
+
+##############################################
+#data_overview
+names(data_merge)
+ggplot(subset(data_merge,Versuch == 7))+
+  geom_line(aes())
 
 ggplot(subset(data_merge,Versuch %in% Versuche_auswahl & !is.na(PPC5)))+
   #geom_vline(data=subset(step_date,Versuch %in% Versuche_auswahl),aes(xintercept=date),linetype=2,alpha=0.2)+
@@ -283,13 +307,13 @@ geom_point(aes(DSD0,DSD0_pred,col=P_roll))
 #P_roll Versuch
 
 
-devtools::install_github("thomasp85/ggforce", ref = '4008a2e')
+#devtools::install_github("thomasp85/ggforce", ref = '4008a2e')
 P_roll_data <- subset(data_merge,Versuch == 1.2)
 
 P_roll_data$P_roll_offset <- c(NA,P_roll_data$P_roll_int[-nrow(P_roll_data)])
 P_roll_data$Proll_meanr3 <- RcppRoll::roll_meanr((P_roll_data$P_roll_int),3,fill=NA)
 P_roll_data$Proll_meanr3 <- imputeTS::na_interpolation(P_roll_data$Proll_meanr3)
-P_roll_data_2 <- subset(P_roll_data, Proll_maxr6 < 2.5)
+P_roll_data_2 <- subset(P_roll_data, Proll_maxr6_int < 2.5)
 #P_roll_data_2 <- subset(P_roll_data, Proll_meanr3 < 1 & Proll_meanr3 > -2.5)
 
 fm_Proll <- glm(DSD0 ~ Proll_meanr3,data=P_roll_data)
@@ -308,16 +332,17 @@ Proll_plot <- ggplot(P_roll_data)+
   geom_line(aes(date,P_roll_int))+
 #  geom_point(aes(date,Proll_meanr3),col="grey")+
   #geom_point(aes(date,Proll_meanr6),col="blue")+
-  geom_ribbon(aes(date,ymax=Proll_maxr6,ymin=P_roll_int),alpha=0.2)+
+  geom_ribbon(aes(date,ymax=Proll_maxr6_int,ymin=P_roll_int),alpha=0.2)+
 #  geom_point(aes(date,P_roll_offset),col="grey")+
   
   scale_y_continuous(sec.axis = sec_axis(~./10,name=expression(D[S]/D[0])))+ 
   theme_bw()+
   theme(
     axis.title.y.right = element_text(color = "red"),
-    axis.text.y.right = element_text(color = "red")
+    axis.text.y.right = element_text(color = "red"),
+    axis.title.x = element_blank()
   )+
-  labs(y=expression(P["moving average"]~"(Pa)"),x="")+
+  labs(y="pressure (Pa)",x="")+
   geom_line(aes(date,DSD0*10),col=2)+
   geom_point(data=P_roll_data_2,aes(date,DSD0*10),col=2)
 
@@ -335,9 +360,10 @@ P_roll_scatter_zoom <-
   geom_point(aes(P_roll_int,DSD0))+
   #geom_smooth(data=P_roll_data_2,aes(P_roll,DSD0,col=""),method = "glm")+
   geom_point(data=P_roll_data_2,aes(P_roll,DSD0,col=""),alpha=0.7)+
-  ggforce::facet_zoom(Proll_maxr6 < 2.5,ylim=range(P_roll_data_2$DSD0),zoom.size = 0.8)+
-  labs(y=expression(D[S]/D[0]),x=expression(P["moving average"]~"(Pa)"),col="subset")+
-  theme_bw()
+  ggforce::facet_zoom(Proll_maxr6_int < 2.5,ylim=range(P_roll_data_2$DSD0),zoom.size = 0.8)+
+  labs(y=expression(D[S]/D[0]),x="pressure (Pa)",col=expression("abs"(P["6h"]) < 2.5 ~ Pa))+
+  theme_bw()+
+  theme(legend.position = "top")
 #P_roll_scatter_zoom <- 
   ggplot(P_roll_data)+
   geom_smooth(data=P_roll_data_2,aes(P_roll,DSD0,col=""),method = "glm")+
@@ -349,17 +375,17 @@ P_roll_scatter_zoom <-
 # png(paste0(plotpfad_PPchamber,"P_roll_Versuch.png"),width = 7,height=3,units = "in",res=300)
 # egg::ggarrange(Proll_plot,P_roll_scatter,widths = c(3,1))
 # dev.off()
-png(paste0(plotpfad_PPchamber,"P_roll_Versuch_zoom.png"),width = 7,height=6,units = "in",res=300)
+png(paste0(plotpfad_PPchamber,"P_roll_Versuch_zoom.png"),width = 7,height=5,units = "in",res=300)
 egg::ggarrange(Proll_plot,P_roll_scatter_zoom,ncol = 1)
 dev.off()
 
 ggplot(P_roll_data)+
   geom_smooth(aes(P_roll,DSD0),method="glm")+
   geom_point(aes(P_roll,DSD0))+
-  geom_smooth(data=subset(P_roll_data, Proll_maxr6 < 2.5),aes(P_roll,DSD0,col="sub"),method = "glm")+
-  geom_point(data=subset(P_roll_data, Proll_maxr6 < 2.5),aes(P_roll,DSD0,col="sub"))
+  geom_smooth(data=subset(P_roll_data, Proll_maxr6_int < 2.5),aes(P_roll,DSD0,col="sub"),method = "glm")+
+  geom_point(data=subset(P_roll_data, Proll_maxr6_int < 2.5),aes(P_roll,DSD0,col="sub"))
 
-ggplot(subset(P_roll_data, Proll_maxr6 < 2.5))+
+ggplot(subset(P_roll_data, Proll_maxr6_int < 2.5))+
   geom_point(aes(P_roll,DSD0))
 ggplot(P_roll_data_2)+
   geom_point(aes(P_roll,DSD0))
