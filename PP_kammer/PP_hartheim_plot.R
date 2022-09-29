@@ -19,6 +19,8 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS")
 check.packages(packages)
 theme_set(theme_classic())
+
+
 ##################
 #Metadata
 pp_chamber <- read_ods(paste0(metapfad_PP,"injektionen_hartheim.ods"))
@@ -116,10 +118,12 @@ Versuch <- 2
   }
   
   gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[Versuch])
-  flux_ls <- chamber_arduino(datelim=datelim,gga_data = F,return_ls = T,t_init=2,plot="",t_offset = 60,t_min=4,gga=pp_chamber$GGA_kammermessung[Versuch])
+  gga <- "gga"
+  #datelim <- ymd_hm("22.09.28 11:20","22.09.28 11:40")
+  flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="",t_offset = -70,t_min=4)
   flux <- flux_ls[[1]]
   flux_data <- flux_ls[[2]]
-  
+  range(flux_data$date)
   
   if(!is.null(flux_data)){
     flux_data$atm <- ifelse(minute(flux_data$date) %% 30 > 5,1,0)
@@ -222,33 +226,54 @@ Versuch <- 2
   }
 #}
 
+if(plot & "CH4_R2" %in% names(flux)){
+flux_gga <- subset(flux,!is.na(CO2_GGA_mumol_per_s_m2))
 
-# CO2_GGA_flux <- ggplot(flux)+
-#   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-#   geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"))+
-#   geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"),alpha=0.3)+
-#   geom_line(aes(date,RcppRoll::roll_mean(CO2_GGA_mumol_per_s_m2,5,fill=NA),col="CO2"))+
-#   coord_cartesian(xlim=datelim)+
-#   labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
-#   scale_fill_grey()
-# 
-# CH4_GGA_flux <- ggplot(flux)+
-#   geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-#   geom_point(aes(date,CH4_mumol_per_s_m2*10^3,col="CH4"))+
-#   geom_line(aes(date,(CH4_mumol_per_s_m2*10^3),col="CH4"),alpha=0.3)+
-#   geom_line(aes(date,RcppRoll::roll_mean(CH4_mumol_per_s_m2*10^3,5,fill=NA),col="CH4"))+
-#   coord_cartesian(xlim=datelim)+
-#   labs(x="",y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
-#   scale_fill_grey()+
-#   guides(fill=F)+
-#   scale_color_manual(values = scales::hue_pal()(2)[2])
-# 
-# if(plot & "CH4_R2" %in% names(flux)){
-#   png(paste0(plotpfad_PPchamber,"GGA_Versuch",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
-# }
-# #egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,plot_ls$PPC,ncol=1,heights=c(2,2,1))
-# egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,ncol=1)
-# 
-# if(plot & "CH4_R2" %in% names(flux)){
-#   dev.off()
-# }
+CO2_GGA_flux <- ggplot(flux_gga)+
+  geom_vline(xintercept = step_date,linetype=2,col="grey")+
+  #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"))+
+  geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"),alpha=0.3)+
+  geom_line(aes(date,RcppRoll::roll_mean(CO2_GGA_mumol_per_s_m2,5,fill=NA),col="CO2"))+
+  #coord_cartesian(xlim=datelim)+
+  labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
+  scale_fill_grey()
+
+CH4_GGA_flux <- ggplot(flux_gga)+
+  geom_vline(xintercept = step_date,linetype=2,col="grey")+
+  #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_point(aes(date,CH4_mumol_per_s_m2*10^3,col="CH4"))+
+  geom_line(aes(date,(CH4_mumol_per_s_m2*10^3),col="CH4"),alpha=0.3)+
+  geom_line(aes(date,RcppRoll::roll_mean(CH4_mumol_per_s_m2*10^3,5,fill=NA),col="CH4"))+
+  #coord_cartesian(xlim=datelim)+
+  labs(x="",y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
+  scale_fill_grey()+
+  guides(fill=F)+
+  scale_color_manual(values = scales::hue_pal()(2)[2])
+
+ppc_plot <- 
+  ggplot(subset(data_PPC,date %in% round_date(date,"mins")))+
+  geom_vline(xintercept = step_date,linetype=2,color="grey")+
+  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_line(aes(date,PPC5,col=id))+
+  xlim(range(flux_gga$date))+
+  scale_fill_grey()+
+  guides(fill=F)+
+  labs(x="",y="PPC (Pa/s)")
+
+  png(paste0(plotpfad_PPchamber,"GGA_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
+egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,ppc_plot,ncol=1)
+#egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,plot_ls$PPC,ncol=1,heights=c(2,2,1))
+
+
+  dev.off()
+
+}
+  names(flux)
+CO2_gga_plot <- ggplot(subset(flux,!is.na(CO2_GGA_mumol_per_s_m2)))+geom_line(aes(date,CO2_GGA_mumol_per_s_m2))+
+  geom_vline(xintercept = step_date,linetype=2,col="grey")
+ 
+CH4_plot <- ggplot(subset(flux,!is.na(CO2_GGA_mumol_per_s_m2)))+geom_line(aes(date,CH4_mumol_per_s_m2))+
+  geom_vline(xintercept = step_date,linetype=2,col="grey")
+egg::ggarrange(CH4_plot,CO2_gga_plot,ppc_plot,ncol=1)

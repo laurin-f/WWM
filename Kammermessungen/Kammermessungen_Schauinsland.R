@@ -14,21 +14,46 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","readxl","egg")
 check.packages(packages)
 
+doku <- readODS::read_ods(paste0(metapfad,"Schauinsland/Schnee_Doku.ods"))
 
-
-flux_schaui <- chamber_flux(5,mess_dir = "Schauinsland",aggregate = F,
+flux <- chamber_flux(1:5,mess_dir = "Schauinsland",aggregate = F,
                             closing_lim=1,
                             opening_lim=0,
                             t_init=1,
                             t_max=4,
                             t_min=2,adj_openings=T,return_data = F)
 
+flux$day <- as.Date(flux$date)
+flux$Versuch <- factor(flux$day,labels = seq_along(unique(flux$day)))
 
-summary(glm(CO2~zeit,data=data))
 
-ggplot(flux_schaui)+
-  geom_point(aes(date,CO2_ppm_per_min,col=kammer))+
-  geom_line(aes(date,CO2_ppm_per_min,col=kammer))
+flux$schnee <- ifelse(grepl("Schnee",flux$kammer),1,0)
+flux$plot <- stringr::str_extract(flux$kammer,"^A|B")
+sub <- subset(flux,Versuch %in% 2:5 )
+
+t.test(sub$CO2_ppm_per_min~sub$schnee)
+t.test(sub$CH4_ppm_per_min~sub$schnee)
+
+ggplot(sub)+
+   geom_boxplot(aes(factor(schnee),CO2_ppm_per_min,fill=factor(schnee)))
+ggplot(sub)+
+   geom_boxplot(aes(factor(schnee),CH4_ppm_per_min,fill=factor(schnee)))
+
+ggplot(sub)+
+   geom_point(aes(date,CO2_ppm_per_min,col=factor(schnee),shape=plot))+
+   geom_line(aes(date,CO2_ppm_per_min,col=factor(schnee),group=kammer))+
+  facet_wrap(~day,scales="free_x")
+ggplot(sub)+
+   geom_point(aes(date,CH4_ppm_per_min,col=factor(schnee),shape=plot))+
+   geom_line(aes(date,CH4_ppm_per_min,col=factor(schnee),group=kammer))+
+  facet_wrap(~day,scales="free_x")
+
+
+ggplot(flux)+
+  geom_point(aes(date,CO2_ppm_per_min,col=factor(kammer)))+
+  geom_line(aes(date,CO2_ppm_per_min,col=factor(kammer)))+
+  facet_wrap(~day,scales="free_x")
+doku$Kommentar
 ggplot(flux_schaui)+
   geom_point(aes(date,CH4_ppm_per_min,col=kammer))+
   geom_line(aes(date,CH4_ppm_per_min,col=kammer))
