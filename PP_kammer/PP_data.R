@@ -14,6 +14,7 @@ check.packages(packages)
 ws_data <- read.csv(paste0(datapfad_bf,"jaegerbrunnen_sub.csv"))
 ws_data$date <- ymd_hms(ws_data$time)
 
+datelim <- ymd_hms("2022-04-27 13:45:00 UTC", "2022-04-27 14:10:00 UTC")
 datelim <- ymd_hms("2022-06-28 16:00:00 UTC", "2022-07-01 12:00:00 UTC")
 datelim <- ymd_hms("2022-07-05 10:00:00 UTC", "2022-07-05 14:00:00 UTC")
 datelim <- ymd_hms("2022-07-12 10:00:00 UTC", "2022-07-13 14:00:00 UTC")
@@ -34,14 +35,15 @@ datelim <- ymd_hms("2022-08-10 13:00:00 UTC", "2022-08-12 15:00:00 UTC")
 datelim <- ymd_hms("2022-08-29 13:00:00 UTC", "2022-09-05 15:00:00 UTC")
 datelim <- ymd_hms("2022-09-16 10:00:00 UTC", "2022-09-22 15:00:00 UTC")
 datelim <- ymd_hms("2022-09-21 00:00:00 UTC", "2022-09-21 18:00:00 UTC")
+datelim <- ymd_hms("2022-09-30 08:00:00 UTC", "2022-09-30 09:20:00 UTC")
 
 data_probe <- read_sampler(datelim=datelim)
 
-names(data_probe)
-ggplot(data_probe)+
-  geom_line(aes(date,CO2_smp1,col=as.factor(tiefe)))
-ggplot(data_probe)+
-  geom_line(aes(date,CO2_smp2,col=as.factor(tiefe)))
+# names(data_probe)
+# ggplot(data_probe)+
+#   geom_line(aes(date,CO2_smp1,col=as.factor(tiefe)))
+# ggplot(data_probe)+
+#   geom_line(aes(date,CO2_smp2,col=as.factor(tiefe)))
 
 data_PPC <- read_PP(datelim = datelim)
 
@@ -55,17 +57,21 @@ data_PPC <- data_PPC %>%
          P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
 
 #range(data_PPC$date)
-
-PPC_plot <- ggplot(subset(data_PPC,id%in%c(1:5) & date %in% round_date(date,"1 mins")))+
-  geom_line(aes(date,PPC,col=factor(id)))
+names(data_PPC)
+PPC_plot <- ggplot(subset(data_PPC,id%in%c(1:4) & date %in% round_date(date,"1 mins")))+
+  geom_line(aes(date,PPC5,col=factor(id)))
 
 Prollplt <- 
-  ggplot(subset(data_PPC,id%in%c(1:5) & date %in% round_date(date,"1 mins")))+
-  #xlim(ymd_hms("2022-07-12 14:58:00 UTC", "2022-07-12 16:30:00 UTC"))+
-  #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  ggplot(subset(data_PPC,id%in%c(1:4) & date %in% round_date(date,"1 secs")))+
+#  geom_vline(xintercept = ymd_hm(paste("22.04.27",c("13:45","13:50","13:55","14:00","14:05"))))+
+  #geom_line(aes(date,P,col=factor(id)),alpha=0.4)+
   geom_line(aes(date,P_roll,col=factor(id)))
-datelim2 <- ymd_hms("2022-09-21 08:30:00 UTC", "2022-09-21 10:00:00 UTC")
-egg::ggarrange(PPC_plot+xlim(datelim2),Prollplt+xlim(datelim2),ncol=1)
+
+Prollplt
+datelim2 <- ymd_hms("2022-04-27 13:45:00 UTC", "2022-04-27 14:15:00 UTC")
+
+egg::ggarrange(PPC_plot+xlim(datelim2),
+               Prollplt+xlim(datelim2),ncol=1)
 
 
 load(file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))

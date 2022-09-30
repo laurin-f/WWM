@@ -70,8 +70,9 @@ data_PPC_wide$PPC_sum <- data_PPC_wide$PPC_2 + data_PPC_wide$PPC_outside
 
 gga <- "gga"
 #datelim <- ymd_hm("22.09.28 11:20","22.09.28 11:40")
-flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="",t_offset = -70,t_min=4)
+flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="flux",t_offset = -70,t_min=3,t_max=3)
 flux <- flux_ls[[1]]
+flux_data <- flux_ls[[2]]
 
 flux_sub <- subset(flux,!is.na(CH4_R2))
 data_merge <- merge(flux_sub,data_PPC_wide)
@@ -98,13 +99,21 @@ PPC_sum_plot <- ggplot(data_merge)+
   labs(x = "",y="PPC (Pa/s)",col="")
 
 
+T_plot <- 
+  ggplot(subset(data_merge,!is.na(T_C)))+
+  geom_line(aes(date,RcppRoll::roll_mean(T_C,10,fill=NA)))+
+  labs(y=expression(T["atm"]~"(°C)"))+
+  xlim(range(data_merge$date))
+
 timelines <- ggpubr::ggarrange(CO2_GGA_flux,CH4_GGA_flux,PPC_sum_plot,ncol=1,align = "v")
+
 CO2_scatter <- ggplot(data_merge,aes(PPC_sum,CO2_GGA_mumol_per_s_m2))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point(col=scales::hue_pal()(2)[1])+
   ggpubr::stat_regline_equation(label.y = 2.49,aes(label= ..eq.label..))+
-  ggpubr::stat_regline_equation(label.y = 2.45,aes(label= ..rr.label..))+
+  ggpubr::stat_regline_equation(label.y = 2.4,aes(label= ..rr.label..))+
   labs(y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),x= expression(PPC[sum]~"(Pa/s)"))
+
 CH4_scatter <- 
   ggplot(data_merge,aes(PPC_sum,CH4_mumol_per_s_m2*10^3))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
@@ -112,7 +121,25 @@ CH4_scatter <-
   ggpubr::stat_regline_equation(label.y=-1.1,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y=-1.13,aes(label= ..rr.label..))+
   labs(y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),x= expression(PPC[sum]~"(Pa/s)"))
+
+CO2_T <- ggplot(data_merge,aes(T_C,CO2_GGA_mumol_per_s_m2))+
+  geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
+  geom_point(col=scales::hue_pal()(2)[1])+
+  ggpubr::stat_regline_equation(label.y = 2.49,aes(label= ..eq.label..))+
+  ggpubr::stat_regline_equation(label.y = 2.4,aes(label= ..rr.label..))+
+  labs(y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),x= "T (°C)")
+
+CH4_T <- 
+  ggplot(data_merge,aes(T_C,CH4_mumol_per_s_m2*10^3))+
+  geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
+  geom_point(col=scales::hue_pal()(2)[2])+
+  ggpubr::stat_regline_equation(label.y=-1.1,aes(label= ..eq.label..))+
+  ggpubr::stat_regline_equation(label.y=-1.13,aes(label= ..rr.label..))+
+  labs(y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),x= "T (°C)")
 #ggpubr::ggarrange(CO2_scatter,CH4_scatter)
+
+ggpubr::ggarrange(CO2_scatter,CO2_T,CH4_scatter,CH4_T)+
+  ggsave(paste0(plotpfad_PPchamber,"flux_scatterplots.png"),width = 7,height = 6)
 
 png(paste0(plotpfad_PPchamber,"GGA_PPC_effect.png"),width=7,height = 7,unit="in",res=300)
 grid.arrange(timelines,

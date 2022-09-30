@@ -5,6 +5,7 @@ rm(list=ls())
 detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 metapfad<-paste0(hauptpfad,"Daten/Metadaten/")
+plotpfad_schaui <- paste0(hauptpfad,"Dokumentation/Berichte/plots/Schauinsland/")
 
 #flux.kammer<-function(ort="Schauinsland",
 #                      messnr){
@@ -39,14 +40,18 @@ ggplot(sub)+
 ggplot(sub)+
    geom_boxplot(aes(factor(schnee),CH4_ppm_per_min,fill=factor(schnee)))
 
-ggplot(sub)+
+ggplot(flux)+
    geom_point(aes(date,CO2_ppm_per_min,col=factor(schnee),shape=plot))+
-   geom_line(aes(date,CO2_ppm_per_min,col=factor(schnee),group=kammer))+
-  facet_wrap(~day,scales="free_x")
-ggplot(sub)+
+   geom_line(aes(date,CO2_ppm_per_min,col=factor(schnee),group=kammer,linetype=""))+
+  facet_wrap(~day,scales="free_x")+
+  labs(linetype="same chamber",col="schnee",y=expression(CO[2]~flux~"(ppm/s)"))+
+  ggsave(paste0(plotpfad_schaui,"schneeversuche_CO2_flux.png"),width=7,height = 5)
+ggplot(flux)+
    geom_point(aes(date,CH4_ppm_per_min,col=factor(schnee),shape=plot))+
-   geom_line(aes(date,CH4_ppm_per_min,col=factor(schnee),group=kammer))+
-  facet_wrap(~day,scales="free_x")
+   geom_line(aes(date,CH4_ppm_per_min,col=factor(schnee),group=kammer,linetype=""))+
+  labs(linetype="same chamber",col="schnee",y=expression(CH[4]~flux~"(ppm/s)"))+
+  facet_wrap(~day,scales="free_x")+
+  ggsave(paste0(plotpfad_schaui,"schneeversuche_CH4_flux.png"),width=7,height = 5)
 
 
 ggplot(flux)+

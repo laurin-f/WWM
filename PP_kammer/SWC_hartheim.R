@@ -50,6 +50,8 @@ if(length(files_new) > 0){
   for(i in 1:2){
     swc[paste0("swc_",i)] <- apply(swc[paste0("swc_",i,c("a","b"))],1,mean,na.rm=T)
   }
+  #1a macht schwierigkeiten
+  swc$swc_1 <- swc$swc_1b
   # swc$swc_1 <- (swc$swc_1a + swc$swc_1b)/2
   # 
   # swc$swc_2 <- (swc$swc_2a + swc$swc_2b)/2
@@ -83,3 +85,6 @@ if(length(files_new) > 0){
 
 ggplot(swc_long)+
   geom_line(aes(date,swc,col=tiefenstufe))
+ggplot(swc)+
+  geom_line(aes(date,swc_1a,col="1a"))+
+  geom_line(aes(date,swc_1b,col="1b"))

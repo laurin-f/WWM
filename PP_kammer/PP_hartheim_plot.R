@@ -28,7 +28,7 @@ pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 2
+Versuch <- 1
 #for(Versuch in 20:nrow(pp_chamber)){
   datelim <- c(pp_chamber$Start[Versuch]-3600*24*2,pp_chamber$Ende[Versuch]+3600*24*2)
   plot <-  T
@@ -120,7 +120,7 @@ Versuch <- 2
   gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[Versuch])
   gga <- "gga"
   #datelim <- ymd_hm("22.09.28 11:20","22.09.28 11:40")
-  flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="",t_offset = -70,t_min=4)
+  flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="",t_offset = -70,t_min=3,t_max=3)
   flux <- flux_ls[[1]]
   flux_data <- flux_ls[[2]]
   range(flux_data$date)
@@ -198,10 +198,11 @@ Versuch <- 2
   
   
   if(!is.null(flux_data)){
-    plot_ls[["T_C"]] <- ggplot()+
-      geom_line(data=flux_data,aes(date,T_C,col="T"))+
-      labs(col=expression(T["atm"]~"(°C)"))+
-      coord_cartesian(xlim=datelim)
+    plot_ls[["T_C"]] <- 
+      ggplot()+
+      geom_line(data=subset(flux,!is.na(T_C)),aes(date,RcppRoll::roll_mean(T_C,10,fill=NA)))+
+      labs(y=expression(T["atm"]~"(°C)"))+
+      xlim(datelim)
   }
   
   # load(file = paste(datapfad_PP_Kammer,"data_ws.RData"))
@@ -263,7 +264,7 @@ ppc_plot <-
   labs(x="",y="PPC (Pa/s)")
 
   png(paste0(plotpfad_PPchamber,"GGA_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
-egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,ppc_plot,ncol=1)
+egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,ppc_plot,plot_ls$T_C + xlim(range(flux_gga$date)),ncol=1)
 #egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,plot_ls$PPC,ncol=1,heights=c(2,2,1))
 
 
