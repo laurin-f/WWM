@@ -15,8 +15,8 @@ check.packages(packages)
 datelim <- ymd_hms("2022-09-30 08:00:00 UTC", "2022-09-30 09:20:00 UTC")
 datelim2 <- ymd_hms("2022-09-30 09:10:00 UTC", "2022-09-30 09:15:00 UTC")
 
-data_wide <- read_PP(datelim = datelim,format = "wide")
-data_long <- read_PP(datelim = datelim)
+#data_wide <- read_PP(datelim = datelim,format = "wide")
+data_long <- read_PP(datelim = datelim,corfac = F)
 data <- subset(data_long, id != 6)
 
 

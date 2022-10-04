@@ -23,14 +23,18 @@ theme_set(theme_classic())
 
 ##################
 #Metadata
-pp_chamber <- read_ods(paste0(metapfad_PP,"injektionen_hartheim.ods"))
+pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen_hartheim.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
+injections <- read_ods(paste0(metapfad_PP,"injektionen_hartheim.ods"))
+injections$Start <- dmy_hm(injections$Start)
+injections$Ende <- dmy_hm(injections$Ende)
+
 Versuch <- nrow(pp_chamber)
-Versuch <- 1
+Versuch <- 3
 #for(Versuch in 20:nrow(pp_chamber)){
-  datelim <- c(pp_chamber$Start[Versuch]-3600*24*2,pp_chamber$Ende[Versuch]+3600*24*2)
+  datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
   plot <-  T
   if(is.na(datelim[2])){
     datelim[2] <- now()
@@ -68,6 +72,7 @@ Versuch <- 1
     data_Proll <- tidyr::pivot_longer(data_Proll_wide[,1:6],paste0("id_",1:5),names_prefix = "id_",names_to = "id",values_to="P_roll")
     
     step_thr <- 0.05
+    data_PPC <- data_PPC[order(data_PPC$date),]
     PPC_steps <- data_PPC %>%
       filter(id %in% 1:4) %>%
       mutate(date = round_date(date,"10 min")) %>%
@@ -77,22 +82,30 @@ Versuch <- 1
              step = ifelse(PPC_diff > step_thr,1,0))
     
     
-    step_date <- unique(PPC_steps$date[PPC_steps$step == 1])
+    step_date <- sort(unique(PPC_steps$date[PPC_steps$step == 1]))
     step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
     step_date <- step_date[!is.na(step_date)]
+    ggplot(PPC_steps)+
+      geom_line(aes(date,PPC,col=id))+
+      geom_vline(xintercept = step_date)
   }
   
   ############
   #probe 1 u 2
   data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
   
+  data_probe1u2 <- data_probe1u2 %>% 
+    group_by(tiefe) %>% 
+    mutate(CO2_smp1_roll = RcppRoll::roll_mean(CO2_smp1,5,fill=NA),
+           CO2_smp2_roll = RcppRoll::roll_mean(CO2_smp2,5,fill=NA)
+           )
   
   plot_ls[["probe1"]] <- ggplot(data_probe1u2)+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     #geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
-    geom_line(aes(date,CO2_smp1,col=as.factor(-tiefe)))+
+    geom_line(aes(date,CO2_smp1_roll,col=as.factor(-tiefe)))+
     scale_fill_manual(values = "black")+
     scale_color_discrete(limits = factor(0:7*3.5))+
     coord_cartesian(xlim=datelim)+
@@ -100,9 +113,9 @@ Versuch <- 1
     labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",title=paste("Versuch",Versuch),subtitle = "probe 1")
   plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
-    geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
-    geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe)))+
+    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
+    #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
+    geom_line(aes(date,CO2_smp2_roll,col=as.factor(-tiefe)))+
     #geom_line(aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
     scale_fill_manual(values = "black")+
     scale_color_discrete(limits = factor(0:7*3.5))+
@@ -120,7 +133,14 @@ Versuch <- 1
   gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[Versuch])
   gga <- "gga"
   #datelim <- ymd_hm("22.09.28 11:20","22.09.28 11:40")
-  flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="",t_offset = -70,t_min=3,t_max=3)
+  flux_ls <- chamber_arduino(datelim=datelim,
+                             gga_data = T,
+                             return_ls = T,
+                             t_init=1,
+                             plot="",
+                             t_offset = -70,
+                             t_min=3,
+                             t_max=3)
   flux <- flux_ls[[1]]
   flux_data <- flux_ls[[2]]
   range(flux_data$date)
@@ -137,8 +157,8 @@ Versuch <- 1
       geom_vline(xintercept = step_date,linetype=2,color="grey")+
       geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"),alpha=0.5)+
       geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,3,fill=NA),col="Dynament"),lwd=1)+
-      geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-      geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+      geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+      #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
       labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
       scale_fill_grey()+
       guides(fill  = F)+
@@ -173,8 +193,8 @@ Versuch <- 1
     plot_ls[["PPC"]] <- 
       ggplot(subset(data_PPC,date %in% round_date(date,"mins")))+
       geom_vline(xintercept = step_date,linetype=2,color="grey")+
-      geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-      geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+      geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+      #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
       geom_line(aes(date,PPC5,col=id))+
       coord_cartesian(xlim=datelim)+
       scale_fill_grey()+
@@ -183,8 +203,8 @@ Versuch <- 1
     
     plot_ls[["P_roll"]] <- ggplot(subset(data_Proll,id %in% 1:4 & date %in% round_date(date,"mins")) )+
       geom_vline(xintercept = step_date,linetype=2,color="grey")+
-      geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-      geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+      geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+      #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
       geom_line(aes(date,P_roll,col=id))+
       coord_cartesian(xlim=datelim)+
       scale_fill_grey()+
@@ -221,6 +241,7 @@ Versuch <- 1
     png(paste0(plotpfad_PPchamber,"PP_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
   }
   egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
+  #egg::ggarrange(plots=plot_ls[c(1,2,4,5)],ncol=1,heights = c(2,2,1,1))
   
   if(plot){
     dev.off()
