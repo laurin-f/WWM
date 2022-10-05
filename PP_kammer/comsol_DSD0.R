@@ -395,7 +395,7 @@ DSD0_plt <-
   #geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
   guides(col=F)+
   theme(axis.title.x = element_blank())+
-  labs(y=expression(D[S]/D[0]),col="tiefenstufe",fill="tiefenstufe")
+  labs(y=expression(D[eff]/D[0]),col="tiefenstufe",fill="tiefenstufe")
 
 # tracer_plt <- ggplot(sub_daterange(data,PPC_daterange))+
 # #DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+

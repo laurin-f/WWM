@@ -24,7 +24,7 @@ Versuche <- list.files(datapfad_PP_Kammer,pattern = "data_merge_\\d.RData")
 data_merge_ls <- list()
 step_date_ls <- list()
 nDS <- 1
-file_suffix <- "_40cm"
+file_suffix <- ""
 #file_suffix <- ""
 for(i in seq_along(Versuche)){
   #load(file=paste0(datapfad_PP_Kammer,"data_merge_",i,".RData"))
@@ -324,6 +324,7 @@ R2_Proll
 R2_Proll_2
 fm_Proll$coefficients
 fm_Proll_2$coefficients
+Deff_fac <- 20
 Proll_plot <- ggplot(P_roll_data)+
   geom_hline(yintercept = 0,col="grey",linetype=1)+
   geom_hline(yintercept = c(2.5,-2.5),col="grey",linetype=2)+
@@ -335,7 +336,7 @@ Proll_plot <- ggplot(P_roll_data)+
   geom_ribbon(aes(date,ymax=Proll_maxr6_int,ymin=P_roll_int),alpha=0.2)+
 #  geom_point(aes(date,P_roll_offset),col="grey")+
   
-  scale_y_continuous(sec.axis = sec_axis(~./10,name=expression(D[S]/D[0])))+ 
+  scale_y_continuous(sec.axis = sec_axis(~./Deff_fac,name=expression(D[eff]/D[0])))+ 
   theme_bw()+
   theme(
     axis.title.y.right = element_text(color = "red"),
@@ -343,8 +344,8 @@ Proll_plot <- ggplot(P_roll_data)+
     axis.title.x = element_blank()
   )+
   labs(y="pressure (Pa)",x="")+
-  geom_line(aes(date,DSD0*10),col=2)+
-  geom_point(data=P_roll_data_2,aes(date,DSD0*10),col=2)
+  geom_line(aes(date,DSD0*Deff_fac),col=2)+
+  geom_point(data=P_roll_data_2,aes(date,DSD0*Deff_fac),col=2)
 
 # P_roll_scatter <- 
 #   ggplot(P_roll_data)+
@@ -361,21 +362,21 @@ P_roll_scatter_zoom <-
   #geom_smooth(data=P_roll_data_2,aes(P_roll,DSD0,col=""),method = "glm")+
   geom_point(data=P_roll_data_2,aes(P_roll,DSD0,col=""),alpha=0.7)+
   ggforce::facet_zoom(Proll_maxr6_int < 2.5,ylim=range(P_roll_data_2$DSD0),zoom.size = 0.8)+
-  labs(y=expression(D[S]/D[0]),x="pressure (Pa)",col=expression("abs"(P["6h"]) < 2.5 ~ Pa))+
+  labs(y=expression(D[eff]/D[0]),x="pressure (Pa)",col=expression("abs"(P["6h"]) < 2.5 ~ Pa))+
   theme_bw()+
   theme(legend.position = "top")
 #P_roll_scatter_zoom <- 
   ggplot(P_roll_data)+
   geom_smooth(data=P_roll_data_2,aes(P_roll,DSD0,col=""),method = "glm")+
   geom_point(data=P_roll_data_2,aes(P_roll,DSD0,col=""))+
-  labs(y=expression(D[S]/D[0]),x=expression(P["moving average"]~"(Pa)"),col="subset")
+  labs(y=expression(D[eff]/D[0]),x=expression(P["moving average"]~"(Pa)"),col="subset")
 #scatters <- egg::ggarrange(P_roll_scatter,P_roll_scatter_zoom,widths = c(2,1))
 
 #egg::ggarrange(Proll_plot,P_roll_scatter,ncol = 2,widths = c(3,1))
 # png(paste0(plotpfad_PPchamber,"P_roll_Versuch.png"),width = 7,height=3,units = "in",res=300)
 # egg::ggarrange(Proll_plot,P_roll_scatter,widths = c(3,1))
 # dev.off()
-png(paste0(plotpfad_PPchamber,"P_roll_Versuch_zoom.png"),width = 7,height=5,units = "in",res=300)
+png(paste0(plotpfad_PPchamber,"P_roll_Versuch_zoom",nDS,"DS",file_suffix,".png"),width = 7,height=5,units = "in",res=300)
 egg::ggarrange(Proll_plot,P_roll_scatter_zoom,ncol = 1)
 dev.off()
 

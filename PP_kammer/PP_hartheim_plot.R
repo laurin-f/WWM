@@ -85,11 +85,17 @@ Versuch <- 3
     step_date <- sort(unique(PPC_steps$date[PPC_steps$step == 1]))
     step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
     step_date <- step_date[!is.na(step_date)]
-    ggplot(PPC_steps)+
-      geom_line(aes(date,PPC,col=id))+
-      geom_vline(xintercept = step_date)
+
   }
   
+  step_df <- PPC_steps %>% 
+    mutate(step = ifelse(date %in% !!step_date,1,0),
+           step_id=cumsum(step)) %>% 
+    group_by(step_id) %>% 
+    summarise(PPC = mean(PPC,na.rm=T),
+              Start = min(date),
+              End = max(date))
+
   ############
   #probe 1 u 2
   data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
@@ -137,10 +143,10 @@ Versuch <- 3
                              gga_data = T,
                              return_ls = T,
                              t_init=1,
-                             plot="",
-                             t_offset = -70,
-                             t_min=3,
-                             t_max=3)
+                             plot="facets",
+                             t_offset = -90,
+                             t_min=2,
+                             t_max=2)
   flux <- flux_ls[[1]]
   flux_data <- flux_ls[[2]]
   range(flux_data$date)
@@ -149,7 +155,7 @@ Versuch <- 3
     flux_data$atm <- ifelse(minute(flux_data$date) %% 30 > 5,1,0)
     plot_ls[["probe2"]] <- 
       plot_ls[["probe2"]]+
-      geom_line(data=subset(flux_data,atm == 1),aes(date,RcppRoll::roll_mean(CO2,5,fill=NA),col="0"))
+      geom_line(data=subset(flux_data,atm == 1 & !is.na(CO2)),aes(date,RcppRoll::roll_mean(CO2,5,fill=NA),col="0"))
   }
   
   if(!is.null(flux)){
@@ -195,13 +201,13 @@ Versuch <- 3
       geom_vline(xintercept = step_date,linetype=2,color="grey")+
       geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
       #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-      geom_line(aes(date,PPC5,col=id))+
+      geom_line(aes(date,PPC,col=id))+
       coord_cartesian(xlim=datelim)+
       scale_fill_grey()+
       guides(fill=F)+
       labs(x="",y="PPC (Pa/s)")
     
-    plot_ls[["P_roll"]] <- ggplot(subset(data_Proll,id %in% 1:4 & date %in% round_date(date,"mins")) )+
+    plot_ls[["P_roll"]] <- ggplot(subset(data_Proll,id %in% c(1:4) & date %in% round_date(date,"mins")) )+
       geom_vline(xintercept = step_date,linetype=2,color="grey")+
       geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
       #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
@@ -210,7 +216,7 @@ Versuch <- 3
       scale_fill_grey()+
       scale_color_discrete(limits=c(1:5,"outside"))+
       guides(fill=F,col=F)+
-      labs(x="",y=expression(P["moving average"]))
+      labs(x="",y=expression(P["moving average"]~"(Pa)"))
   }
   
   #################
@@ -241,8 +247,33 @@ Versuch <- 3
     png(paste0(plotpfad_PPchamber,"PP_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
   }
   egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
-  #egg::ggarrange(plots=plot_ls[c(1,2,4,5)],ncol=1,heights = c(2,2,1,1))
   
+  if(plot){
+    dev.off()
+  }
+
+    
+  if(plot){
+    png(paste0(plotpfad_PPchamber,"CO2_profile_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
+  }
+  egg::ggarrange(plot_ls$probe1+
+                   geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                   scale_alpha(range = c(0,0.3))+
+                   guides(alpha = F)+
+                   labs(title = ""),
+                 plot_ls$probe2+
+                   geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                   scale_alpha(range = c(0,0.3))+
+                   guides(alpha = F),
+                 plot_ls$PPC+
+                   geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                   scale_alpha(range = c(0,0.3))+
+                   guides(alpha = F),
+                 plot_ls$P_roll+
+                   geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                   scale_alpha(range = c(0,0.3))+
+                   guides(alpha = F),
+                 ncol=1,heights = c(2,2,1,1))
   if(plot){
     dev.off()
   }
@@ -276,8 +307,8 @@ CH4_GGA_flux <- ggplot(flux_gga)+
 ppc_plot <- 
   ggplot(subset(data_PPC,date %in% round_date(date,"mins")))+
   geom_vline(xintercept = step_date,linetype=2,color="grey")+
-  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
   geom_line(aes(date,PPC5,col=id))+
   xlim(range(flux_gga$date))+
   scale_fill_grey()+
@@ -299,3 +330,16 @@ CO2_gga_plot <- ggplot(subset(flux,!is.na(CO2_GGA_mumol_per_s_m2)))+geom_line(ae
 CH4_plot <- ggplot(subset(flux,!is.na(CO2_GGA_mumol_per_s_m2)))+geom_line(aes(date,CH4_mumol_per_s_m2))+
   geom_vline(xintercept = step_date,linetype=2,col="grey")
 egg::ggarrange(CH4_plot,CO2_gga_plot,ppc_plot,ncol=1)
+
+# zoom_date <- ymd_hm("22.10.02 14:00","22.10.02 16:00")
+# zoom_date_2 <- ymd_hm("22.10.02 15:18","22.10.02 15:20")
+# PPC_outside <- subset(data_PPC,id=="outside")
+# PPC_plot_zoom <- ggplot(sub_daterange(PPC_outside,zoom_date))+
+#   geom_line(aes(date,PPC,col=factor(id)))+theme_bw()
+# P_plot <- ggplot(sub_daterange(PPC_outside,zoom_date))+
+#   geom_line(aes(date,P,col=factor(id)))+theme_bw()
+# P_filter_plot <- ggplot(sub_daterange(PPC_outside,zoom_date))+
+#   geom_line(aes(date,P_filter,col=factor(id)))+
+#   ggforce::facet_zoom(xlim=zoom_date_2)+theme_bw()
+# 
+# ggpubr::ggarrange(P_plot,P_filter_plot,ncol=1,heights = c(1,2))

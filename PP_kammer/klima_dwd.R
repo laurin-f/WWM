@@ -24,6 +24,7 @@ check.packages(packages)
 #meta_link <- selectDWD("Freiburg",res="10_minutes",var=c("wind","precipitation"),per="meta_data")
 #meta<-lapply(meta_link,dataDWD,dir=datapfad_FVAgarten,read=F)
 
+
 link <- selectDWD("Freiburg",res="10_minutes",var=c("wind","precipitation"),per="recent")
 
 klima_wind <- dataDWD(link[[1]],dir=datapfad_PP_Kammer,varnames=T,force=NA,overwrite = T)
@@ -45,3 +46,5 @@ klima$P24tot <- RcppRoll::roll_sumr(klima$P_mm,n=6*24,fill=NA)
 #ggplot(klima)+
 #  geom_line(aes(date,P_mm))
 save(klima,file = paste(datapfad_PP_Kammer,"klima_DWD.RData"))
+
+
