@@ -30,11 +30,11 @@ pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 Versuch <- nrow(pp_chamber)
 Versuch <- 2
 #for(Versuch in 20:nrow(pp_chamber)){
-datelim <- c(pp_chamber$Start[Versuch]-3600*24*2,pp_chamber$Ende[Versuch]+3600*24*2)
+now <- now()
+tz(now) <- "UTC"
+datelim <- c(ymd_h("22.09.27 10"),now)
 plot <-  T
-if(is.na(datelim[2])){
-  datelim[2] <- now()
-}
+
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
 #datelim <- ymd_hm("2022.05.02 00:00","2022.05.02 01:20")
 #datelim <- ymd_hm("2022.05.08 18:00","2022.05.10 13:20")
@@ -67,13 +67,21 @@ data_PPC_wide <- tidyr::pivot_wider(data_PPC,date,names_from = id,values_from = 
 data_PPC_wide$PPC_sum <- data_PPC_wide$PPC_2 + data_PPC_wide$PPC_outside
 
 
-
+# data_gga <- read_GGA(datelim = datelim,table.name = "gga")
+# names(data_gga)
+# data_gga$group <- 1
+# test <- split_chamber(data_gga)
+# flux_gga <- calc_flux(data_gga,group = "group")
 gga <- "gga"
-#datelim <- ymd_hm("22.09.28 11:20","22.09.28 11:40")
-flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="flux",t_offset = -70,t_min=3,t_max=3)
+
+#datelim2 <- ymd_hm("22.09.28 16:50","22.09.28 18:00")
+flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="facets",t_offset = -90,t_min=2,t_max=2)
 flux <- flux_ls[[1]]
 flux_data <- flux_ls[[2]]
 
+#ggplot(flux_data)+
+#  geom_line(aes(date,CO2,col=factor(messid),group=1))+
+#  geom_line(aes(date,CO2_GGA+50,col=factor(messid),group=1))
 flux_sub <- subset(flux,!is.na(CH4_R2))
 data_merge <- merge(flux_sub,data_PPC_wide)
 
@@ -105,7 +113,8 @@ T_plot <-
   labs(y=expression(T["atm"]~"(°C)"))+
   xlim(range(data_merge$date))
 
-timelines <- ggpubr::ggarrange(CO2_GGA_flux,CH4_GGA_flux,PPC_sum_plot,ncol=1,align = "v")
+timelines <- ggpubr::ggarrange(CO2_GGA_flux,CH4_GGA_flux,PPC_sum_plot+guides(col=F),T_plot,ncol=1,align = "v")
+glm(CO2_GGA_mumol_per_s_m2 ~ PPC_sum + T_C,data=data_merge)
 
 CO2_scatter <- ggplot(data_merge,aes(PPC_sum,CO2_GGA_mumol_per_s_m2))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+

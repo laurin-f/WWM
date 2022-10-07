@@ -20,6 +20,9 @@ check.packages(packages)
 theme_set(theme_classic())
 ##
 load(file = paste(datapfad_PP_Kammer,"injectionrates.RData"))
+
+median(inj$CO2_mumol_per_s)
+median(inj$CO2_ml_per_min)
 #######################################
 #####################################
 #read probes
@@ -160,24 +163,7 @@ pp_chamber_sub <- sub_daterange(pp_chamber[,c("Start","Ende","step_hours","start
 #   step_date_ls[[i]][-id_i] <- step_date_ls[[i]][-id_i] - pp_chamber_sub$start_offset[i]*60
 # }
 # step_date <- do.call(c,step_date_ls)
-step_thr <- 0.05
-PPC_steps <- data_PPC %>%
-  filter(id %in% 1:4) %>%
-  mutate(date = round_date(date,"10 min")) %>%
-  group_by(id,date) %>%
-  summarise(across(everything(),mean)) %>%
-  mutate(PPC_diff = abs(c(NA,diff(PPC5))),
-         step = ifelse(PPC_diff > step_thr,1,0))
 
-
-step_date <- unique(PPC_steps$date[PPC_steps$step == 1])
-step_date <- sort(step_date)
-step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
-step_date <- step_date[!is.na(step_date)]
-
-if(Versuch == 8){
-modes_df <- data.frame(start = step_date[c(1,5)], stop = step_date[c(4,8)],mode = c("1D","2D"))
-}
 # ggplot(PPC_steps)+
 #   geom_line(aes(date,PPC_diff))+
 #   geom_line(aes(date,PPC))+
@@ -281,16 +267,38 @@ if(nrow(data_PPC) > 0){
   
   data_PPC <- sub_daterange(data_PPC,PPC_daterange_short)
   
+  step_thr <- 0.05
+  PPC_steps <- data_PPC %>%
+    filter(id %in% 1:4) %>%
+    mutate(date = round_date(date,"10 min")) %>%
+    group_by(id,date) %>%
+    summarise(across(everything(),mean)) %>%
+    mutate(PPC_diff = abs(c(NA,diff(PPC5))),
+           step = ifelse(PPC_diff > step_thr,1,0))
+  
+  
+  step_date <- unique(PPC_steps$date[PPC_steps$step == 1])
+  step_date <- sort(step_date)
+  step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
+  step_date <- step_date[!is.na(step_date)]
+  
+  if(Versuch == 8){
+    modes_df <- data.frame(start = step_date[c(1,5)], stop = step_date[c(4,8)],mode = c("1D","2D"))
+  }
+  
+  
   subset(data_PPC,date %in% round_date(date,"mins"))
   PP_plot <- 
     ggplot(subset(data_PPC,date %in% round_date(date,"mins") & id == 1))+
     geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
     #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     #geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    geom_line(aes(date,RcppRoll::roll_mean(PPC5,15,fill = NA)))+
+    geom_line(aes(date,RcppRoll::roll_mean(PPC5,15,fill = NA),linetype="PPC"))+
     xlim(PPC_daterange)+
     #scale_fill_grey()+
     guides(fill=F)+
+    scale_linetype("",limits = c("PPC","PPC6h"),labels = expression(PPC,PPC["6h"]))+
+    theme(legend.text.align = 0)+
     labs(x="",y="PPC (Pa/s)")
   
   P_roll_plot <- ggplot(subset(data_PPC,id %in% 1:4) )+
@@ -349,7 +357,9 @@ data_PPC_sub <- data_PPC %>%
 data_merge <- merge(comsol,data_PPC_sub,all = T)
 data_merge <- data_merge %>% 
   mutate(PPC5_int = imputeTS::na_interpolation(PPC5)) %>% 
-  filter(!is.na(DSD0))
+  filter(!is.na(DSD0)) 
+data_merge2 <- data_merge %>% 
+  mutate(PPC_meanr6 = RcppRoll::roll_meanr(PPC5_int,6,fill=NA))
   
 
 data_merge <- merge(data_merge,PPC_wide[,c("date","dP_horiz")],all.x = T)
@@ -373,13 +383,24 @@ titles <- c("2D PP - Über-Unterdruck",
             "2D PP - 2D PP",
             "1D PP",
             "1D PP - 2D PP")
+#data_merge$PPC_meanr6[1] <- data_merge$PPC5_int[1]
+data_merge2$PPC_meanr6[3] <- data_merge2$PPC5[3]
+PP_plot <- PP_plot+
+  geom_line(data=subset(data_merge2,!is.na(PPC_meanr6)),aes(date,PPC_meanr6,linetype="PPC6h"),linetype=2)
 
-
-tracerplt <- ggplot(subset(data,tiefe != 0))+
+tracerplt <- 
+  ggplot(subset(data,tiefe != 0))+
   #  geom_line(aes(date,CO2_tracer_roll,col=as.factor(tiefe)))+
   geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
-  geom_line(aes(date,(CO2_tracer_roll),col=as.factor(-tiefe)))+
+  geom_line(aes(date,(CO2_tracer_roll),col=as.factor(-tiefe)))+#,linetype="PPC"))+
   theme(axis.title.x = element_blank())+
+  #scale_linetype("",limits = c("PPC","PPC6h"),labels = expression(PPC,PPC["6h"]))+
+  # guides(col =guide_legend(order=1),
+  #        fill =guide_legend(order=2),
+  #        linetype =guide_legend(order=3)
+  #        )+
+  guides(fill=F)+
+  #  theme(legend.text.align = 0)+
   labs(y=expression("tracer CO"[2]~(ppm)),col="depth (cm)")
 
 DSD0_plt <- 
@@ -395,7 +416,7 @@ DSD0_plt <-
   #geom_point(data=subset(data_merge,!is.na(step)),aes(date,DSD0,col=factor(tiefe,levels=1:3,labels=c("0-10","10-20",">20"))))+
   guides(col=F)+
   theme(axis.title.x = element_blank())+
-  labs(y=expression(D[eff]/D[0]),col="tiefenstufe",fill="tiefenstufe")
+  labs(y=expression(D[eff]/D[0]),col="mode",fill="mode")
 
 # tracer_plt <- ggplot(sub_daterange(data,PPC_daterange))+
 # #DSD0_plt <- ggplot(sub_daterange(comsol,PPC_daterange))+
@@ -422,7 +443,9 @@ ggpubr::ggarrange(tracerplt+#labs(title=titles[Versuch])+
                   PP_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                   #P_roll_plot+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                   #swc_plot,
-                  heights = c(2,2,1),ncol=1,common.legend=T,legend = "right",align="v")+
+                  heights = c(2,2,1),ncol=1,
+                  #common.legend=T,
+                  legend = "right",align="v")+
   ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_Sand_timeline_",nDS,"DS_",Versuch,file_suffix,".png"),width=8,height=7)
 
 
@@ -433,6 +456,7 @@ ggpubr::ggarrange(tracerplt+#labs(title=titles[Versuch])+
 #   ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_scatterplot",Versuch,".png"),width=6,height=5)
 
 }
+
 #save(data_merge,file=paste0(datapfad_PP_Kammer,"data_merge_",Versuch,".RData"))
 save(data_merge,step_date,file=paste0(datapfad_PP_Kammer,"data_merge_",nDS,"DS_",Versuch,file_suffix,".RData"))
 #}
