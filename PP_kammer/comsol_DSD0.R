@@ -27,12 +27,12 @@ median(inj$CO2_ml_per_min)
 #####################################
 #read probes
 Versuch <- 8
-overwrite <-  F
+overwrite <-  T
 plot <- T
 load(file=paste0(datapfad_PP_Kammer,"data_tracer.RData"))
 data_all <- data
 
-#for(Versuch in 1:8){
+for(Versuch in 1:8){
 
 data <- data_all[data_all$Versuch == Versuch & !is.na(data_all$Versuch),]
 data_uncert_sub <- data_uncert[data_uncert$Versuch == Versuch & !is.na(data_uncert$Versuch),] %>% 
@@ -75,9 +75,15 @@ CO2_plot <-
 ##########################################
 ## COMSOL
 ##########################################
+# source("~/FVA/P01677_WindWaldMethan/Programme/Eigenentwicklung/PP_kammer/Bodenfeuchte_PP_Kammer.R")
+# 
+# swc_sub <- subset(swc_wide,date %in% (data$date))
+# 
+# data <- merge(data,swc_sub,all.x = T)
+# eps_ratio <- cbind((100 - data$swc_14)/(100-data$swc_7),(100-data$swc_21)/(100 - data$swc_7))
 
 nDS <- 1
-file_suffix <- ""
+file_suffix <- "_40cm"
 #file_suffix <- ""
 file_i <- paste0(datapfad_PP_Kammer,"DSD0_comsol_",nDS,"DS_",Versuch,file_suffix,".RData")
 if(file.exists(file_i) & overwrite == F){
@@ -89,19 +95,22 @@ if(file.exists(file_i) & overwrite == F){
   comsol <- comsol_sweep(data = data,
                          tracer_colname = "CO2_tracer_drift",
                          intervall = "60 mins",
-                         filename = paste0("freeSoil_anisotropy_sweep_",nDS,"DS.txt"),
+                         #DS_ratio = eps_ratio,
+                         filename = paste0("freeSoil_anisotropy_sweep_",nDS,"DS",file_suffix,".txt"),
                          extend = ifelse(nDS>1,T,F),
                          byout= 1e-7)
   comsol_min <- comsol_sweep(data = data_uncert_sub,
                              tracer_colname = "CO2_tracer_min",
                              intervall = "60 mins",
-                             filename = paste0("freeSoil_anisotropy_sweep_",nDS,"DS.txt"),
+                            #DS_ratio = eps_ratio,
+                             filename = paste0("freeSoil_anisotropy_sweep_",nDS,"DS",file_suffix,".txt"),
                              extend = ifelse(nDS>1,T,F),
                              byout= 1e-7)
   comsol_max <- comsol_sweep(data = data_uncert_sub,
                              tracer_colname = "CO2_tracer_max",
+                            #DS_ratio = eps_ratio,
                              intervall = "60 mins",
-                             filename = paste0("freeSoil_anisotropy_sweep_",nDS,"DS.txt"),
+                             filename = paste0("freeSoil_anisotropy_sweep_",nDS,"DS",file_suffix,".txt"),
                              extend = ifelse(nDS>1,T,F),
                              byout= 1e-7)
 
@@ -288,9 +297,17 @@ if(nrow(data_PPC) > 0){
   
   
   subset(data_PPC,date %in% round_date(date,"mins"))
-  PP_plot <- 
+  if(Versuch == 8){
+    PP_plot <- 
     ggplot(subset(data_PPC,date %in% round_date(date,"mins") & id == 1))+
-    geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
+    geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)
+  }else{
+    PP_plot <- 
+    ggplot(subset(data_PPC,date %in% round_date(date,"mins") & id == 1))
+  }
+  PP_plot <- 
+    PP_plot+
+    #ggplot(subset(data_PPC,date %in% round_date(date,"mins") & id == 1))+
     #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     #geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,RcppRoll::roll_mean(PPC5,15,fill = NA),linetype="PPC"))+
@@ -461,4 +478,4 @@ ggpubr::ggarrange(tracerplt+#labs(title=titles[Versuch])+
 save(data_merge,step_date,file=paste0(datapfad_PP_Kammer,"data_merge_",nDS,"DS_",Versuch,file_suffix,".RData"))
 #}
 
-#}
+}

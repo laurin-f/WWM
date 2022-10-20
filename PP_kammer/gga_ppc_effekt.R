@@ -67,18 +67,20 @@ data_PPC_wide <- tidyr::pivot_wider(data_PPC,date,names_from = id,values_from = 
 data_PPC_wide$PPC_sum <- data_PPC_wide$PPC_2 + data_PPC_wide$PPC_outside
 
 
-# data_gga <- read_GGA(datelim = datelim,table.name = "gga")
-# names(data_gga)
-# data_gga$group <- 1
-# test <- split_chamber(data_gga)
-# flux_gga <- calc_flux(data_gga,group = "group")
 gga <- "gga"
 
 #datelim2 <- ymd_hm("22.09.28 16:50","22.09.28 18:00")
-flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="facets",t_offset = -90,t_min=2,t_max=2)
+# date_sub <- c(datelim[1],datelim[1]+3600*24)
+# while(date_sub[2] < now()){
+# date_sub <- c(date_sub[2],date_sub[2]+3600*24)
+# flux_ls <- chamber_gga(datelim = date_sub,closing_lim = 15,opening_lim=-30,return_data = T,adj_openings = T,t_min=3)
+# }
+flux_ls <- chamber_gga(datelim = datelim,closing_lim = 15,opening_lim=-30,return_data = T,adj_openings = T,t_min=3)
+
+#flux_ls <- chamber_arduino(datelim=datelim,gga_data = T,return_ls = T,t_init=1,plot="facets",t_offset = -90,t_min=2,t_max=2)
 flux <- flux_ls[[1]]
 flux_data <- flux_ls[[2]]
-
+names(flux) <- str_replace(names(flux),"CO2","CO2_GGA")
 #ggplot(flux_data)+
 #  geom_line(aes(date,CO2,col=factor(messid),group=1))+
 #  geom_line(aes(date,CO2_GGA+50,col=factor(messid),group=1))

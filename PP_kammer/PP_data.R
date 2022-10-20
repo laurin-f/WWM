@@ -37,6 +37,7 @@ datelim <- ymd_hms("2022-09-16 10:00:00 UTC", "2022-09-22 15:00:00 UTC")
 datelim <- ymd_hms("2022-09-21 00:00:00 UTC", "2022-09-21 18:00:00 UTC")
 datelim <- ymd_hms("2022-09-30 08:00:00 UTC", "2022-09-30 09:20:00 UTC")
 datelim <- ymd_hms("2022-10-07 10:00:00 UTC", "2022-10-07 12:20:00 UTC")
+datelim <- ymd_hms("2022-10-14 10:00:00 UTC", "2022-10-14 12:20:00 UTC")
 
 data_probe <- read_sampler(datelim=datelim)
 
@@ -63,7 +64,7 @@ names(data_PPC)
 #PPC_plot <- 
   ggplot(subset(data_PPC,id%in%c(1:4) & date %in% round_date(date,"1 sec")))+
   geom_line(aes(date,PPC1,col=factor(id)))+
-    xlim(ymd_hm("2022.10.07 11:00","2022.10.07 11:30"))
+    xlim(ymd_hm("2022.10.14 11:10","2022.10.14 11:40"))
   ggplot(subset(data_PPC,id%in%c(1:4) & date %in% round_date(date,"1 sec")))+
   geom_line(aes(date,P_filter,col=factor(id)))#+
 

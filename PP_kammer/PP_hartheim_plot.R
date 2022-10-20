@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 4
+Versuch <- 7
 #for(Versuch in 20:nrow(pp_chamber)){
   datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
   plot <-  T
@@ -99,6 +99,17 @@ Versuch <- 4
   ############
   #probe 1 u 2
   data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
+  data_probe3 <- read_sampler("sampler3",datelim = datelim, format = "long")
+  
+  data_probe3 <- data_probe3 %>% 
+    filter(!is.na(CO2)) %>%
+    mutate(date = round_date(date,"5 mins")) %>% 
+    group_by(date,tiefe) %>% 
+    summarise(CO2 = mean(CO2,na.rm=T)) %>% 
+    ungroup() %>% 
+    group_by(tiefe) %>% 
+    mutate(CO2_roll = RcppRoll::roll_mean(CO2,5,fill=NA),
+           tiefe = tiefe + 3.5)
   
   data_probe1u2 <- data_probe1u2 %>% 
     group_by(tiefe) %>% 
@@ -128,6 +139,18 @@ Versuch <- 4
     coord_cartesian(xlim=datelim)+
     guides(col=F)+
     labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",subtitle = "probe 2")
+  
+  plot_ls[["probe3"]] <- ggplot(data_probe3)+
+    geom_vline(xintercept = step_date,linetype=2,color="grey")+
+    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
+    #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
+    geom_line(aes(date,CO2_roll,col=as.factor(-tiefe)))+
+    #geom_line(aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
+    scale_fill_manual(values = "black")+
+    scale_color_discrete(limits = factor(0:7*3.5))+
+    coord_cartesian(xlim=datelim)+
+    guides(col=F)+
+    labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",subtitle = "probe 3")
   
   ############################
   #kammermessungen
@@ -265,6 +288,10 @@ Versuch <- 4
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
                    guides(alpha = F),
+                 plot_ls$probe3+
+                   geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                   scale_alpha(range = c(0,0.3))+
+                   guides(alpha = F),
                  plot_ls$PPC+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
@@ -273,7 +300,7 @@ Versuch <- 4
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
                    guides(alpha = F),
-                 ncol=1,heights = c(2,2,1,1))
+                 ncol=1,heights = c(2,2,2,1,1))
   if(plot){
     dev.off()
   }
