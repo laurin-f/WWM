@@ -85,6 +85,6 @@ if(length(files_new) > 0){
 
 ggplot(swc_long)+
   geom_line(aes(date,swc,col=tiefenstufe))
-ggplot(swc)+
+ggplot(subset(swc,swc_2a > 0))+
   geom_line(aes(date,swc_1a,col="1a"))+
   geom_line(aes(date,swc_1b,col="1b"))

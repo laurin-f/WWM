@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 7
+Versuch <- 4
 #for(Versuch in 20:nrow(pp_chamber)){
   datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
   plot <-  T
@@ -167,7 +167,7 @@ Versuch <- 7
                              return_ls = T,
                              t_init=1,
                              plot="facets",
-                             t_offset = -90,
+                             t_offset = "from_df",
                              t_min=2,
                              t_max=2)
   flux <- flux_ls[[1]]

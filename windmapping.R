@@ -29,6 +29,8 @@ Messpunkte <- data.frame(name = c(rep(paste0("P",1:6),2),paste0("P",7:12)),
                          z =c(rep(c(20,3),each=6),rep(3,5),50))
 kammer_y-60
 kammer_x - subchamber_x/2 -subchamber_x*3
+
+Messpunkte$subchamber <- ceiling((Messpunkte$x / subchamber_x))
 #################
 #load ws testo files
 files <- list.files(datapfad_ws,full.names = T)
@@ -45,8 +47,9 @@ for(i in seq_along(data_ls)){
 
 data_ws_all <- do.call(rbind,data_ls)
 
-datelim <- ymd_hm("22.10.18 10:00","22.10.18 13:00")
-datelim <- ymd_hm("22.10.20 09:00","22.10.20 13:00")
+datelim1 <- ymd_hm("22.10.18 10:00","22.10.18 13:00")
+datelim2 <- ymd_hm("22.10.20 09:00","22.10.20 13:00")
+datelim <- ymd_hm("22.10.18 10:00","22.10.20 13:00")
 
 data_ws_all$date <- dmy_hms(data_ws_all$Datum_chr)
 data_ws_all <- data_ws_all[!is.na(data_ws_all$date),]
@@ -56,7 +59,11 @@ data_ws <- sub_daterange(data_ws_all,datelim)
 
 ###########################################
 #read PP data
-data_PPC <- read_PP(datelim)
+data_PPC1 <- read_PP(datelim1)
+data_PPC2 <- read_PP(datelim2)
+data_PPC1$period <- 1
+data_PPC2$period <- 2
+data_PPC <- rbind(data_PPC1,data_PPC2)
 data_PPC <- data_PPC %>% 
   group_by(id) %>%
   mutate(dt = diff_time(date,"secs"),
@@ -70,7 +77,9 @@ data_PPC2$date <- data_PPC$date + t_lag
 
 data_merge <- merge(data_ws,subset(data_PPC2,id==4),all.x = T)
 data_merge$PPC_diff <- c(NA,diff(data_merge$PPC1))
-PPC_dates_raw <- data_merge$date[which(data_merge$PPC_diff >0.055)]
+PPC_dates_raw1 <- data_merge$date[which(data_merge$PPC_diff >0.055 & data_merge$period == 1)]
+PPC_dates_raw2 <- data_merge$date[which(data_merge$PPC_diff >0.045 & data_merge$period == 2)]
+PPC_dates_raw <- c(PPC_dates_raw1,PPC_dates_raw2)
 PPC_dates_start <- PPC_dates_raw[c(as.numeric(diff(PPC_dates_raw)),100) > 60]
 PPC_dates <- sort(c(PPC_dates_start,PPC_dates_start + rep(c(2,4,6),each=length(PPC_dates_start))*60))
 data_merge <- data_merge %>% 
@@ -79,13 +88,13 @@ data_merge <- data_merge %>%
          step = ifelse(step == 4, 0, step),
          ifelse(step ==0 ,0, abs(step - 4)))
 
- PPC_plot+
-   geom_vline(xintercept = PPC_dates_start)+
-   geom_vline(xintercept = PPC_dates,alpha=0.2)
-#############
+ggplot(data_merge)+
+  geom_point(aes(date,PPC_diff))+
+  geom_hline(yintercept = 0.045)+
+  facet_wrap(~period,scales="free_x")
 #aggregate data
 data_agg <- data_merge %>% 
-  group_by(file,step) %>% 
+  group_by(file,step,period) %>% 
   summarise(PPC = mean(PPC1),
             ws = mean(ws),
             ws_sd = sd(ws))
@@ -93,13 +102,19 @@ data_agg <- data_merge %>%
 #plot
 
 PPC_plot <- 
-  ggplot(data_PPC2)+
+  ggplot(subset(data_merge))+
   geom_line(aes(date,PPC1,col=factor(id)))+
-  xlim(range(data_ws$date))
+  facet_wrap(~period,scales="free_x")
+  #xlim(range(data_ws$date))
 ws_plot <- 
-  ggplot(data_ws)+
+  ggplot(data_merge)+
+  facet_wrap(~period,scales="free_x")+
   geom_line(aes(date,ws,col=factor(file)))
 
+ PPC_plot+
+   geom_vline(xintercept = PPC_dates_start)+
+   geom_vline(xintercept = PPC_dates,alpha=0.2)
+#############
 
 egg::ggarrange(PPC_plot,ws_plot)
 
@@ -118,10 +133,6 @@ ggplot(subset(data_merge,file%in%c(20:25)))+
   scale_y_continuous(name="windspeed (m/s)",sec.axis = sec_axis(~(.)*50,name="P (Pa)"))+
   facet_wrap(~factor(file,levels = Messpunkte$file,labels=Messpunkte$name),scales="free_x")+
   ggsave(paste0(plotpfad_PPchamber,"windmapping_raw.png"),width=8,height = 7)
-ggplot(subset(data_merge,file==25))+
-  geom_line(aes(date,ws,col="ws"))+
-  geom_line(aes(date,P_filter/30))+
-  facet_wrap(~file,scales="free_x")
 
 
 #############################
@@ -141,13 +152,18 @@ ggplot(Messpunkte_merge,aes(PPC,ws,col=factor(z)))+
 #formula <- as.formula(paste(cols, collapse = "~"))
 #value <- "CO2_mol_per_m3"
 approx_df <- NULL
-for(i in unique(Messpunkte_merge$z)){
+for(i in c(20,3)){
   for(j in unique(Messpunkte_merge$step)){
-mat <- reshape2::acast(subset(Messpunkte_merge,z==i & step==j), x ~ y, value.var = "ws")
-
-
+mat <- reshape2::acast(subset(Messpunkte_merge,z==i & step==j & subchamber == 4), x ~ y, value.var = "ws")
+dimnames <- dimnames(mat)
 xyz <- lapply(dimnames(mat), as.numeric)
 names(xyz) <- c("x","y")
+
+if(any(is.na(mat))){
+  mat <- zoo::na.approx(mat)
+  mat <- t(zoo::na.approx(t(mat)))
+  dimnames(mat) <- dimnames
+}
 
 xyz_seq <-
   (lapply(xyz, function(x)
@@ -167,8 +183,8 @@ approx_df <- rbind(approx_df,approx_ij)
 ggplot(subset(approx_df,z == 3),aes(x,y,fill=ws))+
   #geom_contour_filled()+
   geom_raster()+
-  geom_point(data=Messpunkte_merge,aes(x,y))+
-  geom_text(data=Messpunkte_merge,aes(x+2,y+5,label = name))+
+  geom_point(data=subset(Messpunkte_merge,subchamber == 4),aes(x,y))+
+  geom_text(data=subset(Messpunkte_merge,subchamber == 4),aes(x+2,y+5,label = name))+
   facet_wrap(~paste0("PPC step ",step))+
   scale_fill_viridis_c()+
   labs(title = "z = 3 cm")+
@@ -176,8 +192,8 @@ ggplot(subset(approx_df,z == 3),aes(x,y,fill=ws))+
 ggplot(subset(approx_df,z == 20),aes(x,y))+
   geom_raster(aes(fill=ws))+
   #geom_contour_filled()+
-  geom_point(data=Messpunkte_merge,aes(x,y))+
-  geom_text(data=Messpunkte_merge,aes(x+2,y+5,label = name))+
+  geom_point(data=subset(Messpunkte_merge,subchamber == 4),aes(x,y))+
+  geom_text(data=subset(Messpunkte_merge,subchamber == 4),aes(x+2,y+5,label = name))+
   facet_wrap(~paste0("PPC step ",step))+
   scale_fill_viridis_c()+
   labs(title = "z = 20 cm")+
