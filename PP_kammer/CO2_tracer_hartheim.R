@@ -24,11 +24,14 @@ load(file = paste(datapfad_PP_Kammer,"injectionrates_hartheim.RData"))
 #####################################
 #read probes
 data_ls <- vector("list",length = length(dates_ls))
-Versuch <- 2
-#for(Versuch in seq_along(dates_ls)){
+Versuch <- 3
+for(Versuch in seq_along(dates_ls)){
   
   #CO2 Werte für i-te injektion inklusive 2 tage vorher und nachher
   data <- read_sampler(datelim = dates_ls[[Versuch]] + (3600*24*2 * c(-1,1)))
+  data_PP <- read_PP(datelim = dates_ls[[Versuch]] + (3600*24*2 * c(-1,1)),format = "wide")
+  names(data_PP)
+  data <- merge(data,data_PP,all.x = T)
   #data <- read_sampler(datelim = dates_ls[[Versuch]] + (3600*24*2 * c(-1,0)))
   data$tiefe <- data$tiefe
   
@@ -40,6 +43,7 @@ Versuch <- 2
   #Spalte cal hat 1er vor der injektion und danach mit 20 h Abstand nach der injektion da hier der Tracer noch sichtbar ist
   cal_id <- daterange_id(data,dates_ls[[Versuch]] + (3600*20 * c(0,1)))
   data$cal <- ifelse(cal_id,0,1)
+  data$cal[data$PPC_2 > 0.1] <- 0
   data <- merge(data,inj[inj$Versuch == Versuch,c("date","CO2_mol_m2_s")],all = T)
   
   data <- data %>% 
@@ -56,6 +60,9 @@ Versuch <- 2
   
   ggplot(data)+
     geom_line(aes(date,CO2_inj,col=factor(cal),group=tiefe))
+  
+  ggplot(data)+
+    geom_line(aes(date,PPC_2,col=factor(cal),group=tiefe))
   ####################################
   #adj CO2 tracer
   #######################################
@@ -75,7 +82,7 @@ Versuch <- 2
   data$T_soil <- data$T_C
   
   data_ls[[Versuch]] <- data
-#}
+}
 
 data <- do.call(rbind,data_ls)
 
@@ -142,10 +149,16 @@ save(data,data_uncert,file=paste0(datapfad_PP_Kammer,"data_tracer_hartheim.RData
 Versuch_x <- 2
 #####################
 #CO2 inj un refadj plot
-ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
+PPC_plot <- ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
+  geom_line(aes(date,PPC_2,col=factor(cal),group=1))
+CO2_adj <- ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
   geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
-  geom_line(aes(date,CO2_refadj,col=as.factor(tiefe),linetype="ref adj"))+
+
+    geom_line(aes(date,CO2_refadj,col=as.factor(tiefe),linetype="ref adj"))+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))#+
+
+egg::ggarrange(CO2_adj+theme(axis.title.x = element_blank(),
+                             axis.text.x = element_blank()),PPC_plot,heights = c(3,1))
 #  geom_vline(xintercept = ymd_h("2022.06.26 10","2022.06.27 17","2022.07.01 20","2022.07.02 10","2022.07.02 22","2022.07.03 10"))
 #  facet_wrap(~Versuch,scales = "free_x",ncol=1)
 
@@ -158,11 +171,15 @@ ggplot(subset(data_uncert,!is.na(Versuch) & Versuch==Versuch_x))+
   geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))#+
 #  geom_vline(xintercept = step_date,linetype=2,alpha=0.2)
 
-ggplot(subset(data_uncert,!is.na(Versuch) & Versuch==Versuch_x))+
+tracer_plot <- ggplot(subset(data_uncert,!is.na(Versuch) & Versuch==Versuch_x))+
   #geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
-  geom_ribbon(aes(date,ymin=CO2_tracer_min,ymax=CO2_tracer_max,fill=as.factor(tiefe)),alpha=0.2)+
-  geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))#+
+  geom_ribbon(aes(date,ymin=CO2_tracer_min,ymax=CO2_tracer_max,fill=as.factor(abs(tiefe))),alpha=0.2)+
+  geom_line(aes(date,CO2_tracer_drift,col=as.factor(abs(tiefe))))#+
 # 
+egg::ggarrange(tracer_plot+
+                 labs(title=paste("Versuch",Versuch_x))+
+                 theme(axis.title.x = element_blank(),
+                             axis.text.x = element_blank()),PPC_plot,heights = c(3,1))
 # ggplot(subset(data_uncert,!is.na(Versuch) & Versuch==Versuch_x & date %in% round_date(date,"3 hours") & inj==1)[1:63,])+
 #   geom_line(aes(CO2_tracer_drift,tiefe,col=as.factor(date),linetype="a"),orientation = "y")+
 #   geom_line(aes(CO2_tracer_min,tiefe,col=as.factor(date),linetype="min"),orientation = "y")+

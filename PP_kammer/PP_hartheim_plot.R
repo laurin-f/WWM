@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 4
+Versuch <- 3
 #for(Versuch in 20:nrow(pp_chamber)){
   datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
   plot <-  T
@@ -100,7 +100,7 @@ Versuch <- 4
   #probe 1 u 2
   data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
   data_probe3 <- read_sampler("sampler3",datelim = datelim, format = "long")
-  
+  if(nrow(data_probe3) > 1){
   data_probe3 <- data_probe3 %>% 
     filter(!is.na(CO2)) %>%
     mutate(date = round_date(date,"5 mins")) %>% 
@@ -110,7 +110,7 @@ Versuch <- 4
     group_by(tiefe) %>% 
     mutate(CO2_roll = RcppRoll::roll_mean(CO2,5,fill=NA),
            tiefe = tiefe + 3.5)
-  
+  }
   data_probe1u2 <- data_probe1u2 %>% 
     group_by(tiefe) %>% 
     mutate(CO2_smp1_roll = RcppRoll::roll_mean(CO2_smp1,5,fill=NA),
@@ -140,6 +140,8 @@ Versuch <- 4
     guides(col=F)+
     labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",subtitle = "probe 2")
   
+  if(nrow(data_probe3) > 1){
+
   plot_ls[["probe3"]] <- ggplot(data_probe3)+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
     geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
@@ -151,7 +153,7 @@ Versuch <- 4
     coord_cartesian(xlim=datelim)+
     guides(col=F)+
     labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",subtitle = "probe 3")
-  
+  }  
   ############################
   #kammermessungen
   if(exists("flux")){
@@ -279,6 +281,7 @@ Versuch <- 4
   if(plot){
     png(paste0(plotpfad_PPchamber,"CO2_profile_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
   }
+  if(nrow(data_probe3) > 1){
   egg::ggarrange(plot_ls$probe1+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
@@ -301,6 +304,26 @@ Versuch <- 4
                    scale_alpha(range = c(0,0.3))+
                    guides(alpha = F),
                  ncol=1,heights = c(2,2,2,1,1))
+  }else{
+    egg::ggarrange(plot_ls$probe1+
+                     geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                     scale_alpha(range = c(0,0.3))+
+                     guides(alpha = F)+
+                     labs(title = ""),
+                   plot_ls$probe2+
+                     geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                     scale_alpha(range = c(0,0.3))+
+                     guides(alpha = F),
+                   plot_ls$PPC+
+                     geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                     scale_alpha(range = c(0,0.3))+
+                     guides(alpha = F),
+                   plot_ls$P_roll+
+                     geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+                     scale_alpha(range = c(0,0.3))+
+                     guides(alpha = F),
+                   ncol=1,heights = c(2,2,1,1))
+  }
   if(plot){
     dev.off()
   }
