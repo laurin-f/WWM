@@ -16,87 +16,258 @@ chamber_arduino_pfad <- paste0(hauptpfad,"/Daten/Urdaten/Kammermessungen_Arduino
 metapfad_PP <- paste0(metapfad,"PP_Kammer/")
 detach("package:pkg.WWM", unload = TRUE)
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS","MuMIn")
 check.packages(packages)
 theme_set(theme_classic())
 
 
 ##################
 #Metadata
-pp_chamber <- read_ods(paste0(metapfad_PP,"injektionen_hartheim.ods"))
+pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen_hartheim.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
-Versuch <- nrow(pp_chamber)
-Versuch <- 2
-#for(Versuch in 20:nrow(pp_chamber)){
 now <- now()
 tz(now) <- "UTC"
 datelim <- c(ymd_h("22.09.27 10"),now)
 plot <-  T
+load <- T
 
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
 #datelim <- ymd_hm("2022.05.02 00:00","2022.05.02 01:20")
 #datelim <- ymd_hm("2022.05.08 18:00","2022.05.10 13:20")
 #datelim <- ymd_hm("2022.05.12 10:00","2022.05.16 16:00")
 
-plot_ls <- list()
 
 
 ###############
 #load PPC
 
-data_PPC <- read_PP(datelim = datelim)
+data_PPC <- read_PP(datelim = datelim,table.name = "PP_1min")
+
+dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T))
+
+data_PPC <- data_PPC %>% 
+  group_by(id) %>%
+  mutate(dt = diff_time(date,"secs"),
+         PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
+         PPC_meanr3 = RcppRoll::roll_meanr(P_diff,3*60*60/!!dt,fill=NA),
+         PPC_meanr6 = RcppRoll::roll_meanr(P_diff,6*60*60/!!dt,fill=NA),
+         P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA),
+         PPC_diff = abs(c(NA,diff(PPC5)))/!!dt,
+         PPC_diff_meanr = RcppRoll::roll_meanr(PPC_diff,2*60,fill=NA))
+  
 
 
-  data_PPC <- subset(data_PPC,id %in% c(1:6))
-  dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
-  
-  data_PPC <- data_PPC %>% 
-    group_by(id) %>%
-    mutate(dt = diff_time(date,"secs"),
-           P_diff = abs(c(NA,diff(P_filter)))/!!dt,
-           PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
-           P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
-  
-  data_PPC$id[data_PPC$id == 6] <- "outside"
-  data_PPC[which(data_PPC$dt > 3600),c("PPC","PPC5","P_roll")] <- NA
-names(data_PPC)
-data_PPC_wide <- tidyr::pivot_wider(data_PPC,date,names_from = id,values_from = PPC5,names_prefix = "PPC_")  
+
+data_PPC$id[data_PPC$id == 6] <- "outside"
+data_PPC[which(data_PPC$dt > 3600),c("PPC","PPC5","P_roll")] <- NA
+
+data_PPC_wide <- tidyr::pivot_wider(subset(data_PPC,id %in% c(1:3,"outside")),date,names_from = id,values_from = matches("^P"))  
 
 data_PPC_wide$PPC_sum <- data_PPC_wide$PPC_2 + data_PPC_wide$PPC_outside
+data_PPC_wide$P_horiz_1 <- RcppRoll::roll_mean(data_PPC_wide$P_horiz_1,10,fill=NA)
+data_PPC_wide$P_horiz_2 <- RcppRoll::roll_mean(data_PPC_wide$P_horiz_2,10,fill=NA)
+#data_PPC_wide$P_horiz2 <- RcppRoll::roll_mean(abs(data_PPC_wide$P_2 - data_PPC_wide$P_3),10,fill=NA)
 
 
-flux_ls <- chamber_arduino(datelim=datelim,
-                           gga_data = T,
-                           return_ls = T,
-                           t_init=1,
-                           t_min=2,
-                           t_max=2)
-flux <- flux_ls[[1]]
-flux_data <- flux_ls[[2]]
+ggplot(subset(data_PPC_wide[1:5000,]))+
+  geom_line(aes(date,P_roll_2,col="P_roll"))+
+  geom_line(aes(date,PPC_2,col="PPC"))+
+  geom_line(aes(date,P_horiz_2,col="P_horiz"))
 
+ggplot(subset(data_PPC_wide[1:5000,]))+
+  geom_line(aes(date,PPC_2,col="PPC"))+
+  geom_line(aes(date,PPC_sum,col="PPC_sum"))+
+  geom_line(aes(date,PPC_meanr6_2,col="PPC_meanr6"))+
+  geom_line(aes(date,PPC_diff_meanr_2*1000,col="meanr"))
+
+if(load){
+  load(paste0(datapfad_PP_Kammer,"flux_ls.RData"))
+  datelim_old <- range(flux$date)
+  if(datelim[2] > datelim_old[2]){
+    flux_ls <- chamber_arduino(datelim=c(max(datelim_old),max(datelim)),
+                               gga_data = T,
+                               return_ls = T,
+                               t_init=1,
+                               t_min=2,
+                               t_max=2,
+                               gas = c("CO2_GGA","CH4"))
+    flux_new <- flux_ls[[1]]
+    flux_data_new <- flux_ls[[2]]
+    
+    flux <- rbind(flux,flux_new)
+    flux_data <- rbind(flux_data,flux_data_new)
+    
+    save(flux,flux_data,file=paste0(datapfad_PP_Kammer,"flux_ls.RData"))
+  }
+}else{
+  flux_ls <- chamber_arduino(datelim=datelim,
+                             gga_data = T,
+                             return_ls = T,
+                             t_init=1,
+                             t_min=2,
+                             t_max=2)
+  flux <- flux_ls[[1]]
+  flux_data <- flux_ls[[2]]
+}
+rm(flux_data)
 #ggplot(flux_data)+
 #  geom_line(aes(date,CO2,col=factor(messid),group=1))+
 #  geom_line(aes(date,CO2_GGA+50,col=factor(messid),group=1))
 flux_sub <- subset(flux,!is.na(CH4_R2))
 data_merge <- merge(flux_sub,data_PPC_wide)
 
+
+rm(data_PPC_wide)
+
 #swc
 source("./PP_kammer/SWC_hartheim.R")
 
 swc_sub <- sub_daterange(swc_wide,datelim)
 data_merge <- merge(data_merge,swc_sub,all.x =T)
+data_merge$CO2_flux <- RcppRoll::roll_mean(data_merge$CO2_GGA_mumol_per_s_m2,5,fill=NA)
+data_merge$CO2_flux2 <- RcppRoll::roll_mean(data_merge$CO2_GGA_mumol_per_s_m2,10,fill=NA)
+data_merge$CH4_flux <- RcppRoll::roll_mean(data_merge$CH4_mumol_per_s_m2 * 10^3,5,fill=NA)
+data_merge$CH4_flux2 <- RcppRoll::roll_mean(data_merge$CH4_mumol_per_s_m2 * 10^3,10,fill=NA)
+
+data_merge$dummy <- rnorm(nrow(data_merge))
+
+fm_CO2_swc_T <- glm(CO2_flux ~ swc_7 + T_C,data = data_merge)
+fm_CO2_swc_T_PPC <- glm(CO2_flux ~ swc_7 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data = data_merge)
+
+data_merge$CO2_swc_T <- predict(fm_CO2_swc_T,newdata = data_merge)
+data_merge$CO2_swc_T_PPC <- predict(fm_CO2_swc_T_PPC,newdata = data_merge)
+data_merge$CO2_adj <- data_merge$CO2_flux - data_merge$CO2_swc_T_PPC + mean(data_merge$CO2_flux,na.rm = T)
+
+fm_CH4_swc_T <- glm(CH4_flux ~ (swc_7) + (T_C),data = data_merge)
+fm_CH4_swc_T_PPC <- glm(CH4_flux ~ (swc_7) + (T_C) + PPC_2 + PPC_outside + PPC_diff_meanr,data = data_merge)
+data_merge$CH4_swc_T <- predict(fm_CH4_swc_T,newdata = data_merge)
+data_merge$CH4_swc_T_PPC <- predict(fm_CH4_swc_T_PPC,newdata = data_merge)
+
+data_merge$CH4_adj <- data_merge$CH4_flux - data_merge$CH4_swc_T + mean(data_merge$CH4_flux,na.rm = T)
+
+step(fm_CO2_swc_T_PPC)
+summary(fm_CO2_swc_T_PPC)
+summary(fm_CH4_swc_T_PPC)
+summary(lm(CO2_adj ~ PPC_sum , data=data_merge))
+
+data_merge$Versuch <- NA
+data_merge$CH4_group_fm <- NA
+data_merge$CH4_group_PPC <- NA
+data_merge$CO2_group_fm <- NA
+data_merge$CO2_group_PPC <- NA
+for(i in 2:nrow(pp_chamber)){
+  id_i <- which(daterange_id(data_merge,c(pp_chamber$Start[i] - 3600 * 24,pp_chamber$Ende[i] + 3600 * 24)))
+  data_merge$Versuch[id_i] <- i
+  data_merge$CH4_group_fm[id_i] <- predict(glm(CH4_flux ~ swc_7 + T_C, data = data_merge[id_i,]))
+  data_merge$CH4_group_PPC[id_i] <- predict(glm(CH4_flux ~ swc_7 + T_C + PPC_sum, data = data_merge[id_i,]))
+  data_merge$CO2_group_fm[id_i] <- predict(glm(CO2_flux ~ swc_7 + T_C, data = data_merge[id_i,]))
+  data_merge$CO2_group_PPC[id_i] <- predict(glm(CO2_flux ~ swc_7 + T_C + PPC_sum, data = data_merge[id_i,]))
+}
+
+
+
+
+
+
+data_merge$modus <- factor(data_merge$Versuch,levels = 1:nrow(pp_chamber),labels = pp_chamber$Modus)
+
+Versuch <- 6
+
+ggplot(subset(data_merge,Versuch %in% c(2:12)))+
+  geom_line(aes(date,PPC_2*4,col="PPC"))+
+  geom_line(aes(date,P_horiz_2,col="P_horiz"))+
+  facet_wrap(~paste(Versuch,modus),scales="free_x")
+
+ggplot(subset(data_merge,Versuch %in% c(2:7)))+
+  geom_line(aes(date,CO2_flux2,col="chamber_flux"))+
+  #geom_line(aes(date,CO2_group_fm,col="swc_T"))+
+  #geom_line(aes(date,CO2_group_PPC,col="swc_T_PPC"))+
+  geom_line(aes(date,CO2_swc_T_PPC,col="swc_T_PPC"))+
+  geom_line(aes(date,CO2_swc_T,col="swc_T"))+
+  geom_line(aes(date,PPC_2+1,col="PPC_2"))+
+  geom_line(aes(date,PPC_outside+1,col="PPC_outside"))+
+  geom_line(aes(date,PPC_sum+1,col="PPC_sum"))+
+  geom_line(aes(date,T_C/10,col="T_C"))+
+  facet_wrap(~Versuch,scales="free_x")
+
+
+ggplot(data_merge)+
+  geom_line(aes(date, PPC_diff_meanr_2*-10000 -1,col="diff"))+
+  geom_line(aes(date, CH4_adj,col="CH4_flux"))+
+  facet_wrap(~Versuch,scales = "free_x")
+ggplot(data_merge,aes(PPC_meanr6_2,CH4_adj,col=T_C))+
+  geom_point()+
+  geom_smooth(method = "glm")+
+  scale_color_viridis_c()+
+  facet_wrap(~cut(swc_14,5))
+  
+#  facet_wrap(~Versuch,scales = "free")
+ggplot(data_merge)+
+  geom_point(aes(PPC_diff_meanr,CH4_flux,col=T_C))
+ggplot(data_merge)+
+  geom_point(aes(PPC_outside,CH4_flux,col=PPC_2))+
+  scale_color_viridis_c()+
+  facet_wrap(~cut(T_C,6))
+  #geom_point(aes(PPC_outside,CH4_adj,col="adj"),alpha=0.4)
+ggplot(data_merge)+
+  geom_point(aes(PPC_2,CH4_flux,col="raw"))+
+  geom_point(aes(PPC_2,CH4_adj,col="adj"),alpha=0.4)
+ggplot(data_merge)+
+  geom_point(aes(PPC_sum,CH4_flux,col="raw"))+
+  geom_point(aes(PPC_sum,CH4_adj,col="adj"),alpha=0.4)
+
+ggplot(data_merge)+
+  geom_point(aes(PPC_outside,CO2_flux,col="raw"))+
+  geom_point(aes(PPC_outside,CO2_adj,col="adj"),alpha=0.4)
+ggplot(data_merge)+
+  geom_point(aes(CH4_flux,PPC_2))
+names(data_merge)
+Versuch <- 4
+
+names(data_merge)
+
+
+ggplot(subset(data_merge,Versuch %in% c(2:7)))+
+  geom_line(aes(date,CH4_flux,col="chamber_flux"))+
+  geom_line(aes(date,CH4_swc_T_PPC,col="swc_T_PPC"))+
+  geom_line(aes(date,CH4_swc_T,col="swc_T"))+
+  geom_line(aes(date,T_C/-20,col="T_C"))+
+  geom_line(aes(date,PPC_2-1,col="PPC_2"))+
+  geom_line(aes(date,PPC_sum-1,col="PPC_sum"))+
+  facet_wrap(~Versuch,scales="free_x")
+
+
+
+ggplot(data_merge)+
+  geom_point(aes(PPC_sum, CO2_flux,col="raw"))+
+  geom_point(aes(PPC_sum, CO2_adj,col="adj"))
+
+
+
+
+ggplot(data_merge)+
+  geom_line(aes(date,CH4_flux))+
+  geom_line(aes(date,CH4_swc_T_PPC,col="swc_T_PPC"))+
+  geom_line(aes(date,CH4_swc_T,col="swc_T"))+
+  geom_line(aes(date,PPC_sum -1,col="PPC"))+
+  xlim(ymd_h("22.10.07 10","22.10.12 10"))
+
+ggplot(data_merge)+
+  #geom_point(aes(PPC_sum, CH4_flux))
+  geom_point(aes(PPC_sum, CH4_flux,col="raw"))+
+  geom_point(aes(PPC_sum, CH4_adj,alpha=0.2,col="adj"))
 
 CO2_GGA_flux <- ggplot(data_merge)+
   geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"))+
-  geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"))+
+  geom_line(aes(date,CO2_flux,col="CO2"))+
   guides(col=F)+
   labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")
 
 CH4_GGA_flux <- ggplot(data_merge)+
   geom_point(aes(date,CH4_mumol_per_s_m2*10^3,col="CH4"))+
-  geom_line(aes(date,(CH4_mumol_per_s_m2*10^3),col="CH4"))+
+  geom_line(aes(date,(CH4_flux),col="CH4"))+
   labs(x="",y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
   guides(col=F)+
   scale_color_manual(values = scales::hue_pal()(2)[2])
@@ -124,25 +295,30 @@ swc_plot <- ggplot(data_merge)+
   labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
 
 timelines <- ggpubr::ggarrange(CO2_GGA_flux,CH4_GGA_flux,PPC_sum_plot+guides(col=F),T_plot,swc_plot+guides(col=F),ncol=1,align = "v")
-summary(glm(CO2_GGA_mumol_per_s_m2 ~ PPC_sum + T_C,data=data_merge))
-summary(glm(CH4_mumol_per_s_m2 ~ PPC_sum + T_C,data=data_merge))
+summary(glm(CO2_flux ~ PPC_sum + T_C,data=data_merge))
+summary(glm(CH4_flux ~ PPC_sum + T_C,data=data_merge))
 
-CO2_scatter <- ggplot(data_merge,aes(PPC_sum,CO2_GGA_mumol_per_s_m2))+
+#CO2_scatter <- 
+ggplot(data_merge,aes(PPC_sum,CO2_flux,col=swc_7))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
-  geom_point(col=scales::hue_pal()(2)[1])+
+  geom_point()+
   ggpubr::stat_regline_equation(label.y = 3.49,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y = 3.4,aes(label= ..rr.label..))+
+  scale_color_viridis_c()+
+  #  facet_wrap(~cut(T_C,breaks = 4))+
   labs(y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),x= expression(PPC[sum]~"(Pa/s)"))
 
-CH4_scatter <- 
-  ggplot(data_merge,aes(PPC_sum,CH4_mumol_per_s_m2*10^3))+
+#CH4_scatter <- 
+ggplot(data_merge,aes(PPC_sum,CH4_flux,col=swc_7))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
-  geom_point(col=scales::hue_pal()(2)[2])+
+  geom_point()+
   ggpubr::stat_regline_equation(label.y=-0.8,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y=-0.85,aes(label= ..rr.label..))+
+  scale_color_viridis_c()+
+  #  facet_wrap(~cut(T_C,breaks = 4))+
   labs(y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),x= expression(PPC[sum]~"(Pa/s)"))
 
-CO2_T <- ggplot(data_merge,aes(T_C,CO2_GGA_mumol_per_s_m2))+
+CO2_T <- ggplot(data_merge,aes(T_C,CO2_flux))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point(col=scales::hue_pal()(2)[1])+
   ggpubr::stat_regline_equation(label.y = 3.49,aes(label= ..eq.label..))+
@@ -151,33 +327,33 @@ CO2_T <- ggplot(data_merge,aes(T_C,CO2_GGA_mumol_per_s_m2))+
 
 
 CH4_T <- 
-  ggplot(data_merge,aes(T_C,CH4_mumol_per_s_m2*10^3))+
+  ggplot(data_merge,aes(T_C,CH4_flux))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point(col=scales::hue_pal()(2)[2])+
   ggpubr::stat_regline_equation(label.y=-0.8,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y=-0.85,aes(label= ..rr.label..))+
   labs(y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),x= "T (°C)")
 
-CO2_swc_7 <- ggplot(data_merge,aes(swc_7,CO2_GGA_mumol_per_s_m2))+
+CO2_swc_7 <- ggplot(data_merge,aes(swc_7,CO2_flux))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point(col=scales::hue_pal()(2)[1])+
   ggpubr::stat_regline_equation(label.y = 3.49,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y = 3.4,aes(label= ..rr.label..))+
   labs(y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),x= "swc 7 cm (Vol. %)")
-CO2_swc_14 <- ggplot(data_merge,aes(swc_14,CO2_GGA_mumol_per_s_m2))+
+CO2_swc_14 <- ggplot(data_merge,aes(swc_14,CO2_flux))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point(col=scales::hue_pal()(2)[1])+
   ggpubr::stat_regline_equation(label.y = 3.49,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y = 3.4,aes(label= ..rr.label..))+
   labs(y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),x= "swc 14 cm (Vol. %)")
 
-CH4_swc_7 <- ggplot(data_merge,aes(swc_7,CH4_mumol_per_s_m2*10^3))+
+CH4_swc_7 <- ggplot(data_merge,aes(swc_7,CH4_flux))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point(col=scales::hue_pal()(2)[2])+
   ggpubr::stat_regline_equation(label.y = -0.8,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y = -0.85,aes(label= ..rr.label..))+
   labs(y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),x= "swc 7 cm (Vol. %)")
-CH4_swc_14 <- ggplot(data_merge,aes(swc_7,CH4_mumol_per_s_m2*10^3))+
+CH4_swc_14 <- ggplot(data_merge,aes(swc_14,CH4_flux))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point(col=scales::hue_pal()(2)[2])+
   ggpubr::stat_regline_equation(label.y = -0.8,aes(label= ..eq.label..))+
@@ -185,8 +361,8 @@ CH4_swc_14 <- ggplot(data_merge,aes(swc_7,CH4_mumol_per_s_m2*10^3))+
   labs(y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),x= "swc 14 cm (Vol. %)")
 #ggpubr::ggarrange(CO2_scatter,CH4_scatter)
 
-ggpubr::ggarrange(CO2_scatter,CO2_T,CO2_swc_14,CH4_scatter,CH4_T,CH4_swc_7)+
-  ggsave(paste0(plotpfad_PPchamber,"flux_scatterplots.png"),width = 7,height = 6)
+ggpubr::ggarrange(CO2_scatter,CO2_T,CO2_swc_7,CH4_scatter,CH4_T,CH4_swc_7)+
+  ggsave(paste0(plotpfad_PPchamber,"flux_scatterplots.png"),width = 9,height = 8)
 
 png(paste0(plotpfad_PPchamber,"GGA_PPC_effect.png"),width=7,height = 7,unit="in",res=300)
 grid.arrange(timelines,

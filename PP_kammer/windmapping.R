@@ -27,6 +27,8 @@ Messpunkte <- data.frame(name = c(rep(paste0("P",1:6),2),paste0("P",7:12)),
                          x = c(rep(c(rep(c(300,275),each=3)),2),290,290,205,124,42,42),
                          y = c(rep(c(20,96,172,172,96,20),2),50,150,150,50,150,150),
                          z =c(rep(c(20,3),each=6),rep(3,5),50))
+Messpunkte_ws <- data.frame(name = c("probe1","probe2","probe2","probe3"),
+                         file = 32:35)
 kammer_y-60
 kammer_x - subchamber_x/2 -subchamber_x*3
 
@@ -51,16 +53,33 @@ datelim1 <- ymd_hm("22.10.18 10:00","22.10.18 13:00")
 datelim2 <- ymd_hm("22.10.20 09:00","22.10.20 13:00")
 datelim <- ymd_hm("22.10.18 10:00","22.10.20 13:00")
 
+datelim_ws <- ymd_hm("22.10.28 09:00","22.10.28 13:00")
+
 data_ws_all$date <- dmy_hms(data_ws_all$Datum_chr)
 data_ws_all <- data_ws_all[!is.na(data_ws_all$date),]
 data_ws_all <- data_ws_all[!duplicated(data_ws_all$date),]
 
 data_ws <- sub_daterange(data_ws_all,datelim)
+data_ws2 <- sub_daterange(data_ws_all,datelim_ws)
 
+data_ws2 <- data_ws2 %>% 
+  group_by(file) %>% 
+  mutate(ws_roll = RcppRoll::roll_mean(ws,5,fill=NA),
+         ws_diff = abs(c(NA,diff(ws_roll))))
+data_ws2$probe <- factor(data_ws2$file,levels = (Messpunkte_ws$file),labels = (Messpunkte_ws$name))
 ###########################################
 #read PP data
 data_PPC1 <- read_PP(datelim1)
 data_PPC2 <- read_PP(datelim2)
+data_PPC_ws <- read_PP(datelim_ws,format = "long")
+data_PPC_ws$date <- data_PPC_ws$date +t_lag
+data_PPC_ws <- sub_daterange(data_PPC_ws,range(data_ws2$date)+ 60*30 *c(-1,1))
+data_PPC_ws <- data_PPC_ws %>%
+  filter(id %in% 1:5) %>% 
+  group_by(id) %>%
+  mutate(P_roll = RcppRoll::roll_mean(P,3*60,fill=NA))
+data_ws2_merge <- merge(data_ws2,data_PPC_ws)
+
 data_PPC1$period <- 1
 data_PPC2$period <- 2
 data_PPC <- rbind(data_PPC1,data_PPC2)
@@ -98,6 +117,26 @@ data_agg <- data_merge %>%
   summarise(PPC = mean(PPC1),
             ws = mean(ws),
             ws_sd = sd(ws))
+
+##ws_steps
+ws_dates_raw <- data_ws2[which(data_ws2$ws_diff > 0.02),c("date","file")]
+ws_dates_start <- ws_dates_raw$date[!duplicated(ws_dates_raw$file)]
+ws_dates_start <- ws_dates_raw[c(as.numeric(diff(ws_dates_raw)),100) > 60]
+ws_dates <- sort(c(ws_dates_start,ws_dates_start + c(3,3,2,2,6,6,4,4,9,9,6,6)*60))
+ws_dates_df <- data.frame(start = c(min(data_ws2_merge$date),ws_dates),
+                          stop = c(ws_dates,max(data_ws2_merge$date)),
+                          PWM = c(0,rep(c(100,66,32,0),4)),
+                          file= c(32,rep(32:35,each=4)))
+
+data_ws2_merge <- data_ws2_merge %>% 
+  group_by(file,id) %>% 
+  mutate(step = cumsum(ifelse(date %in% ws_dates,1,0)),
+         step = ifelse(step == 4, 0, step))
+
+data_ws2_agg <- data_ws2_merge %>% 
+  group_by(file,step,id) %>% 
+  summarise(ws = mean(ws),
+            P_roll = mean(P_roll))
 ###########################
 #plot
 
@@ -114,12 +153,45 @@ ws_plot <-
  PPC_plot+
    geom_vline(xintercept = PPC_dates_start)+
    geom_vline(xintercept = PPC_dates,alpha=0.2)
-#############
+
+ #############
 
 egg::ggarrange(PPC_plot,ws_plot)
 
 
+ ggplot(subset(data_PPC_ws,id %in% 1:5))+
+   geom_line(aes(date,P_roll,col=as.factor(id)))+
+   geom_line(data = data_ws2,aes(date,ws*10))
+ 
+ 
+ 
+ ggplot(subset(data_ws2_merge,id %in% 1:5 & file %in% c(32,33)))+
+   geom_vline(xintercept = ws_dates,alpha=0.3,linetype=2)+
+   geom_rect(data = ws_dates_df[1:8,],aes(xmin = start,xmax=stop,ymin = -Inf, ymax = Inf,alpha = factor(PWM)))+
+   geom_line(aes(date,P_roll/10,col=as.factor(id)))+
+   geom_line(aes(date,ws_roll))+
+   labs(col="P")+
+   scale_alpha_discrete("pwm",range=c(0,0.4))+
+   scale_y_continuous(name="windspeed (m/s)",sec.axis = sec_axis(~(.)*10,name="P (Pa)"))+
+   theme_classic()+
+   ggsave(paste0(plotpfad_PPchamber,"WS_Versuch_P_roll.png"),width = 7,height = 6)
+ 
+ 
 
+ ggplot(data_ws2_merge)+
+   #geom_vline(xintercept = ws_dates,alpha=0.3,linetype=2)+
+   geom_rect(data = subset(ws_dates_df,PWM != 0),aes(xmin = start,xmax=stop,ymin = -Inf, ymax = Inf,alpha = factor(PWM)))+
+   geom_line(aes(date,ws,col=factor(probe)))+
+   facet_wrap(~factor(file,labels = 1:4),scales = "free_x")+
+   scale_alpha_discrete("pwm",range=c(0.1,0.4))+
+   theme_classic()+
+   ggsave(paste0(plotpfad_PPchamber,"WS_Versuch_Testo.png"),width = 7,height = 6)
+
+ggplot(data_ws2_agg)+
+  geom_point(aes(step,P_roll,col=factor(id)))
+ggplot(subset(data_ws2_agg,file == 32))+
+  geom_point(aes(P_roll,ws,col=factor(id)))+
+  facet_wrap(~file)
 
 ggplot(subset(data_merge))+
   geom_line(aes(date,ws,col="ws"))+

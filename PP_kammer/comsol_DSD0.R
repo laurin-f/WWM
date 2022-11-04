@@ -266,7 +266,7 @@ if(nrow(data_PPC) > 0){
     filter(id != "outside") %>% 
     group_by(id) %>%
     mutate(dt = diff_time(date,"secs"),
-           P_diff = abs(c(NA,diff(P_filter)))/!!dt,
+           #P_diff = abs(c(NA,diff(P_filter)))/!!dt,
            PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
            PPC_diff = abs(c(NA,diff(PPC))),
            P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))

@@ -32,8 +32,8 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 3
-#for(Versuch in 20:nrow(pp_chamber)){
+#Versuch <- 10
+#for(Versuch in 1:nrow(pp_chamber)){
   datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
   plot <-  T
   if(is.na(datelim[2])){
@@ -59,7 +59,6 @@ Versuch <- 3
     data_PPC <- data_PPC %>% 
       group_by(id) %>%
       mutate(dt = diff_time(date,"secs"),
-             P_diff = abs(c(NA,diff(P_filter)))/!!dt,
              PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
              P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
     
@@ -127,7 +126,7 @@ Versuch <- 3
     scale_color_discrete(limits = factor(0:7*3.5))+
     coord_cartesian(xlim=datelim)+
     guides(fill=F)+
-    labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",title=paste("Versuch",Versuch),subtitle = "probe 1")
+    labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",title=paste("Versuch",Versuch,"Modus",pp_chamber$Modus[Versuch]),subtitle = "probe 1")
   plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
     geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
@@ -285,8 +284,7 @@ Versuch <- 3
   egg::ggarrange(plot_ls$probe1+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
-                   guides(alpha = F)+
-                   labs(title = ""),
+                   guides(alpha = F),
                  plot_ls$probe2+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
@@ -308,8 +306,7 @@ Versuch <- 3
     egg::ggarrange(plot_ls$probe1+
                      geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                      scale_alpha(range = c(0,0.3))+
-                     guides(alpha = F)+
-                     labs(title = ""),
+                     guides(alpha = F),
                    plot_ls$probe2+
                      geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                      scale_alpha(range = c(0,0.3))+
@@ -339,7 +336,7 @@ CO2_GGA_flux <- ggplot(flux_gga)+
   geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"),alpha=0.3)+
   geom_line(aes(date,RcppRoll::roll_mean(CO2_GGA_mumol_per_s_m2,5,fill=NA),col="CO2"))+
   #coord_cartesian(xlim=datelim)+
-  labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
+  labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="",title=paste("Versuch",Versuch,"Modus",pp_chamber$Modus[Versuch]))+
   scale_fill_grey()
 
 CH4_GGA_flux <- ggplot(flux_gga)+
@@ -373,6 +370,7 @@ egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,ppc_plot,plot_ls$T_C + xlim(range(flux_
   dev.off()
 
 }
+#}#for i in Versuch
   names(flux)
 CO2_gga_plot <- ggplot(subset(flux,!is.na(CO2_GGA_mumol_per_s_m2)))+geom_line(aes(date,CO2_GGA_mumol_per_s_m2))+
   geom_vline(xintercept = step_date,linetype=2,col="grey")

@@ -49,6 +49,15 @@ flux_4 <- chamber_arduino(datelim=ymd_hm("22.10.24 08:00","22.10.24 10:00"),
                           t_offset = 60,
                           t_min = 2,
                           t_max=10)
-t_offset_df <- data.frame(date = ymd_hm("2022-09-27 10:00","22.10.18 12:00","22.10.18 12:30","22.10.24 10:00"),
-                          offset = c(-80,-300,120,60))
+flux_5 <- chamber_arduino(datelim=ymd_hm("22.11.03 10:30","22.11.03 11:30"),
+                          gga_data = T,
+                          t_init=0,
+                          plot="timeline",
+                          t_offset = -50,
+                          t_min = 2,
+                          t_max=10)
+
+t_offset_df <- data.frame(date = 
+                            ymd_hm("2022-09-27 10:00","22.10.18 12:00","22.10.18 12:30","22.10.24 10:00","22.11.03 11:30"),
+                          offset = c(-80,-300,120,60,-50))
 save(t_offset_df,file = paste0(datapfad_PP_Kammer,"t_offset_df.RData"))

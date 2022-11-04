@@ -146,16 +146,17 @@ save(data,data_uncert,file=paste0(datapfad_PP_Kammer,"data_tracer_hartheim.RData
 #########################
 #plots
 
-Versuch_x <- 2
+Versuch_x <- 3
 #####################
 #CO2 inj un refadj plot
 PPC_plot <- ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
   geom_line(aes(date,PPC_2,col=factor(cal),group=1))
 CO2_adj <- ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
-  geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(tiefe)),alpha=0.2)+
+  geom_ribbon(aes(date,ymin=CO2_refadj,ymax=CO2_inj,fill=as.factor(abs(tiefe))),alpha=0.2)+
 
-    geom_line(aes(date,CO2_refadj,col=as.factor(tiefe),linetype="ref adj"))+
-  geom_line(aes(date,CO2_inj,col=as.factor(tiefe),linetype="inj"))#+
+    geom_line(aes(date,CO2_refadj,col=as.factor(abs(tiefe)),linetype="ref adj"))+
+  geom_line(aes(date,CO2_inj,col=as.factor(abs(tiefe)),linetype="inj"))+
+  labs(col="depth (cm)",fill="depth (cm)",y=expression(CO[2]~"(ppm)"))
 
 egg::ggarrange(CO2_adj+theme(axis.title.x = element_blank(),
                              axis.text.x = element_blank()),PPC_plot,heights = c(3,1))
@@ -189,7 +190,7 @@ egg::ggarrange(tracer_plot+
 ###################
 #tracer plot
 
-ggplot(subset(data,!is.na(Versuch)& Versuch==Versuch_x))+
+ggplot(subset(data,!is.na(Versuch)))+
   geom_line(aes(date,CO2_tracer_drift,col=as.factor(tiefe)))+
   facet_wrap(~Versuch,scales = "free_x",ncol=1)
 
