@@ -26,8 +26,8 @@ median(inj$CO2_ml_per_min)
 #######################################
 #####################################
 #read probes
-Versuch <- 2
-overwrite <-  F
+Versuch <- 3
+overwrite <-  T
 plot <- T
 load(file=paste0(datapfad_PP_Kammer,"data_tracer_hartheim.RData"))
 data_all <- data
@@ -63,7 +63,13 @@ CO2_plot <-
 ##########################################
 ## COMSOL
 ##########################################
-
+names(data)
+NA_tiefen <- data %>% 
+  group_by(tiefe) %>%
+  summarise(n_NAS = length(which(!is.na(CO2_tracer_drift))) / length(CO2_tracer_drift))
+  
+tiefen <- NA_tiefen$tiefe[NA_tiefen$n_NAS > 0.9]
+#tiefen <- tiefen[-1]
 nDS <- 1
 file_suffix <- ""
 #file_suffix <- ""
@@ -74,21 +80,22 @@ if(file.exists(file_i) & overwrite == F){
   data$inj_mol_m2_s <- data$inj_meanr6
   data_uncert_sub$inj_mol_m2_s <- data_uncert_sub$inj_meanr6
   
-  comsol <- comsol_sweep(data = data,
+  comsol <- comsol_sweep(data = subset(data,tiefe %in% tiefen),
                          tracer_colname = "CO2_tracer_drift",
                          intervall = "60 mins",
                          #DS_ratio = eps_ratio,
                          filename = paste0("freeSoil_anisotropy_sweep_",nDS,"DS",file_suffix,".txt"),
                          extend = ifelse(nDS>1,T,F),
+                         plot = "CO2",
                          byout= 1e-7)
-  comsol_min <- comsol_sweep(data = data_uncert_sub,
+  comsol_min <- comsol_sweep(data = subset(data_uncert_sub,tiefe %in% tiefen),
                              tracer_colname = "CO2_tracer_min",
                              intervall = "60 mins",
                              #DS_ratio = eps_ratio,
                              filename = paste0("freeSoil_anisotropy_sweep_",nDS,"DS",file_suffix,".txt"),
                              extend = ifelse(nDS>1,T,F),
                              byout= 1e-7)
-  comsol_max <- comsol_sweep(data = data_uncert_sub,
+  comsol_max <- comsol_sweep(data = subset(data_uncert_sub,tiefe %in% tiefen),
                              tracer_colname = "CO2_tracer_max",
                              #DS_ratio = eps_ratio,
                              intervall = "60 mins",
@@ -100,12 +107,15 @@ if(file.exists(file_i) & overwrite == F){
   
 }
 
+
 range(subset(comsol,tiefe==1)$DS)
 
 comsol$DSD0_min <- comsol_min$DSD0
 comsol$DSD0_max <- comsol_max$DSD0
 comsol_sub <- sub_daterange(comsol,range(comsol$date) + 3600 * 10 * c(1,0))
-
+comsol_wide <- tidyr::pivot_wider(comsol_sub,names_from = tiefe,values_from = matches("DS"))
+comsol_CO2_long <- tidyr::pivot_longer(comsol_wide,matches("CO2"),names_to = c(".value","tiefe"),names_pattern = "(CO2.*)_(\\d)")
+comsol_CO2_long$tiefe <- as.numeric(comsol_CO2_long$tiefe)*3.5
 #DSD0plt <- 
   ggplot(comsol_sub)+
   geom_ribbon(aes(x=date,ymin=DSD0_min,ymax=DSD0_max,fill=as.factor(tiefe)),alpha=0.3)+
@@ -227,14 +237,22 @@ if(plot){
   data_merge2$PPC_meanr6[3] <- data_merge2$PPC5[3]
   PP_plot <- PP_plot+
     geom_line(data=subset(data_merge2,!is.na(PPC_meanr6)),aes(date,PPC_meanr6,linetype="PPC6h"),linetype=2)
-  
+  names(comsol)
   tracerplt <- 
-    ggplot(subset(data,tiefe != 0))+
+    ggplot(subset(comsol_CO2_long,!is.na(CO2_obs)))+
     #geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
-    geom_line(aes(date,(CO2_tracer_roll),col=as.factor(-tiefe)))+#,linetype="PPC"))+
+    geom_line(aes(date,(CO2_obs),col=as.factor(tiefe),linetype="obs"))+#,linetype="PPC"))+
+    geom_line(aes(date,(CO2_mod),col=as.factor(tiefe),linetype="mod"))+#,linetype="PPC"))+
     theme(axis.title.x = element_blank())+
     guides(fill=F)+
     labs(y=expression("tracer CO"[2]~(ppm)),col="depth (cm)")
+  # tracerplt <- 
+  #   ggplot(subset(data,tiefe != 0))+
+  #   #geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
+  #   geom_line(aes(date,(CO2_tracer_roll),col=as.factor(-tiefe)))+#,linetype="PPC"))+
+  #   theme(axis.title.x = element_blank())+
+  #   guides(fill=F)+
+  #   labs(y=expression("tracer CO"[2]~(ppm)),col="depth (cm)")
   
   DSD0_plt <- 
     ggplot(comsol_sub)+

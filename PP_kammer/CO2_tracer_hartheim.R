@@ -30,7 +30,8 @@ for(Versuch in seq_along(dates_ls)){
   #CO2 Werte für i-te injektion inklusive 2 tage vorher und nachher
   data <- read_sampler(datelim = dates_ls[[Versuch]] + (3600*24*2 * c(-1,1)))
   data_PP <- read_PP(datelim = dates_ls[[Versuch]] + (3600*24*2 * c(-1,1)),format = "wide")
-  names(data_PP)
+  data_PP$P_roll <- RcppRoll::roll_mean(data_PP$P_2,30,fill = NA)
+  
   data <- merge(data,data_PP,all.x = T)
   #data <- read_sampler(datelim = dates_ls[[Versuch]] + (3600*24*2 * c(-1,0)))
   data$tiefe <- data$tiefe
@@ -44,6 +45,7 @@ for(Versuch in seq_along(dates_ls)){
   cal_id <- daterange_id(data,dates_ls[[Versuch]] + (3600*20 * c(0,1)))
   data$cal <- ifelse(cal_id,0,1)
   data$cal[data$PPC_2 > 0.1] <- 0
+  data$cal[data$P_roll > 1 | data$P_roll < -1] <- 0
   data <- merge(data,inj[inj$Versuch == Versuch,c("date","CO2_mol_m2_s")],all = T)
   
   data <- data %>% 
@@ -145,8 +147,8 @@ data_uncert <- data %>%
 save(data,data_uncert,file=paste0(datapfad_PP_Kammer,"data_tracer_hartheim.RData"))
 #########################
 #plots
-
-Versuch_x <- 3
+unique(data$Versuch)
+Versuch_x <- 6
 #####################
 #CO2 inj un refadj plot
 PPC_plot <- ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+
