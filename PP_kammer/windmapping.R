@@ -121,7 +121,7 @@ data_agg <- data_merge %>%
 ##ws_steps
 ws_dates_raw <- data_ws2[which(data_ws2$ws_diff > 0.02),c("date","file")]
 ws_dates_start <- ws_dates_raw$date[!duplicated(ws_dates_raw$file)]
-ws_dates_start <- ws_dates_raw[c(as.numeric(diff(ws_dates_raw)),100) > 60]
+#ws_dates_start <- ws_dates_raw[c(as.numeric(diff(ws_dates_raw)),100) > 60]
 ws_dates <- sort(c(ws_dates_start,ws_dates_start + c(3,3,2,2,6,6,4,4,9,9,6,6)*60))
 ws_dates_df <- data.frame(start = c(min(data_ws2_merge$date),ws_dates),
                           stop = c(ws_dates,max(data_ws2_merge$date)),
@@ -160,8 +160,9 @@ egg::ggarrange(PPC_plot,ws_plot)
 
 
  ggplot(subset(data_PPC_ws,id %in% 1:5))+
+   geom_rect(data = ws_dates_df,aes(xmin = start,xmax=stop,ymin = -Inf, ymax = Inf,alpha = factor(PWM)))+
    geom_line(aes(date,P_roll,col=as.factor(id)))+
-   geom_line(data = data_ws2,aes(date,ws*10))
+   scale_alpha_discrete("pwm",range=c(0,0.4))
  
  
  

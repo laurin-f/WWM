@@ -16,7 +16,7 @@ chamber_arduino_pfad <- paste0(hauptpfad,"/Daten/Urdaten/Kammermessungen_Arduino
 metapfad_PP <- paste0(metapfad,"PP_Kammer/")
 detach("package:pkg.WWM", unload = TRUE)
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS","MuMIn")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -44,6 +44,8 @@ load <- T
 #load PPC
 
 data_PPC <- read_PP(datelim = datelim,table.name = "PP_1min")
+
+
 
 dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T))
 
