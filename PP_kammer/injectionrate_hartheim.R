@@ -60,7 +60,7 @@ save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates_hartheim.RData
 ########################################
 ##################################
 
-test <- injection_arduino(datelim=dates_ls[[6]],
+test <- injection_arduino(datelim=dates_ls[[length(dates_ls)]],
                           plot="timeline",
                           return_ls = T,
                           t_init=2,
