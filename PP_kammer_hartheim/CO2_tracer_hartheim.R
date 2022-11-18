@@ -20,11 +20,17 @@ check.packages(packages)
 theme_set(theme_classic())
 ##
 load(file = paste(datapfad_PP_Kammer,"injectionrates_hartheim.RData"))
+inj <- inj %>% 
+  mutate(date = round_date(date,"10 mins")) %>% 
+  group_by(date) %>% 
+  summarise(across(everything(),mean)) %>% 
+  as.data.frame()
 #######################################
 #####################################
 #read probes
+
 data_ls <- vector("list",length = length(dates_ls))
-Versuch <- 3
+Versuch <- 7
 for(Versuch in seq_along(dates_ls)){
   
   #CO2 Werte für i-te injektion inklusive 2 tage vorher und nachher
@@ -37,7 +43,8 @@ for(Versuch in seq_along(dates_ls)){
   data$tiefe <- data$tiefe
   
   data$Versuch <- Versuch
-  inj$date <- round_date(inj$date,"10 mins")
+
+  
   #Spalte in inj hat 1er während der injektion
   inj_id <- daterange_id(data,dates_ls[[Versuch]])
   data$inj <- ifelse(inj_id,1,0)
@@ -47,25 +54,27 @@ for(Versuch in seq_along(dates_ls)){
   data$cal[data$PPC_2 > 0.1] <- 0
   data$cal[data$P_roll > 1 | data$P_roll < -1] <- 0
   data <- merge(data,inj[inj$Versuch == Versuch,c("date","CO2_mol_m2_s")],all = T)
-  
   data <- data %>% 
     group_by(tiefe) %>% 
-    mutate(inj_mol_m2_s = imputeTS::na_interpolation(CO2_mol_m2_s),
-           inj_mol_m2_s = ifelse(inj == 1 ,inj_mol_m2_s,0),
-           offset = CO2_smp1 - CO2_smp2,
+    mutate(offset = CO2_smp1 - CO2_smp2,
            date_int = as.numeric(date),
            CO2_ref = RcppRoll::roll_mean(CO2_smp2,5,fill=NA),
            CO2_inj = RcppRoll::roll_mean(CO2_smp1,5,fill=NA)
     )
-  
+  inj_vals <- length(which(!is.na(data$CO2_mol_m2_s)))
+  if(inj_vals > 1){
+    data <- data %>% 
+      mutate(inj_mol_m2_s = imputeTS::na_interpolation(CO2_mol_m2_s),
+             inj_mol_m2_s = ifelse(inj == 1 ,inj_mol_m2_s,0))
+  }
   data_cal <- subset(data, cal == 1)
   
-  ggplot(data)+
-    geom_line(aes(date,CO2_inj,col=factor(cal),group=tiefe))
-  
-  ggplot(data)+
-    geom_line(aes(date,PPC_2,col=factor(cal),group=tiefe))
-  ####################################
+  # ggplot(data)+
+  #   geom_line(aes(date,CO2_inj,col=factor(cal),group=tiefe))
+  # 
+  # ggplot(data)+
+  #   geom_line(aes(date,PPC_2,col=factor(cal),group=tiefe))
+  # ####################################
   #adj CO2 tracer
   #######################################
   
@@ -87,6 +96,7 @@ for(Versuch in seq_along(dates_ls)){
 }
 
 data <- do.call(rbind,data_ls)
+
 
  data$flag <- 0
 # flagid <- daterange_id(data,ymd_hm("2022.07.02 21:00","2022.07.03 10:00"))
@@ -148,7 +158,7 @@ save(data,data_uncert,file=paste0(datapfad_PP_Kammer,"data_tracer_hartheim.RData
 #########################
 #plots
 unique(data$Versuch)
-Versuch_x <- 6
+Versuch_x <- 7
 #####################
 #CO2 inj un refadj plot
 PPC_plot <- ggplot(subset(data,!is.na(Versuch) & Versuch==Versuch_x))+

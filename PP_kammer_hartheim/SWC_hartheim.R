@@ -20,8 +20,8 @@ packages<-c("lubridate","stringr","ggplot2","units","dplyr")
 check.packages(packages)
 
 
-logfile <- paste0(datapfad_bf,"swc_hartheim.RData")
-swcfile <- paste0(datapfad_PP_Kammer,"swc_long_hartheim.RData")
+logfile <- paste0(datapfad_bf,"swc_hartheim_log.RData")
+swcfile <- paste0(datapfad_PP_Kammer,"swc_hartheim.RData")
 if(file.exists(logfile)){
   load(logfile)
   files_old <- files
@@ -33,10 +33,10 @@ if(exists("files_old")){
   files_new <- files
 }
 
-save(files,file=logfile)
+
 
 if(length(files_new) > 0){
-  swc_ls <- lapply(files,readxl::read_xls,skip=2,col_types = c("date",rep("numeric",5)))
+  swc_ls <- lapply(files_new,readxl::read_xls,skip=2,col_types = c("date",rep("numeric",5)))
   for(i in seq_along(swc_ls)){
     if(any(grepl("m³",colnames(swc_ls[[i]])))){
       swc_ls[[i]][,-1] <- swc_ls[[i]][,-1]*100
@@ -78,6 +78,7 @@ if(length(files_new) > 0){
     swc_wide <- rbind(swc_wide,swc_wide_new)
   }
   save(swc_long,swc_wide,file = swcfile)
+  save(files,file=logfile)
 }else{
   load(swcfile)
 }

@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 15
+Versuch <- 19
 #for(Versuch in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
 plot <-  T
@@ -113,9 +113,9 @@ if(!is.null(nrow(data_probe3))){
       group_by(tiefe) %>% 
       mutate(CO2_roll = RcppRoll::roll_mean(CO2,5,fill=NA),
              tiefe = tiefe + 3.5)
-  }
-}else{
+  }else{
   data_probe3 <- NULL
+  }
 }
 data_probe1u2 <- data_probe1u2 %>% 
   group_by(tiefe) %>% 
@@ -126,8 +126,6 @@ data_probe1u2 <- data_probe1u2 %>%
 plot_ls[["probe1"]] <- ggplot(data_probe1u2)+
   geom_vline(xintercept = step_date,linetype=2,color="grey")+
   geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  #geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
   geom_line(aes(date,CO2_smp1_roll,col=as.factor(-tiefe)))+
   scale_fill_manual(values = "black")+
   scale_color_discrete(limits = factor(0:7*3.5))+
@@ -211,7 +209,7 @@ if(!is.null(flux)){
 
 ############
 #swc
-source("./PP_kammer/SWC_hartheim.R")
+source("./PP_kammer_hartheim/SWC_hartheim.R")
 
 swc_sub <- sub_daterange(swc_long,datelim)
 if(nrow(swc_sub) > 0){

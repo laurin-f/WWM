@@ -51,7 +51,7 @@ datelim <- c(ymd_h("22.09.27 10"),now)
 class(flux_data)
 if(load){
   load(paste0(datapfad_PP_Kammer,"flux_ls.RData"))
-  datelim_old <- range(flux$date)
+  datelim_old <- range(flux_data$date)
   if(datelim[2] > datelim_old[2]){
     flux_ls <- chamber_arduino(datelim=c(max(datelim_old),max(datelim)),
                                gga_data = T,
@@ -91,6 +91,7 @@ names(flux) <- str_remove(names(flux),"_GGA")
 data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "wide")
 data_long <- read_sampler("sampler1u2",datelim = datelim, format = "long")
 data_PPC <- read_PP(datelim = datelim,table.name = "PP_1min",format = "wide")
+data_PPC$P_roll_2 <- RcppRoll::roll_mean(data_PPC$P_2,3*60/!!dt,fill=NA)
 
 
 data_probe1u2$Versuch <- NA
@@ -143,18 +144,37 @@ flux_data <- as.data.frame(flux_data)
 CO2_atm <- as.data.frame(CO2_atm)
 
 
-data <- merge(data_30min,flux[,c("date","T_C","CO2_mumol_per_s_m2")],by = "date",all=T)
+data <- merge(data_30min,flux[,c("date","T_C","CO2_mumol_per_s_m2","CH4_mumol_per_s_m2")],by = "date",all=T)
 data <- merge(data,CO2_atm)
 data <- merge(data,data_PPC)
+
 #swc
-source("./PP_kammer/SWC_hartheim.R")
+source("./PP_kammer_hartheim/SWC_hartheim.R")
 
 swc_sub <- sub_daterange(swc_wide,datelim)
-data <- merge(data,swc_sub,all.x =T)
+setDT(swc_sub)
+swc_sub[,date:= round_date(date,"30 mins")]
+swc_sub <- swc_sub[order(date)]
+swc_agg <- swc_sub[,lapply(.SD,mean),by=date] %>% as.data.frame()
+swc_agg$swc_7_roll <- RcppRoll::roll_mean(swc_agg$swc_7,3,fill=NA)
+swc_agg$swc_7_diff <- c(NA,diff(swc_agg$swc_7_roll))
+
+swc_ids <- which(abs(swc_agg$swc_7_diff) > 0.25)
+timeperiod <- swc_agg[swc_ids[1]:swc_ids[2],"swc_7"]
+
+ggplot(swc_agg)+
+  geom_line(aes(date,abs(swc_7_roll)))
+ggplot(swc_agg)+
+  geom_vline(xintercept = swc_agg$date[swc_ids],col="grey")+
+  geom_hline(yintercept = 0.25)+
+  geom_line(aes(date,abs(swc_7_diff)))
+
+data <- merge(data,swc_agg,all.x =T)
 
 data$T_C <- imputeTS::na_interpolation(data$T_C)
 
 data$CO2_flux <- RcppRoll::roll_mean(data$CO2_mumol_per_s_m2,10,fill=NA,na.rm = T)
+data$CH4_flux <- RcppRoll::roll_mean(data$CH4_mumol_per_s_m2*10^3,10,fill=NA,na.rm = T)
 
 data <- data %>% 
   mutate(across(matches("CO2_tiefe\\d"),~ppm_to_mol(.,T_C = data$T_C),.names = "{.col}_mol"),
@@ -172,16 +192,24 @@ data$DSD0 <- data$DS / data$D0_m2_s
 p[[paste0("DSD0_")]] <- 
   ggplot(data)+
   geom_line(aes(date,DSD0))
+p[[paste0("dC_0_10")]] <- 
+  ggplot(data)+
+  geom_line(aes(date,dC_0_10))
 #}
 
 
 egg::ggarrange(plots=p,ncol=1)
-names(data)
+
+ggplot(data)+
+  geom_point(aes(dC_0_10,DSD0,col=CO2_flux))
+ggplot(data)+
+  geom_point(aes(CO2_flux,DSD0,col=dC_0_10))
 ggplot(data)+
   geom_point(aes(PPC_6,dC_0_10,col=swc_14))
 ggplot(data)+
   geom_point(aes(PPC_2,dC_0_10,col=T_C))+
-  facet_wrap(~cut(swc_14,3))
+  facet_wrap(~cut(swc_14,4))+
+  scale_color_viridis_c()
 ggplot(data)+
   geom_point(aes(T_C,DSD0,col=swc_14))
 ggplot(data)+
@@ -191,43 +219,12 @@ ggplot(data)+
   geom_line(aes(date,dC_0_10))+
   geom_line(aes(date,PPC_2+0.5))+
   facet_wrap(~paste(Versuch,modus),scales = "free_x")
-#####################
-#klima daten dazu
 
 
-sec_ax_T <- 4
-p[[paste0("ws",i)]] <- ggplot(data_merge)+
-  geom_line(aes(date,wind,col="WS"))+
-  geom_line(aes(date,T_C/sec_ax_T,col="T"))+
-  scale_y_continuous(sec.axis = sec_axis(~.*sec_ax_T,name=expression(T["atm"]~"(°C)")))+
-  coord_cartesian(xlim=datelim)+
-  labs(x="",y="windspeed (m/s)")
-
-
-sec_ax_fac <- 0.7
-swc_min <- min(swc_sub$swc,na.rm = T)/1.1
-p[[paste0("swc",i)]] <- ggplot(swc_sub)+
-  geom_ribbon(data=klima_sub,aes(x=date,ymin=swc_min,ymax=P24tot/sec_ax_fac + swc_min),fill="blue",alpha=0.8)+
-  geom_line(aes(date,swc,col=as.factor(tiefe)))+
-  xlim(datelim)+
-  scale_y_continuous(sec.axis = sec_axis(~(. - swc_min)*sec_ax_fac,name=expression(italic(P)["24h"]*" (mm)")))+
-  theme(
-    axis.title.y.right = element_text(color = "blue"),
-    axis.text.y.right = element_text(color = "blue"),
-    axis.text.x = element_blank()
-  )+
-  labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
-ggplot(data_merge)+
-  #geom_point(aes(wind,CO2_mumol_per_s_m2))
-  geom_point(aes(swc_7,dC_0_10,col=wind))
-geom_point(aes(swc_21,DSD0,col=wind))
-geom_point(aes(wind,DSD0,col=swc_7))
-geom_point(aes(wind,DSD0))
-
-data_merge$DSD0_roll <- RcppRoll::roll_mean(data_merge$DSD0,20,fill=NA)
-data_select <- data_merge[,c("DSD0_roll","wind","P24tot","T_C","swc_7")]
+names(data)
+data_select <- data[,c("DSD0","PPC_2","PPC_6","T_C","swc_7","swc_14","CO2_flux","CH4_flux","P_roll_2")]
 M <- cor(data_select)
-corrplot::corrplot.mixed(M)
+#corrplot::corrplot.mixed(M)
 PerformanceAnalytics::chart.Correlation(data_select)
 
 

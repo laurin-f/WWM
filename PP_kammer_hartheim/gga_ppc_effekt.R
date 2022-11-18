@@ -16,7 +16,7 @@ chamber_arduino_pfad <- paste0(hauptpfad,"/Daten/Urdaten/Kammermessungen_Arduino
 metapfad_PP <- paste0(metapfad,"PP_Kammer/")
 detach("package:pkg.WWM", unload = TRUE)
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS","data.table")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS","data.table","glmnet")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -86,7 +86,8 @@ data_PPC_wide$P_horiz_2 <- RcppRoll::roll_mean(data_PPC_wide$P_horiz_2,10,fill=N
 
 if(load){
   load(paste0(datapfad_PP_Kammer,"flux_ls.RData"))
-  datelim_old <- range(flux$date)
+  datelim_old <- range(flux_data$date)
+  
   if(datelim[2] > datelim_old[2]){
     flux_ls <- chamber_arduino(datelim=c(max(datelim_old),max(datelim)),
                                gga_data = T,
@@ -94,6 +95,7 @@ if(load){
                                t_init=1,
                                t_min=2,
                                t_max=2,
+                               plot = "timeline",
                                gas = c("CO2_GGA","CH4"))
     flux_new <- flux_ls[[1]]
     flux_data_new <- flux_ls[[2]]
@@ -115,6 +117,8 @@ if(load){
   flux <- flux_ls[[1]]
   flux_data <- flux_ls[[2]]
 }
+# flux_data <- flux_data[!duplicated(flux_data$date),]
+# flux <- flux[!duplicated(flux$date),]
 rm(flux_ls)
 rm(flux_data)
 #ggplot(flux_data)+
@@ -123,7 +127,6 @@ rm(flux_data)
 flux_sub <- subset(flux,!is.na(CH4_R2))
 data_merge <- merge(flux_sub,data_PPC_wide)
 
-any(duplicated(data_merge$date))
 rm(data_PPC_wide)
 
 ##################################
@@ -133,13 +136,13 @@ data_merge <- data_merge[order(data_merge$date),]
 
 swc_sub <- sub_daterange(swc_wide,datelim)
 swc_sub <- swc_sub[order(swc_sub$date),]
-swc_sub <- swc_sub[!duplicated(swc_sub),]
+
 setDT(swc_sub)
 swc_sub[,date:= round_date(date,"30 mins")]
 swc_agg <- swc_sub[,lapply(.SD,mean),by=date] %>% as.data.frame()
 
 
-data_merge <- merge(data_merge,swc_sub,by="date")
+data_merge <- merge(data_merge,swc_agg,by="date")
 ####################
 #Co2 flux roll
 data_merge$CO2_flux <- RcppRoll::roll_mean(data_merge$CO2_GGA_mumol_per_s_m2,5,fill=NA)
@@ -157,24 +160,69 @@ data_merge$dummy <- rnorm(nrow(data_merge))
 ############################
 #modelle mit swc und T
 #CO2
-fm_CO2_swc_T <- mgcv::gam(CO2_flux ~ s(swc_14) + s(T_C),data = data_merge)
+fm_CO2_swc_T <- mgcv::gam(CO2_flux ~ (swc_14) + (T_C),data = data_merge)
 #CH4
-fm_CH4_swc_T <- mgcv::gam(CH4_flux ~ s(swc_14) + s(T_C),data = data_merge)
+fm_CH4_swc_T <- mgcv::gam(CH4_flux ~ (swc_14) + (T_C),data = data_merge)
 ######################
 #modelle mit allen variablen
 #CO2
-fm_CO2_swc_T_PPC <- glm(CO2_flux ~ swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data = data_merge)
-#CH4
-fm_CH4_swc_T_PPC <- glm(CH4_flux ~ (swc_14) + (T_C) + PPC_2 + PPC_outside + PPC_diff_meanr_2,data = data_merge)
 
+##################
+#lasso test
+mm_all <- model.matrix(~CO2_flux + swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data_merge)[,-1]
+
+lasso <- cv.glmnet(mm_all[,-1],mm_all[,1])
+
+plot(lasso)
+coef(lasso, s = "lambda.min")
+
+
+fm_CO2_all <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data = data_merge))
+fm_CO2_swc_T_PPC_meanr <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_meanr6_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
+fm_CO2_swc_T_PPC_meanr2 <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_meanr6_2 + dummy,data = data_merge))
+fm_CO2_swc_T_PPC <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
+fm_CO2_swc_T_P_horiz <- step(glm(CO2_flux ~ swc_14 + T_C + P_horiz_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
+
+summary((fm_CO2_all))
+summary((fm_CO2_swc_T_PPC_meanr))
+summary((fm_CO2_swc_T_PPC))
+summary((fm_CO2_swc_T_P_horiz))
+calc_flux()
+comsol_sweep()
+R2_fm(fm_CO2_swc_T)
+R2_fm(fm_CO2_all)
+R2_fm(fm_CO2_swc_T_PPC)
+R2_fm(fm_CO2_swc_T_PPC_meanr)
+R2_fm(fm_CO2_swc_T_PPC_meanr2)
+#CH4
+fm_CH4_all <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data = data_merge))
+fm_CH4_swc_T_PPC_meanr <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_meanr6_2 + P_roll_2 + PPC_outside + dummy ,data = data_merge))
+fm_CH4_swc_T_PPC <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_2  + P_roll_2 + PPC_outside + dummy,data = data_merge))
+fm_CH4_swc_T_PPC_atm <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_outside + dummy,data = data_merge))
+fm_CH4_swc_T_P_horiz <- step(glm(CH4_flux ~ swc_14 + T_C + P_horiz_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
+
+summary((fm_CH4_all))
+summary((fm_CH4_swc_T_PPC_meanr))
+summary((fm_CH4_swc_T_PPC))
+summary((fm_CH4_swc_T_PPC_atm))
+summary((fm_CH4_swc_T_P_horiz))
+
+R2_fm(fm_CH4_swc_T)
+R2_fm(fm_CH4_all)
+R2_fm(fm_CH4_swc_T_PPC)
+R2_fm(fm_CH4_swc_T_PPC_atm)
+R2_fm(fm_CH4_swc_T_PPC_meanr)
 ##########################
 #predict modells
 #CO2
 data_merge$CO2_swc_T <- predict(fm_CO2_swc_T,newdata = data_merge)
 data_merge$CO2_swc_T_PPC <- predict(fm_CO2_swc_T_PPC,newdata = data_merge)
+data_merge$CO2_swc_T_PPC_meanr <- predict(fm_CO2_swc_T_PPC_meanr,newdata = data_merge)
+data_merge$CO2_all <- predict(fm_CO2_all,newdata = data_merge)
 #CH4
 data_merge$CH4_swc_T <- predict(fm_CH4_swc_T,newdata = data_merge)
 data_merge$CH4_swc_T_PPC <- predict(fm_CH4_swc_T_PPC,newdata = data_merge)
+data_merge$CH4_all <- predict(fm_CH4_all,newdata = data_merge)
 ##########
 #CO2 und CH4 adj sind die flüsse ohne SWC und T einfluss
 data_merge$CO2_adj <- data_merge$CO2_flux - data_merge$CO2_swc_T_PPC + mean(data_merge$CO2_flux,na.rm = T)
@@ -225,22 +273,37 @@ Versuch <- 6
 #   facet_wrap(~paste(Versuch,modus),scales="free_x")
 
 ggplot(subset(data_merge,Versuch %in% c(2:15)))+
-  geom_line(aes(date,CO2_flux2,col="chamber_flux"))+
+  geom_line(aes(date,CO2_flux2,col="chamber_flux"),lwd=1)+
   #geom_line(aes(date,CO2_group_fm,col="swc_T"))+
   #geom_line(aes(date,CO2_group_PPC,col="swc_T_PPC"))+
   geom_line(aes(date,CO2_swc_T_PPC,col="swc_T_PPC"))+
   geom_line(aes(date,CO2_swc_T,col="swc_T"))+
   geom_line(aes(date,PPC_2+1,col="PPC_2"))+
   geom_line(aes(date,PPC_outside+1,col="PPC_outside"))+
-  geom_line(aes(date,PPC_sum+1,col="PPC_sum"))+
+ # geom_line(aes(date,PPC_sum+1,col="PPC_sum"))+
   geom_line(aes(date,T_C/10,col="T_C"))+
   facet_wrap(~Versuch,scales="free_x")
-
+ggplot(subset(data_merge,Versuch %in% c(2:15)))+
+  geom_line(aes(date,CH4_flux2,col="chamber_flux"),lwd=1)+
+  #geom_line(aes(date,CH4_group_fm,col="swc_T"))+
+  #geom_line(aes(date,CH4_group_PPC,col="swc_T_PPC"))+
+  #geom_line(aes(date,CH4_swc_T_PPC,col="swc_T_PPC"))+
+  #geom_line(aes(date,CH4_swc_T,col="swc_T"))+
+  geom_line(aes(date,PPC_2-1,col="PPC_2"))+
+  geom_line(aes(date,PPC_outside-1,col="PPC_outside"))+
+#  geom_line(aes(date,PPC_sum-1,col="PPC_sum"))+
+  geom_line(aes(date,T_C/20-2,col="T_C"))+
+  facet_wrap(~Versuch,scales="free_x")
 
 ggplot(data_merge)+
-  geom_line(aes(date, PPC_diff_meanr_2*-10000 -1,col="diff"))+
-  geom_line(aes(date, CH4_adj,col="CH4_flux"))+
-  facet_wrap(~Versuch,scales = "free_x")
+  geom_point(aes(T_C,CH4_flux,col=swc_14))+
+  facet_wrap(~cut(swc_14,4))+
+  scale_color_viridis_c()
+# ggplot(data_merge)+
+#   geom_line(aes(date, PPC_diff_meanr_2*-10000 -1,col="diff"))+
+#   geom_line(aes(date, CH4_adj,col="CH4_flux"))+
+#   facet_wrap(~Versuch,scales = "free_x")
+
 ggplot(data_merge,aes(PPC_meanr6_2,CH4_adj,col=T_C))+
   geom_point()+
   geom_smooth(method = "glm")+
@@ -262,6 +325,10 @@ ggplot(data_merge)+
   geom_point(aes(PPC_sum,CH4_flux,col="raw"))+
   geom_point(aes(PPC_sum,CH4_adj,col="adj"),alpha=0.4)
 
+ggplot(data_merge)+
+  geom_line(aes(date,CH4_flux,col = "CH4_flux"))+
+  geom_line(aes(date,PPC_2-1))+
+  facet_wrap(~Versuch,scales="free_x")
 ggplot(data_merge)+
   geom_point(aes(PPC_outside,CO2_flux,col="raw"))+
   geom_point(aes(PPC_outside,CO2_adj,col="adj"),alpha=0.4)
