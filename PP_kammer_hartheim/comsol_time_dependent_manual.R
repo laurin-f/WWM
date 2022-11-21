@@ -67,19 +67,18 @@ data_wide <- data_wide %>%
   summarise(across(everything(),mean)) %>% 
   mutate(step_id = round(step_id))
 
-#data_wide$t_sec <- difftime(data_wide$date, min(data_wide$date),units = "s") %>% as.numeric()
+data_wide$t_sec <- difftime(data_wide$date, min(data_wide$date),units = "s") %>% as.numeric()
 
 ggplot(data_wide)+
   geom_point(aes(date,tracer_4,col=factor(step_id),group=1))
 
+ CO2_obs_1 <- subset(data_wide,step_id == 1) %>% 
+   mutate(t_sec = as.numeric(difftime(date, min(date),units = "s")))
+ CO2_obs_2 <- subset(data_wide,step_id > 1) %>% 
+    mutate(t_sec = as.numeric(difftime(date, min(date),units = "s")))
 
-CO2_obs_1 <- subset(data_wide,step_id == 1) %>% 
-  mutate(t_sec = as.numeric(difftime(date, min(date),units = "s")))
-CO2_obs_2 <- subset(data_wide,step_id > 1) %>% 
-  mutate(t_sec = as.numeric(difftime(date, min(date),units = "s")))
-CO2_obs_2$t_sec
 
-CO2_obs
+
 cols <- c("t_sec",paste0("tracer_",1:7))
 write.table(
   CO2_obs_1[,cols],
@@ -88,13 +87,13 @@ write.table(
   row.names = F,
   sep = ","
 )
-write.table(
-  tail(CO2_obs_1[,cols],1)[,-1],
-  paste0(metapfad_comsol, "CO2_obs_init.csv"),
-  col.names = F,
-  row.names = F,
-  sep = ","
-)
+# write.table(
+#   tail(CO2_obs_1[,cols],1)[,-1],
+#   paste0(metapfad_comsol, "CO2_obs_init.csv"),
+#   col.names = F,
+#   row.names = F,
+#   sep = ","
+# )
 write.table(
   CO2_obs_2[,cols],
   paste0(metapfad_comsol, "CO2_obs_td2.csv"),
@@ -103,12 +102,14 @@ write.table(
   sep = ","
 )
 #######################################
-comsol_exe(modelname = "Diffusion_optim_timedependent",job = "b1")
-           #,input_pars = c("injection_rate" = inj_rate))
+comsol_exe(modelname = "Diffusion_manual_timedependent_2studies",job = "b1",overwrite_model = T,
+           input_pars = c("injection_rate" = inj_rate,"DS_1" = 2.179532e-06,"DS_2" = 6.085935e-07))
+comsol_exe(modelname = "Diffusion_manual_timedependent_2studies",job = "b2",overwrite_model = F,
+           input_pars = c("injection_rate" = inj_rate,"DS_1" = 2.179e-06,"DS_2" = 5e-7))
 
 files <- list.files(comsolpfad,pattern="CO2_mod_td\\d.txt",full.names = T)
-td_ls <- lapply(files,read.table,skip = 9)
 
+td_ls <- lapply(files,read.table,skip = 9)
 colnames_raw <- lapply(files,readLines, n = 9)
 td_long_ls <- vector("list",length(files))
 for(i in seq_along(td_ls)){
@@ -150,16 +151,18 @@ td_long <- tidyr::pivot_longer(subset(td,tiefe == tiefen[1]),matches("DS_\\d"),n
 #   geom_line(data = td_long,aes(t,CO2_mod,col=tiefe,linetype = paste("DS",unique(DS_1))))+
 #   geom_line(data = td_long_2,aes(t,CO2_mod,col=tiefe,linetype = paste("DS",unique(DS_1))))
 
-ggplot(data_agg)+
-  geom_line(aes(t,tracer_mol,col=as.factor(tiefe),linetype="tracer_obs"))+
+CO2_plot <- ggplot(data_agg)+
+  geom_line(aes(t,tracer_mol,col=as.factor(tiefe),linetype="obs"))+
   theme(axis.title.x = element_blank())+
-  labs(y=expression(CO[2]~(ppm)),linetype="profile",col="depth (cm)",fill="depth (cm)")+
-  geom_line(data = td,aes(t,CO2_mod,col=factor(tiefe),linetype = factor(step),group = tiefe))
-td_long
-td_long[1:10,]
-ggplot(td_long)+
-  geom_line(aes(t,DS,col=DS_id))
+  labs(y=expression(CO[2]~(ppm)),linetype="",col="depth (cm)")+
+  geom_line(data = td,aes(t,CO2_mod,col=factor(tiefe),linetype = "mod"))
 
+unique(td_long$DS)
+DS_plot <- ggplot(td_long)+
+  geom_line(aes(t,DS,col=DS_id))+
+  labs(col="")
+ggpubr::ggarrange(CO2_plot,DS_plot,align = "v",ncol=1,heights = c(3,1))+
+  ggsave(paste0(plotpfad_PPchamber,"Comsol_timedependent_manual_test.png"),width=8,height = 7)
   
 
 

@@ -27,7 +27,7 @@ median(inj$CO2_ml_per_min)
 #####################################
 #read probes
 Versuch <- 7
-overwrite <-  T
+overwrite <-  F
 plot <- T
 load(file=paste0(datapfad_PP_Kammer,"data_tracer_hartheim.RData"))
 data_all <- data
@@ -35,20 +35,7 @@ data_all <- data
 #for(Versuch in 1:8){
 
 data <- data_all[data_all$Versuch == Versuch & !is.na(data_all$Versuch),]
-data_uncert_sub <- data_uncert[data_uncert$Versuch == Versuch & !is.na(data_uncert$Versuch),] %>% 
-  #filter(tiefe > -21) %>% 
-  mutate(inj_meanr6 = RcppRoll::roll_meanr(inj_mol_m2_s,6*6,fill=NA),
-         inj_meanr12 = RcppRoll::roll_meanr(inj_mol_m2_s,12*6,fill=NA),
-  )
 
-
-data <- data %>% 
-  group_by(tiefe) %>% 
-  #filter(tiefe > -21) %>% 
-  mutate(CO2_tracer_roll = RcppRoll::roll_mean(CO2_tracer_drift,5,fill=NA),
-         inj_meanr6 = RcppRoll::roll_meanr(inj_mol_m2_s,6*6,fill=NA),
-         inj_meanr12 = RcppRoll::roll_meanr(inj_mol_m2_s,12*6,fill=NA),
-  )
 
 CO2_plot <- 
   ggplot(data)+
@@ -59,6 +46,7 @@ CO2_plot <-
   labs(y=expression(CO[2]~(ppm)),linetype="profile",col="depth (cm)",fill="depth (cm)")
 
 
+
 #     
 ##########################################
 ## COMSOL
@@ -67,12 +55,12 @@ names(data)
 NA_tiefen <- data %>% 
   group_by(tiefe) %>%
   summarise(n_NAS = length(which(!is.na(CO2_tracer_drift))) / length(CO2_tracer_drift))
-  
+
 tiefen <- NA_tiefen$tiefe[NA_tiefen$n_NAS > 0.9]
 #tiefen <- 4:5*-3.5
 #tiefen <- tiefen[-1]
-nDS <- 1
-file_suffix <- "_40cm"
+nDS <- 2
+file_suffix <- ""
 #file_suffix <- ""
 file_i <- paste0(datapfad_PP_Kammer,"DSD0_hartheim_",nDS,"DS_",Versuch,file_suffix,".RData")
 if(file.exists(file_i) & overwrite == F){
@@ -119,9 +107,9 @@ comsol_wide <- tidyr::pivot_wider(comsol_sub,names_from = tiefe,values_from = ma
 comsol_CO2_long <- tidyr::pivot_longer(comsol_wide,matches("CO2"),names_to = c(".value","tiefe"),names_pattern = "(CO2.*)_(\\d)")
 comsol_CO2_long$tiefe <- as.numeric(comsol_CO2_long$tiefe)*3.5
 #DSD0plt <- 
-  ggplot(comsol_sub)+
-  #geom_ribbon(aes(x=date,ymin=DSD0_min,ymax=DSD0_max,fill=as.factor(tiefe)),alpha=0.3)+
-  geom_line(aes(date,DS,col=as.factor(tiefe)))+
+ggplot(comsol_sub)+
+  geom_ribbon(aes(x=date,ymin=DSD0_min,ymax=DSD0_max,fill=as.factor(tiefe)),alpha=0.3)+
+  geom_line(aes(date,DSD0,col=as.factor(tiefe)))+
   guides(col=F,fill=F)+
   labs(y=expression(D[S]/D[0]))
 
@@ -170,7 +158,7 @@ if(nrow(data_PPC) > 0){
   data_PPC$id[data_PPC$id == 6] <- "outside"
   data_PPC[which(data_PPC$dt > 3600),c("PPC","PPC5","P_roll")] <- NA
   
-  data_PPC <- sub_daterange(data_PPC,PPC_daterange_short)
+  #data_PPC <- sub_daterange(data_PPC,PPC_daterange_short)
   
   step_thr <- 0.05
   PPC_steps <- data_PPC %>%
@@ -243,18 +231,19 @@ if(plot){
   tracerplt <- 
     ggplot(subset(comsol_CO2_long,!is.na(CO2_obs)))+
     #geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
-    geom_line(aes(date,(CO2_obs),col=as.factor(tiefe),linetype="obs"))+#,linetype="PPC"))+
-    geom_line(aes(date,(CO2_mod),col=as.factor(tiefe),linetype="mod"))+#,linetype="PPC"))+
+    geom_line(data = subset(data,tiefe %in% tiefen), aes(date,CO2_tracer_roll,col=as.factor(-tiefe),linetype="obs"))+#,linetype="PPC"))+
+    #geom_line(aes(date,(CO2_obs),col=as.factor(tiefe),linetype="obs"))+#,linetype="PPC"))+
+    geom_line(aes(date,ppm_to_mol(CO2_mod,unit_in = "mol/m^3"),col=as.factor(tiefe),linetype="mod"))+#,linetype="PPC"))+
     theme(axis.title.x = element_blank())+
     guides(fill=F)+
     labs(y=expression("tracer CO"[2]~(ppm)),col="depth (cm)")
-  # tracerplt <- 
-  #   ggplot(subset(data,tiefe != 0))+
-  #   #geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
-  #   geom_line(aes(date,(CO2_tracer_roll),col=as.factor(-tiefe)))+#,linetype="PPC"))+
-  #   theme(axis.title.x = element_blank())+
-  #   guides(fill=F)+
-  #   labs(y=expression("tracer CO"[2]~(ppm)),col="depth (cm)")
+  tracerplt2 <-
+    ggplot(subset(data,tiefe != 0))+
+    #geom_rect(data=modes_df,aes(xmin = start,xmax=stop,fill=mode,ymin=-Inf,ymax=Inf),alpha=0.2)+
+    geom_line(aes(date,(CO2_tracer_roll),col=as.factor(-tiefe)))+#,linetype="PPC"))+
+    theme(axis.title.x = element_blank())+
+    guides(fill=F)+
+    labs(y=expression("tracer CO"[2]~(ppm)),col="depth (cm)")
   
   DSD0_plt <- 
     ggplot(comsol_sub)+
@@ -276,7 +265,8 @@ if(plot){
                       xlim(range(data_merge$date))+geom_vline(xintercept = step_date,linetype=2,alpha=0.2),
                     heights = c(2,2,1),ncol=1,
                     legend = "right",align="v")+
-    ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_hartheim_",nDS,"DS_",Versuch,file_suffix,".png"),width=8,height=7)
+    ggsave(filename = paste0(plotpfad_PPchamber,"DSD0_PPC_hartheim_",nDS,"DS_",file_suffix,"_Versuch",Versuch,".png"),width=8,height=7)
+  
   
   
   
