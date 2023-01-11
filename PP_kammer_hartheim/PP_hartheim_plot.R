@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 19
+#Versuch <- 9
 #for(Versuch in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
 plot <-  T
@@ -64,6 +64,7 @@ if(nrow(data_PPC) > 0){
   
   data_PPC$id[data_PPC$id == 6] <- "outside"
   #data_PPC$id[data_PPC$id == 5] <- "reference"
+  #data_PPC$P_roll[abs(data_PPC$P_roll) > 100] <- NA
   data_PPC[which(data_PPC$dt > 3600),c("PPC","PPC5","P_roll")] <- NA
   names(data_PPC)
   data_Proll_wide <- tidyr::pivot_wider(data_PPC,date,values_from = P_roll,names_from = id,names_prefix = "id_")
@@ -181,17 +182,22 @@ flux_data <- flux_ls[[2]]
 range(flux_data$date)
 
 if(!is.null(flux_data)){
-  flux_data$atm <- ifelse(minute(flux_data$date) %% 30 > 5,1,0)
+  flux_data$atm <- ifelse(minute(flux_data$date) %% 30 > 5 & minute(flux_data$date) %% 30 < 29,1,0)
+  CO2_atm_plot <- ggplot()+
+    geom_line(data=subset(flux_data,atm == 1 & !is.na(CO2_GGA)),aes(date,RcppRoll::roll_mean(CO2_GGA,5,fill=NA),col="0"))
   plot_ls[["probe2"]] <- 
     plot_ls[["probe2"]]+
-    geom_line(data=subset(flux_data,atm == 1 & !is.na(CO2)),aes(date,RcppRoll::roll_mean(CO2,5,fill=NA),col="0"))
+    geom_line(data=subset(flux_data,atm == 1 & !is.na(CO2_GGA)),aes(date,RcppRoll::roll_mean(CO2_GGA,5,fill=NA),col="0"))
 }
+# egg::ggarrange(CO2_atm_plot+coord_cartesian(xlim=datelim)+geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+#                  scale_alpha(range = c(0,0.3))+
+#                  guides(alpha = F),plot_ls$PPC)
 names(flux)
 if(!is.null(flux)){
   flux_plot <- ggplot(flux)+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"),alpha=0.5)+
-    geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,3,fill=NA),col="Dynament"),lwd=1)+
+    #geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"),alpha=0.5)+
+    #geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,3,fill=NA),col="Dynament"),lwd=1)+
     geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+

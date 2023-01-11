@@ -63,11 +63,14 @@ save(inj,dates_ls,file = paste(datapfad_PP_Kammer,"injectionrates_hartheim.RData
 
 test <- injection_arduino(datelim=dates_ls[[length(dates_ls)]],
                           plot="timeline",
-                          return_ls = T,
+                          return_ls = F,
                           t_init=2,
                           t_min=1,
                           t_max=4)
 
+
+
+test$date[test$CO2_ml_per_min > 0.1]
 range(test[[1]]$CO2_ml_per_min)
 range(test[[2]]$date)
 data_test <- test[[2]]

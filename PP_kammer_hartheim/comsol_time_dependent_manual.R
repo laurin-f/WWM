@@ -102,6 +102,9 @@ write.table(
   sep = ","
 )
 #######################################
+programmpfad <- paste0(hauptpfad,"Programme/Fremdprogramme/COMSOL_td_optim/")
+comsol_exe(modelname = "Diffusion_optim_timedependent_2studies",study = "std7",COMSOL_progammpath = programmpfad,overwrite_model = F)
+comsol_exe(modelname = "Diffusion_optim_timedependent_2studies",job = "b1")
 comsol_exe(modelname = "Diffusion_manual_timedependent_2studies",job = "b1",overwrite_model = T,
            input_pars = c("injection_rate" = inj_rate,"DS_1" = 2.179532e-06,"DS_2" = 6.085935e-07))
 comsol_exe(modelname = "Diffusion_manual_timedependent_2studies",job = "b2",overwrite_model = F,

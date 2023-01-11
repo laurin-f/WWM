@@ -61,7 +61,7 @@ ggpubr::ggarrange(
     geom_rect(data=WS_df,aes(ymin = -Inf,ymax = Inf, xmin = start, xmax = stop, alpha = factor(pwm)))+
     scale_alpha_discrete("pwm",range=c(0.1,0.4)),
   common.legend = T,ncol=1,legend = "right",heights = c(5,4,5))+
-#  ggsave(paste0(plotpfad_PPchamber,"WS_Versuch.png"),width=8,height = 8)
+  ggsave(paste0(plotpfad_PPchamber,"WS_Versuch.png"),width=8,height = 8)
 
 CO2_GGA_flux+
   geom_rect(data=WS_df,aes(ymin = -Inf,ymax = Inf, xmin = start, xmax = stop, alpha = factor(pwm)))+

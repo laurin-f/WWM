@@ -30,8 +30,8 @@ injections <- read_ods(paste0(metapfad_PP,"injektionen_hartheim.ods"))
 injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
-Versuch <- nrow(pp_chamber)
-Versuch <- 9
+#Versuch <- nrow(pp_chamber)
+#Versuch <- 9
 #for(Versuch in 20:nrow(pp_chamber)){
 #datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
 plot <-  T
@@ -48,7 +48,7 @@ tz(now) <- "UTC"
 datelim <- c(ymd_h("22.09.27 10"),now)
 
 
-class(flux_data)
+
 if(load){
   load(paste0(datapfad_PP_Kammer,"flux_ls.RData"))
   datelim_old <- range(flux_data$date)
@@ -91,15 +91,17 @@ names(flux) <- str_remove(names(flux),"_GGA")
 data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "wide")
 data_long <- read_sampler("sampler1u2",datelim = datelim, format = "long")
 data_PPC <- read_PP(datelim = datelim,table.name = "PP_1min",format = "wide")
-data_PPC$P_roll_2 <- RcppRoll::roll_mean(data_PPC$P_2,3*60/!!dt,fill=NA)
-
+for(i in 1:6){
+  data_PPC[,paste0("P_roll_",i)] <- RcppRoll::roll_mean(data_PPC[,paste0("P_",i)],3*60,fill=NA)
+}
+names(data_PPC)
 
 data_probe1u2$Versuch <- NA
 data_long$Versuch <- NA
 
 for(i in 1:nrow(pp_chamber)){
-  id_wide <- which(daterange_id(data_probe1u2,c(pp_chamber$Start[i] - 3600 * 24,pp_chamber$Ende[i] + 3600 * 24)))
-  id_long <- which(daterange_id(data_long,c(pp_chamber$Start[i] - 3600 * 24,pp_chamber$Ende[i] + 3600 * 24)))
+  id_wide <- which(daterange_id(data_probe1u2,c(pp_chamber$Start[i] - 3600 * 10,pp_chamber$Ende[i] + 3600 * 24)))
+  id_long <- which(daterange_id(data_long,c(pp_chamber$Start[i] - 3600 * 10,pp_chamber$Ende[i] + 3600 * 24)))
   data_probe1u2$Versuch[id_wide] <- i
   data_long$Versuch[id_long] <- i
 }
@@ -137,17 +139,38 @@ data_30min <- data_probe1u2 %>%
   mutate(Versuch = round(Versuch)) %>% 
   rename_with(.cols=matches("CO2_tiefe\\d_smp2"),~str_remove(.,"_smp2"))
 
+DT <- copy(flux_data)
+setDT(DT)
 
-DT <- setDT(flux_data)
-CO2_atm <- DT[chamber == 0,date := round_date(date, "30 mins")][,.(CO2_tiefe0 = mean(CO2_GGA)) ,by = date]
-flux_data <- as.data.frame(flux_data)
+
+
+DT[,chamber_buffer := RcppRoll::roll_maxr(chamber,40,fill = NA)]
+
+CO2_atm <- DT[chamber_buffer == 0,date := round_date(date, "30 mins")][,.(CO2_tiefe0 = mean(CO2_GGA)) ,by = date]
+
+#flux_data <- as.data.frame(flux_data)
 CO2_atm <- as.data.frame(CO2_atm)
 
 
 data <- merge(data_30min,flux[,c("date","T_C","CO2_mumol_per_s_m2","CH4_mumol_per_s_m2")],by = "date",all=T)
 data <- merge(data,CO2_atm)
 data <- merge(data,data_PPC)
+names(data)
+#######################
+#CO2 calm: die Zeitraume mit artificial PPC  werden rausgeschnitten und linear interpoliert 
+for(i in grep("CO2_tiefe",names(data),value = T)){
+  data[,paste0(i,"_calm")] <- data[,i]
+  data[which(data$PPC_2 > 0.1),paste0(i,"_calm")] <- NA
+  data[,paste0(i,"_calm")] <- imputeTS::na_interpolation(data[,paste0(i,"_calm")])
+  data[,paste0(i,"_PPC")] <- data[,i] - data[,paste0(i,"_calm")]
+}
 
+ggplot(data)+
+  #geom_line(aes(date, CO2_tiefe6_PPC,col=""))
+  geom_line(aes(date, CO2_tiefe4,col="CO2"))+
+  geom_line(aes(date, CO2_tiefe4_calm,col="calm"))+
+  geom_line(aes(date, PPC_2*1000+300,col="calm"))+
+  facet_wrap(~Versuch,scales="free_x")
 #swc
 source("./PP_kammer_hartheim/SWC_hartheim.R")
 
@@ -163,7 +186,7 @@ swc_ids <- which(abs(swc_agg$swc_7_diff) > 0.25)
 timeperiod <- swc_agg[swc_ids[1]:swc_ids[2],"swc_7"]
 
 ggplot(swc_agg)+
-  geom_line(aes(date,abs(swc_7_roll)))
+  geom_line(aes(date,abs(swc_14)))
 ggplot(swc_agg)+
   geom_vline(xintercept = swc_agg$date[swc_ids],col="grey")+
   geom_hline(yintercept = 0.25)+
@@ -172,6 +195,8 @@ ggplot(swc_agg)+
 data <- merge(data,swc_agg,all.x =T)
 
 data$T_C <- imputeTS::na_interpolation(data$T_C)
+
+
 
 data$CO2_flux <- RcppRoll::roll_mean(data$CO2_mumol_per_s_m2,10,fill=NA,na.rm = T)
 data$CH4_flux <- RcppRoll::roll_mean(data$CH4_mumol_per_s_m2*10^3,10,fill=NA,na.rm = T)

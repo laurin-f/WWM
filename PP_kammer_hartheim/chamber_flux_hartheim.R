@@ -78,15 +78,23 @@ flux_8 <- chamber_arduino(datelim=ymd_hm("22.11.09 07:00","22.11.09 08:30"),
                           t_offset = -90,
                           t_min = 2,
                           t_max=10)
-flux_8 <- chamber_arduino(datelim=ymd_hm("22.11.10 09:00","22.11.10 12:30"),
+flux_8 <- chamber_arduino(datelim=ymd_hm("22.11.21 00:20","22.11.22 10:10"),
                           gga_data = T,
                           t_init=0,
                           plot="timeline",
-                          t_offset = -90,
+                          t_offset = -200,
+                          t_min = 2,
+                          t_max=10)
+
+flux_8 <- chamber_arduino(datelim=ymd_hm("22.12.09 09:20","22.12.09 10:00"),
+                          gga_data = T,
+                          t_init=0,
+                          plot="timeline",
+                          t_offset = -390,
                           t_min = 2,
                           t_max=10)
 
 t_offset_df <- data.frame(date = 
-                            ymd_hm("2022-09-27 10:00","22.10.18 12:00","22.10.18 12:30","22.10.24 10:00","22.11.03 11:30","22.11.03 13:30","22.11.09 08:30"),
-                          offset = c(-80,-300,120,60,-50,-20,-90))
+                            ymd_hm("2022-09-27 10:00","22.10.18 12:00","22.10.18 12:30","22.10.24 10:00","22.11.03 11:30","22.11.03 13:30","22.11.09 08:30","22.11.22 10:10","22.12.09 10:00"),
+                          offset = c(-80,-300,120,60,-50,-20,-90,-200,-390))
 save(t_offset_df,file = paste0(datapfad_PP_Kammer,"t_offset_df.RData"))

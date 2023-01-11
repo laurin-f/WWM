@@ -77,7 +77,7 @@ data_PPC_ws <- sub_daterange(data_PPC_ws,range(data_ws2$date)+ 60*30 *c(-1,1))
 data_PPC_ws <- data_PPC_ws %>%
   filter(id %in% 1:5) %>% 
   group_by(id) %>%
-  mutate(P_roll = RcppRoll::roll_mean(P,3*60,fill=NA))
+  mutate(P_roll = RcppRoll::roll_mean(P,1*60,fill=NA))
 data_ws2_merge <- merge(data_ws2,data_PPC_ws)
 
 data_PPC1$period <- 1
@@ -175,7 +175,7 @@ egg::ggarrange(PPC_plot,ws_plot)
    scale_alpha_discrete("pwm",range=c(0,0.4))+
    scale_y_continuous(name="windspeed (m/s)",sec.axis = sec_axis(~(.)*10,name="P (Pa)"))+
    theme_classic()+
-   ggsave(paste0(plotpfad_PPchamber,"WS_Versuch_P_roll.png"),width = 7,height = 6)
+   ggsave(paste0(plotpfad_PPchamber,"WS_Versuch_P_roll.png"),width = 7,height = 5)
  
  
 

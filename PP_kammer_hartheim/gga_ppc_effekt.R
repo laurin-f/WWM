@@ -272,7 +272,7 @@ Versuch <- 6
 #   geom_line(aes(date,P_horiz_2,col="P_horiz"))+
 #   facet_wrap(~paste(Versuch,modus),scales="free_x")
 
-ggplot(subset(data_merge,Versuch %in% c(2:15)))+
+ggplot(subset(data_merge,Versuch %in% c(2:18)))+
   geom_line(aes(date,CO2_flux2,col="chamber_flux"),lwd=1)+
   #geom_line(aes(date,CO2_group_fm,col="swc_T"))+
   #geom_line(aes(date,CO2_group_PPC,col="swc_T_PPC"))+
@@ -416,25 +416,25 @@ summary(glm(CH4_flux ~ PPC_sum + T_C,data=data_merge))
 ##########################################
 #      SCATTER PLOTS
 ######################################
-
-#CO2_scatter <- 
-ggplot(data_merge,aes(PPC_sum,CO2_flux,col=swc_14))+
+names(data_merge)
+CO2_scatter <- 
+ggplot(subset(data_merge,PPC_2 > 0.1),aes(PPC_meanr3_2,CO2_flux,col=T_C))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point()+
   ggpubr::stat_regline_equation(label.y = 3.49,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y = 3.4,aes(label= ..rr.label..))+
   scale_color_viridis_c()+
-  #  facet_wrap(~cut(T_C,breaks = 4))+
+ #   facet_wrap(~cut(T_C,breaks = 4))+
   labs(y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),x= expression(PPC[sum]~"(Pa/s)"))
 
 #CH4_scatter <- 
-ggplot(data_merge,aes(PPC_sum,CH4_flux,col=swc_14))+
+ggplot(data_merge,aes(PPC_2,CH4_flux,col=T_C))+
   geom_smooth(method="glm",linetype=2,col=1,lwd=0.7)+
   geom_point()+
   ggpubr::stat_regline_equation(label.y=-0.8,aes(label= ..eq.label..))+
   ggpubr::stat_regline_equation(label.y=-0.85,aes(label= ..rr.label..))+
   scale_color_viridis_c()+
-#    facet_wrap(~cut(swc_7,breaks = 8))+
+    facet_wrap(~cut(swc_14,breaks = 6))+
   labs(y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"),x= expression(PPC[sum]~"(Pa/s)"))
 
 CO2_T <- ggplot(data_merge,aes(T_C,CO2_flux))+
