@@ -13,35 +13,58 @@ check.packages(packages)
 ###########################################################
 
 
-datelim <- ymd_hms("2022-09-30 08:00:00 UTC", "2022-09-30 09:20:00 UTC")
-datelim2 <- ymd_hms("2022-09-30 09:10:00 UTC", "2022-09-30 09:15:00 UTC")
+#######
+#start
+datelim1 <- ymd_hm("2023.01.10 10:40", "2023.01.10 11:15")
+datelim1_2 <- ymd_hm("2023.01.10 10:55", "2023.01.10 11:05")
 
-# 
-# datelim <- ymd_hm("2023.01.10 10:40", "2023.01.10 11:15")
-# datelim2 <- ymd_hm("2023.01.10 10:55", "2023.01.10 11:05")
-# 
-# datelim <- ymd_hm("2023.01.19 08:40", "2023.01.19 09:40")
-# datelim2 <- ymd_hm("2023.01.19 09:00", "2023.01.19 09:20")
-# 
+######
+#stop
+datelim2 <- ymd_hm("2023.01.19 08:40", "2023.01.19 09:40")
+datelim2_2 <- ymd_hm("2023.01.19 09:00", "2023.01.19 09:20")
+
 
 #data_wide <- read_PP(datelim = datelim,format = "wide")
-data_long <- read_PP(datelim = datelim,corfac = F)
+data_long <- read_PP(datelim = range(datelim1,datelim2),corfac = F,table.name = "PP_1min")
+
+data_long <- data_long %>% 
+  group_by(id) %>%
+  mutate(P_roll = RcppRoll::roll_mean(P,5,fill=NA))
+
 data <- subset(data_long, id != 6)
+
 
 
 dt <- 1
 
 
-P_corfac <- data %>% 
-  sub_daterange(datelim2) %>% 
+P_corfac_1 <- data %>% 
+  sub_daterange(datelim1_2) %>% 
+  #mutate(group = 1) %>% 
+  group_by(id) %>% 
+  summarise(date = mean(date),
+            P_mean = mean(P))
+P_corfac_2 <- data %>% 
+  sub_daterange(datelim2_2) %>% 
   #mutate(group = 1) %>% 
   group_by(id) %>% 
   summarise(date = mean(date),
             P_mean = mean(P))
 
-P_corfac
+P_corfac_1
+P_corfac_2
+ggplot()+
+  geom_point(data = P_corfac_1,aes(id,P_mean,col="1"))+
+  geom_point(data = P_corfac_2,aes(id,P_mean,col="2"))
+
+P_corfac <- rbind(P_corfac_1,P_corfac_2)
+
+
+ggplot(data)+
+  geom_line(aes(date,P_roll,col=factor(id)))
 #save(P_corfac,file=paste0(datapfad_PP_Kammer,"P_corfac_2.RData"))
-load(file=paste0(datapfad_PP_Kammer,"P_corfac_2.RData"))
+#load(file=paste0(datapfad_PP_Kammer,"P_corfac_2.RData"))
+
 data$cal <- as.numeric(as.character(factor(data$id,levels = 1:5,labels = P_corfac$P_mean)))
 
 data <- data %>% 
@@ -54,7 +77,7 @@ data <- data %>%
          P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
 
 ggplot(sub_daterange(data,datelim))+
-#  geom_line(aes(date, P_cal,col=id),alpha=0.3)+
+  #  geom_line(aes(date, P_cal,col=id),alpha=0.3)+
   geom_line(aes(date, P_roll_cal,col=id))
 ggplot(sub_daterange(data,datelim))+
   geom_line(aes(date, P,col=id),alpha=0.3)+
