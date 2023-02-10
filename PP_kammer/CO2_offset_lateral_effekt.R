@@ -104,7 +104,7 @@ Versuch <- 20
     group_by(step_id) %>% 
     summarise(across(PPC,mean,na.rm=T),
               Start = min(date),
-              End = max(date)) %>% 
+              End = max(date)-1200) %>% 
     mutate(cal = ifelse(PPC > cal_thr,0,1))
   
   ggplot(PPC_steps)+
@@ -117,11 +117,11 @@ Versuch <- 20
   
   data_PPC$step_id <- NA
   
-    id <- which(daterange_id(data_PPC,c(step_df$Start[1],step_df$End[1]-1200)))
+    id <- which(daterange_id(data_PPC,c(step_df$Start[1],step_df$End[1])))
     data_PPC$step_id[id] <- step_df$step_id[i]
   
   for(i in 2:nrow(step_df)){
-    id <- which(daterange_id(data_PPC,c(step_df$Start[i]+3600,step_df$End[i]-1200)))
+    id <- which(daterange_id(data_PPC,c(step_df$Start[i]+3600,step_df$End[i])))
     data_PPC$step_id[id] <- step_df$step_id[i]
   }
   # ggplot(data_PPC)+
@@ -131,7 +131,8 @@ Versuch <- 20
   
   
   ggplot(data_PPC)+
-    geom_line(aes(date,PPC5,col=cal,group=id))
+    geom_line(aes(date,PPC5,col=cal,group=id))+
+    geom_vline(xintercept = step_df$End)
   
   cal_period <- data_PPC %>% 
     filter(cal == 1) %>% 
@@ -162,8 +163,15 @@ Versuch <- 20
   
   
   data_probe1u2 <- read_sampler("sampler1u2",datelim = datelim, format = "long")
+  injections
+  data_probe1u2$inj <- 0
+  for(i in 1:nrow(injections)){
+    inj_id <- daterange_id(data_probe1u2,c(injections$Start[i],injections$Ende[i]))
+    data_probe1u2$inj[inj_id] <- 1
+  }
   
   data_probe1u2 <- data_probe1u2 %>% 
+    filter(inj == 1) %>% 
     group_by(tiefe) %>% 
     mutate(CO2_smp1_roll = RcppRoll::roll_mean(CO2_smp1,5,fill=NA),
            CO2_smp2_roll = RcppRoll::roll_mean(CO2_smp2,5,fill=NA)
@@ -221,7 +229,8 @@ Versuch <- 20
   
   ggplot(data_long)+
     geom_vline(xintercept = step_date)+
-    geom_line(aes(date,CO2,col=factor(cal),group = tiefe))+
+  #  geom_line(aes(date,CO2,col=factor(cal),group = tiefe))+
+    geom_line(aes(date,T_C,col=factor(cal),group = tiefe))+
     facet_wrap(~probe,ncol = 1)
   
   data_long <- data_long %>% 

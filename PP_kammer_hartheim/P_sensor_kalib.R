@@ -13,19 +13,32 @@ check.packages(packages)
 ###########################################################
 
 
-#######
-#start
-datelim1 <- ymd_hm("2023.01.10 10:40", "2023.01.10 11:15")
-datelim1_2 <- ymd_hm("2023.01.10 10:55", "2023.01.10 11:05")
+##################
+#Metadata
+bemerkungen <- readODS::read_ods(paste0(metapfad_PP,"PP_Kammer_Bemerkungen_hartheim.ods"))
+bemerkungen$Start <- dmy_hm(bemerkungen$Start)
+bemerkungen$Ende <- dmy_hm(bemerkungen$Ende)
+datelims <- bemerkungen[grep("Sensor offset",bemerkungen$Bemerkung),1:2]
 
-######
-#stop
-datelim2 <- ymd_hm("2023.01.19 08:40", "2023.01.19 09:40")
-datelim2_2 <- ymd_hm("2023.01.19 09:00", "2023.01.19 09:20")
 
+# #######
+# #start
+# datelim1 <- ymd_hm("2023.01.10 10:40", "2023.01.10 11:15")
+# datelim1_2 <- ymd_hm("2023.01.10 10:55", "2023.01.10 11:05")
+# 
+# ######
+# #stop
+# datelim2 <- ymd_hm("2023.01.19 08:40", "2023.01.19 09:40")
+# datelim2_2 <- ymd_hm("2023.01.19 09:00", "2023.01.19 09:20")
+
+plot <- F
 
 #data_wide <- read_PP(datelim = datelim,format = "wide")
-data_long <- read_PP(datelim = range(datelim1,datelim2),corfac = F,table.name = "PP_1min")
+corfac_ls <- list()
+
+for(i in 1:nrow(datelims)){
+
+data_long <- read_PP(datelim = c(datelims$Start[i]-600,datelims$Ende[i]+600),corfac = F,table.name = "PP_1min")
 
 data_long <- data_long %>% 
   group_by(id) %>%
@@ -33,53 +46,56 @@ data_long <- data_long %>%
 
 data <- subset(data_long, id != 6)
 
-
-
-dt <- 1
-
-
-P_corfac_1 <- data %>% 
-  sub_daterange(datelim1_2) %>% 
-  #mutate(group = 1) %>% 
-  group_by(id) %>% 
-  summarise(date = mean(date),
-            P_mean = mean(P))
-P_corfac_2 <- data %>% 
-  sub_daterange(datelim2_2) %>% 
-  #mutate(group = 1) %>% 
+P_corfac_i <- data %>% 
+  sub_daterange(c(datelims$Start[i],datelims$Ende[i])) %>% 
   group_by(id) %>% 
   summarise(date = mean(date),
             P_mean = mean(P))
 
-P_corfac_1
-P_corfac_2
+corfac_ls[[i]] <- P_corfac_i
+}
+P_corfac <- do.call(rbind,corfac_ls)
+P_corfac
+
+#save(P_corfac,file=paste0(datapfad_PP_Kammer,"P_corfac_date.RData"))
+
+###################################
+#############################
+#plots
+#######################################
+
+data <- read_PP(datelim = ymd_h("23.01.27 09","23.01.27 10"),corfac = T,table.name = "PP_1min")
+data_2 <- read_PP(datelim = ymd_h("23.01.27 09","23.01.27 10"),corfac = "P_corfac_date",table.name = "PP_1min")
+
 ggplot()+
-  geom_point(data = P_corfac_1,aes(id,P_mean,col="1"))+
-  geom_point(data = P_corfac_2,aes(id,P_mean,col="2"))
-
-P_corfac <- rbind(P_corfac_1,P_corfac_2)
-
-
+  geom_line(data = subset(data,id!=6),aes(date,P,col=factor(id),linetype="1"))+
+  geom_line(data = subset(data_2,id!=6),aes(date,P,col=factor(id),linetype="2"))
+ggplot(P_corfac)+
+  geom_point(aes(id,P_mean,col=factor(date)))
 ggplot(data)+
   geom_line(aes(date,P_roll,col=factor(id)))
-#save(P_corfac,file=paste0(datapfad_PP_Kammer,"P_corfac_2.RData"))
 #load(file=paste0(datapfad_PP_Kammer,"P_corfac_2.RData"))
 
-data$cal <- as.numeric(as.character(factor(data$id,levels = 1:5,labels = P_corfac$P_mean)))
+data$cal <- as.numeric(as.character(factor(data$id,levels = 1:5,labels = P_corfac_i$P_mean)))
 
 data <- data %>% 
   group_by(id) %>%
   mutate(dt = diff_time(date,"secs"),
          P_diff = abs(c(NA,diff(P_filter)))/!!dt,
-         PPC5 = RcppRoll::roll_mean(P_diff,10*60/!!dt,fill=NA),
+         PPC5 = RcppRoll::roll_mean(P_diff,10,fill=NA),
          P_cal = P -cal,
-         P_roll_cal = RcppRoll::roll_mean(P_cal,3*60/!!dt,fill=NA),
-         P_roll = RcppRoll::roll_mean(P,3*60/!!dt,fill=NA))
+         P_roll_cal = RcppRoll::roll_mean(P_cal,3,fill=NA),
+         P_roll = RcppRoll::roll_mean(P,3,fill=NA))
 
-ggplot(sub_daterange(data,datelim))+
+ggplot(subset(data_2,id != 6))+
+  geom_line(aes(date,P,col=factor(id),linetype="1"))+
+  #geom_line(data = data,aes(date,P,col=factor(id),linetype="2"))+
+  geom_line(data = data,aes(date,P_cal,col=factor(id),linetype="3"))
+
+ggplot(data)+
   #  geom_line(aes(date, P_cal,col=id),alpha=0.3)+
   geom_line(aes(date, P_roll_cal,col=id))
-ggplot(sub_daterange(data,datelim))+
+ggplot(data)+
   geom_line(aes(date, P,col=id),alpha=0.3)+
   geom_line(aes(date, cal,col=id),alpha=0.3)+
   geom_line(aes(date, P_roll,col=id))
