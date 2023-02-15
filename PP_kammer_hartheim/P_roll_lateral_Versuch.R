@@ -32,8 +32,8 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 
-Versuch <- 22
-for(Versuch in c(10,20,21,22)){
+Versuch <- 20
+#for(Versuch in c(10,20,21,22)){
   if(Versuch == 20){
     datelim <- c(pp_chamber$Start[Versuch],pp_chamber$Ende[Versuch]+3600*24*0.5)
   }else{
@@ -126,6 +126,10 @@ for(Versuch in c(10,20,21,22)){
     modes <- c("0,0","40","20","-20","-40","0,0")
   }
   step_df$mode <- modes
+  step_df$step <- factor(step_df$mode,
+                         levels = unique(step_df$mode),
+                         labels = seq_along(unique(step_df$mode))-1)
+  
   data_PPC$step_id <- NA
   data_PPC$mode <- NA
   for(i in 1:nrow(step_df)){
@@ -233,9 +237,10 @@ for(Versuch in c(10,20,21,22)){
   data_long$P_horiz <- data_long$P_2 - data_long$P_3
   
   names(data_long)
+  
   step_df_cal <- data_long %>% 
     filter(!is.na(step_id)) %>% 
-    group_by(step_id) %>% 
+    group_by(step_id,mode) %>% 
     summarise(across(matches("^P_"),mean,na.rm=T)) %>% 
     mutate(Start = step_df$Start,
            End = step_df$End)
@@ -268,34 +273,43 @@ for(Versuch in c(10,20,21,22)){
   #   guides(alpha=F)+
   #   facet_wrap(~probe,ncol=1)+
   #   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_fm_",Versuch,".png"),width = 7,height = 6)
+  cols <- RColorBrewer::brewer.pal(4,"PuOr")
   
-  CO2_offset_plot <- ggplot(data_long)+
+  CO2_offset_plot <- 
+    ggplot(data_long)+
+    geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+    scale_alpha_discrete(range = c(0.1,0.4))+
+    geom_line(data = subset(data_long, tiefe %in% 1:5),aes(date,CO2_cal,col=factor(tiefe,labels = c(1:4,"lateral"))))+
+    scale_color_manual("subchamber",values = c(cols,1))+
+    ggnewscale::new_scale_color()+
+    #guides(alpha = F)+
     geom_vline(xintercept = step_date,col="grey",linetype=2)+
     geom_line(aes(date,CO2_cal,col=tiefe))+
-    geom_point(data = subset(data_long,mode == "0,0"),aes(date,CO2,col=tiefe),pch=1)+
+    geom_point(data = subset(data_long,mode == "0,0"),aes(date,CO2,col=tiefe),pch=20)+
     geom_line(aes(date,CO2,col=tiefe),alpha = 0.5)+
     geom_line(aes(date,CO2_preds,col=tiefe),linetype=2)+
-    guides(alpha=F)+
-    labs(y = expression(CO[2]~"(ppm)"))+
+    labs(y = expression(CO[2]~"(ppm)"),col = "depth")+
     facet_wrap(~paste("subchamber",factor(probe,levels=1:2,labels=3:2)),ncol=1)
   
   CO2_plot <- 
     ggplot(data_long)+
-    geom_rect(data=step_df_cal,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=abs(P_alpha)))+
-    scale_alpha(range = c(0,0.4))+
-    guides(alpha=F)+
+    #geom_rect(data=step_df_cal,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=abs(P_alpha)))+
+    geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+    scale_alpha_discrete(range = c(0.1,0.4))+
+    #scale_alpha(range = c(0,0.4))+
+    guides(col= F)+
     geom_hline(yintercept = 0,col="grey",linetype=2)+
     geom_line(aes(date,CO2_offset / CO2_preds,col=tiefe))+
-    geom_vline(xintercept = step_date,col="grey",linetype=2)+
+    geom_vline(xintercept = step_date,col="grey",linetype=2)++
     facet_wrap(~paste("subchamber",factor(probe,levels=1:2,labels=3:2)),ncol=1)+
-    labs(y = expression(CO[2]~shift~("%")), x ="")
+    labs(y = expression(CO[2]~shift~("%")), x ="",col="depth")
   #labs(y = expression(CO[2~offset]~(ppm)), x ="")
   
-  cols <- RColorBrewer::brewer.pal(4,"PuOr")
   
+
   P_plt <- ggplot(data_long)+
-    geom_rect(data=step_df_cal,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=abs(P_alpha)))+
-    scale_alpha(range = c(0,0.4))+
+    geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+    scale_alpha_discrete(range = c(0.1,0.4))+
     guides(alpha=F)+
     geom_line(aes(date,P_horiz,col="lateral"))+
     geom_hline(yintercept = 0,col="grey",linetype=2)+
@@ -312,16 +326,23 @@ for(Versuch in c(10,20,21,22)){
                       theme(axis.title.x = element_blank(),axis.text.x = element_blank()),
                     CO2_plot+theme(axis.title.x = element_blank(),
                                    axis.text.x = element_blank()),
-                    P_plt,ncol=1,align = "v",heights = c(3,2,1))+
+                    P_plt,ncol=1,align = "v",heights = c(3,2,1),common.legend = T,legend = "right")+
     ggsave(paste0(plotpfad_PPchamber,"CO2_offset_",Versuch,".png"),width = 7,height = 6)
-  
+  if(Versuch == 20){
+  ggpubr::ggarrange(CO2_offset_plot+
+                      theme(axis.title.x = element_blank(),axis.text.x = element_blank()),
+                    CO2_plot+theme(axis.title.x = element_blank(),
+                                   axis.text.x = element_blank()),
+                    P_plt,ncol=1,align = "v",heights = c(3,2,1),common.legend = T,legend = "right")+
+    ggsave(paste0(plotpfad_PPchamber,"Figure_3.png"),width = 7,height = 6)
+  }
   ggpubr::ggarrange(CO2_plot+labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch])),P_plt,ncol=1,align = "v",heights = c(2,1))+
     ggsave(paste0(plotpfad_PPchamber,"CO2_offset_PPC_",Versuch,".png"),width = 7,height = 6)
   
   data_long$Versuch <- Versuch
   
   save(data_long,file = paste0(datapfad_PP_Kammer,"CO2_offset_",Versuch,".RData"))
-}
+#}
 
 
 ########################################

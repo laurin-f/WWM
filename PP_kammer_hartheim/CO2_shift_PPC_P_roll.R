@@ -32,8 +32,8 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 PP_Versuche <- grep("PP|\\dD",pp_chamber$Modus)
-Versuch <- 23
-for(Versuch in PP_Versuche){
+Versuch <- 3
+#for(Versuch in PP_Versuche){
 datelim <- c(pp_chamber$Start[Versuch]-3600 * 12,pp_chamber$Ende[Versuch]+3600*12)
 
 if(Versuch == 1){
@@ -229,15 +229,21 @@ data_long$CO2_shift <-  data_long$CO2_offset / data_long$CO2_preds * 100
 step_df$Start[1] <- min(data_long$date)
 step_df$End[nrow(step_df)] <- max(data_long$date)
 
+cols <- RColorBrewer::brewer.pal(4,"PuOr")
 CO2_offset_plot <- 
   ggplot(data_long)+
+  geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+  scale_alpha(range = c(0,0.4))+
+  geom_line(data = subset(data_long, tiefe %in% 1:5),aes(date,CO2_cal,col=factor(tiefe,labels = c(1:4,"lateral"))))+
+  scale_color_manual("subchamber",values = c(cols,1))+
+  ggnewscale::new_scale_color()+
   geom_vline(xintercept = step_date,col="grey",linetype=2)+
   geom_line(aes(date,CO2_cal,col=tiefe))+
-  geom_point(data = subset(data_long,cal == 1),aes(date,CO2,col=tiefe),pch=1)+
+  geom_point(data = subset(data_long,cal == 1),aes(date,CO2,col=tiefe),pch=20)+
   geom_line(aes(date,CO2,col=tiefe),alpha = 0.5)+
   geom_line(aes(date,CO2_preds,col=tiefe),linetype=2)+
-  guides(alpha=F)+
-  labs(y = expression(CO[2]~"(ppm)"),col="tiefe")+
+  #guides(alpha=F)+
+  labs(y = expression(CO[2]~"(ppm)"),col="depth")+
   #theme(legend.justification = "right") +
   facet_wrap(~paste("subchamber",factor(probe,levels=1:2,labels=3:2)),ncol=1)
 
@@ -256,7 +262,6 @@ CO2_plot <-
   labs(y = expression(CO[2]~shift~("%")), x ="")
   #labs(y = expression(CO[2~offset]~(ppm)), x ="")
 
-cols <- RColorBrewer::brewer.pal(4,"PuOr")
 P_plt <- ggplot(data_long)+
   geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
   scale_alpha(range = c(0,0.4))+
@@ -291,7 +296,7 @@ ggpubr::ggarrange(CO2_offset_plot+labs(title = paste("Versuch",paste0(Versuch,":
                                  axis.text.x = element_blank()),
                   PPC_plt+theme(axis.title.x = element_blank(),
                                 axis.text.x = element_blank()),
-                  P_plt,ncol=1,align = "v",heights = c(3,2,0.8,1))+
+                  P_plt,ncol=1,align = "v",heights = c(3,2,0.8,1),common.legend = T,legend = "right")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_",Versuch,".png"),width = 7,height = 8)
 #ggpubr::ggarrange(CO2_plot+labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch])),PPC_plt,P_plt,ncol=1,align = "v",heights = c(2,1,1))+
 #  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_PPC_",Versuch,".png"),width = 7,height = 6)
@@ -308,11 +313,16 @@ save(data_long,file = paste0(datapfad_PP_Kammer,"CO2_offset_",Versuch,".RData"))
 
 if(Versch == 3){
   
-  ggpubr::ggarrange(CO2_offset_plot,PPC_plt,P_plt,ncol=1,align = "v",heights = c(2,1,1))+
-    ggsave(paste0(plotpfad_PPchamber,"CO2_shift_fm_.png"),width = 7,height = 6)
-  ggpubr::ggarrange(CO2_offset_plot,CO2_plot,PPC_plt,P_plt,ncol=1,align = "v",heights = c(3,2,1,1))+
-    ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC_.png"),width = 7,height = 8)
-  
+  ggpubr::ggarrange(CO2_offset_plot+theme(axis.title.x = element_blank(),                                                                                       axis.text.x = element_blank()),
+                    CO2_plot+theme(axis.title.x = element_blank(),
+                                   axis.text.x = element_blank()),
+                    PPC_plt+theme(axis.title.x = element_blank(),
+                                  axis.text.x = element_blank()),
+                    P_plt,ncol=1,align = "v",heights = c(3,2,0.8,1),common.legend = T,legend = "right")+
+    ggsave(paste0(plotpfad_PPchamber,"Figure_4.png"),width = 7,height = 7)
+  # ggpubr::ggarrange(CO2_offset_plot,CO2_plot,PPC_plt,P_plt,ncol=1,align = "v",heights = c(3,2,1,1))+
+  #   ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC_.png"),width = 7,height = 8)
+  # 
 }
 P_scatter <- ggplot(subset(data_long,mode_zeit > 9))+
   geom_point(aes(P_horiz,CO2_offset,col=factor(tiefe)))+
