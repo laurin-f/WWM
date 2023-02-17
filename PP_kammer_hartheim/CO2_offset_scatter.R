@@ -46,7 +46,7 @@ data$CO2_shift <-  data$CO2_offset / data$CO2_preds * 100
 Modus_2d_1d <- grep("2D, 1D, 2D, 1D",pp_chamber$Modus)
 names(data)
 
-
+data$profile <- factor(data$probe,levels = 2:1,labels = 1:2)
 
 data <- data[,!grepl("P_5",names(data))]
 Sand_Versuch <- unique(grep("Sand",data$Versuch,value = T))
@@ -77,7 +77,7 @@ data$PPC <- rowMeans(data[,grep("PPC_\\d",names(data))],na.rm = T)
 
 
 data_agg <- data %>% 
-  group_by(tiefe,probe,step_id,Versuch,soil,modus) %>% 
+  group_by(tiefe,probe,profile,step_id,Versuch,soil,modus) %>% 
   summarise(across(everything(),mean))
 data_agg$modus2 <- as.character(data_agg$modus)
 data_agg$modus2[grep("PP",data_agg$modus)] <- "PP"
@@ -130,19 +130,19 @@ ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_sub,CO2_shift))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
   ggpubr::stat_regline_equation(label.y = -15,aes(label= ..rr.label..))+
-  facet_grid(~paste("probe",probe))+
+  facet_grid(~paste("profile",profile))+
 #  theme(legend.position = "top")+
   scale_color_viridis_c()+
   labs(x = expression(P[subchamber]~"(Pa)"),y = CO[2]~shift~"(%)",col="P_lateral (Pa)")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_Pmean.png"),width = 7, height = 4)
 
 #PPC
-ggplot(subset(data_harth,tiefe%in%3:5 & modus != "lateral P-gradient"),aes(PPC,CO2_shift))+
+ggplot(subset(data_harth,tiefe%in%3:5 & modus != "P-lateral"),aes(PPC,CO2_shift))+
   geom_point(aes(col=modus2))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
   ggpubr::stat_cor(aes(label= ..rr.label..))+
-  facet_grid(~paste("probe",probe))+
+  facet_grid(~paste("profile",profile))+
   theme(legend.position = "top")+
   labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col="mode")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_PPC.png"),width = 7, height = 5)
@@ -151,7 +151,7 @@ ggplot(subset(data_harth,tiefe%in%3:5 & modus2 == "PP"),aes(PPC,CO2_shift))+
   geom_point(aes(col=factor(modus)))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
-  facet_grid(~paste("probe",probe))+
+  facet_grid(~paste("profile",profile))+
   theme(legend.position = "top")+
   labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col="mode")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_PPC_sub.png"),width = 7, height = 5)
@@ -159,10 +159,10 @@ ggplot(subset(data_harth,tiefe%in%3:5 & modus2 == "PP"),aes(PPC,CO2_shift))+
 
 legend_df <- data.frame(x = c(rep(-0.72,2),rep(-0.6,2)),
                         y = c(-16,-18,-16,-18),
-                        probe = as.character(c(1,2,1,2)))
+                        profile = as.character(c(1,2,1,2)))
 #P lateral
 n_Versuche <- length(unique(data_harth$Versuch))
-ggplot(subset(data_harth,tiefe%in%3:6 ),aes(P_lateral,CO2_shift,shape = probe,linetype = probe))+
+ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_lateral,CO2_shift,shape = profile,linetype = profile))+
   geom_point(aes(col=modus2))+
   geom_smooth(method = "glm",col=1,lwd = 0.8,se = F)+
   ggpubr::stat_regline_equation(label.y = c(-16,-18)+0.4,label.x = -1.1,aes(label=..rr.label..))+
@@ -171,7 +171,7 @@ ggplot(subset(data_harth,tiefe%in%3:6 ),aes(P_lateral,CO2_shift,shape = probe,li
   #theme(legend.position = "top")+
 #  scale_color_viridis_c()+
   #facet_wrap(~probe)
-  labs(x = expression(P[lateral]~"(Pa)"),y = CO[2]~shift~"(%)",col="",shape = "profile",linetype = "profile")+
+  labs(x = expression(P[lateral]~"(Pa)"),y = CO[2]~shift~"(%)",col="")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_lateral.png"),width = 7, height = 5)
 
 ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_horiz,CO2_shift))+
@@ -337,29 +337,66 @@ ggplot(subset(data,Versuch == 20))+
 
 ##PPC model
 #######################################
-names(data_harth)
+
 PerformanceAnalytics::chart.Correlation(data_harth[,c("CO2_shift","P_sub","P_lateral","PPC_2")])
 
 preds <- data_agg %>%
   filter(Versuch %in% Versuche_sel) %>% 
   group_by(probe,tiefe) %>% 
   mutate(CO2_pred = predict(glm(CO2_shift ~ P_lateral),newdata = list(.)),
-         CO2_PPC = CO2_shift - CO2_pred)
-# ggplot(subset(preds, Versuch == 3))+
-#   geom_line(aes(date,CO2_shift,col=factor(tiefe)),alpha=0.2)+
-#   geom_line(aes(date,CO2_pred,col=factor(tiefe)),linetype =2)+
-#   facet_wrap(~probe,scales = "free")
-# 
-# ggplot(preds,aes(PPC,CO2_PPC,col=P_lateral))+
-#   geom_point()+
-#   geom_smooth(method = "glm")
-#   ggpubr::stat_cor()
+         CO2_shift_cor = CO2_shift - CO2_pred)
+ggplot(subset(preds, Versuch == 3))+
+  geom_line(aes(date,CO2_shift,col=factor(tiefe)),alpha=0.2)+
+  geom_line(aes(date,CO2_pred,col=factor(tiefe)),linetype =2)+
+  facet_wrap(~probe,scales = "free")
+range(subset(data_harth,tiefe%in%2:6 & modus2 == "PP")$P_lateral,na.rm = T)
 
+sub <- subset(data_harth,probe == 2 & tiefe == 2)
+test <- glm(CO2_shift ~ P_lateral,data = sub)
+test$coefficients
+R2_fm(test)
+ggplot(subset(data_harth,tiefe%in%2:5),aes(P_lateral,CO2_shift,col=factor(tiefe)))+
+  geom_point()+
+  geom_smooth(method = "glm")+
+  ggpubr::stat_regline_equation(label.y.npc = "bottom",aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~")))+
+  facet_wrap(~paste("probe",probe))+
+  #ylim(c(-7,17))+
+  labs(col="tiefe")+
+  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_Plateral_regressions.png"),width = 7, height = 5)
+
+
+CO2_ppc <- ggplot(subset(data_harth,tiefe%in%2:5 & modus2 == "PP"),aes(PPC,CO2_shift,col=factor(tiefe)))+
+  geom_point()+
+  geom_smooth(method = "glm")+
+  ggpubr::stat_regline_equation(aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~")))+
+  facet_wrap(~paste("probe",probe),scales = "free_x")+
+  ylim(c(-7,17))+
+  labs(title = "PPC without P-lateral: -0.1 < P-lateral < 0.1 Pa",col="tiefe")
+unique(preds$modus)
+CO2_ppc_cor <- ggplot(subset(preds,tiefe %in% 2:5 & modus != "P-lateral"),aes(PPC,CO2_shift_cor,col=factor(tiefe)))+
+  geom_point()+
+  geom_smooth(method = "glm")+
+  ggpubr::stat_regline_equation(aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~")))+
+  facet_wrap(~paste("probe",probe),scales = "free_x")+
+  ylim(c(-7,17))+
+  labs(title = "PPC with P-lateral effect corrected")
+
+ggpubr::ggarrange(CO2_ppc,CO2_ppc_cor,ncol = 1,common.legend = T,legend = "right")+
+  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_PPC_cor.png"),width = 7, height = 8)
+  
 fms <- data_harth %>% 
   ungroup() %>% 
   nest_by(probe,tiefe) %>% 
-  mutate(fm = list(glm(CO2_shift ~ P_lateral,data =data)))
-fms %>% summarise(broom::tidy(fm))
+  mutate(fm = list(glm(CO2_shift ~ P_lateral,data =data)),
+         R2 = R2_fm(fm),
+         slope = fm$coefficients[2])
+ggplot(fms)+
+  geom_point(aes(tiefe,R2,col=factor(probe)))
+ggplot(fms)+
+  geom_point(aes(tiefe,slope,col=factor(probe)))
+fms$fm[[1]]$coefficients[2]
+R2_fm
+fm_coeffs <- fms %>% summarise(broom::tidy(fm))
 fm <- glm(CO2_shift ~ PPC_2 + P_lateral + probe,data = data_harth)
 #fm <- glm(CO2_shift ~ PPC_2,data = data_harth)
 summary(fm)

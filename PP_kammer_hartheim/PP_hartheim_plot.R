@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 23
+Versuch <- 24
 #for(Versuch in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
 plot <-  T
@@ -173,7 +173,7 @@ flux_ls <- chamber_arduino(datelim=datelim,
                            gga_data = T,
                            return_ls = T,
                            t_init=1,
-                           plot="facets",
+                           plot="timeline",
                            t_offset = "from_df",
                            t_min=2,
                            t_max=2)

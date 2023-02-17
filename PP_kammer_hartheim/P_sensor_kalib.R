@@ -31,33 +31,42 @@ datelims <- bemerkungen[grep("Sensor offset",bemerkungen$Bemerkung),1:2]
 # datelim2 <- ymd_hm("2023.01.19 08:40", "2023.01.19 09:40")
 # datelim2_2 <- ymd_hm("2023.01.19 09:00", "2023.01.19 09:20")
 
-plot <- F
+plot <- T
 
 #data_wide <- read_PP(datelim = datelim,format = "wide")
 corfac_ls <- list()
 
 for(i in 1:nrow(datelims)){
-
-data_long <- read_PP(datelim = c(datelims$Start[i]-600,datelims$Ende[i]+600),corfac = F,table.name = "PP_1min")
-
-data_long <- data_long %>% 
-  group_by(id) %>%
-  mutate(P_roll = RcppRoll::roll_mean(P,5,fill=NA))
-
-data <- subset(data_long, id != 6)
-
-P_corfac_i <- data %>% 
-  sub_daterange(c(datelims$Start[i],datelims$Ende[i])) %>% 
-  group_by(id) %>% 
-  summarise(date = mean(date),
-            P_mean = mean(P))
-
-corfac_ls[[i]] <- P_corfac_i
+  
+  data_long <- read_PP(datelim = c(datelims$Start[i]-600,datelims$Ende[i]+600),corfac = F,table.name = "PP_1min")
+  
+  data_long <- data_long %>% 
+    group_by(id) %>%
+    mutate(P_roll = RcppRoll::roll_mean(P,5,fill=NA))
+  
+  data <- subset(data_long, id != 6)
+  
+  P_corfac_i <- data %>% 
+    sub_daterange(c(datelims$Start[i],datelims$Ende[i])) %>% 
+    group_by(id) %>% 
+    summarise(date = mean(date),
+              P_mean = mean(P))
+  
+  corfac_ls[[i]] <- P_corfac_i
+  if(plot){
+    p <- ggplot(data)+
+      geom_line(aes(date,P,col=factor(id)))+
+      geom_vline(xintercept=c(datelims$Start[i],datelims$Ende[i]))+
+      labs(title = paste("No.",i,as.Date(datelims$Start[i])))
+    print(p)
+  }
 }
+
 P_corfac <- do.call(rbind,corfac_ls)
 P_corfac
 
-#save(P_corfac,file=paste0(datapfad_PP_Kammer,"P_corfac_date.RData"))
+
+save(P_corfac,file=paste0(datapfad_PP_Kammer,"P_corfac_date.RData"))
 
 ###################################
 #############################

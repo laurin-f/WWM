@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 
-Versuch <- 20
+Versuch <- 10
 #for(Versuch in c(10,20,21,22)){
   if(Versuch == 20){
     datelim <- c(pp_chamber$Start[Versuch],pp_chamber$Ende[Versuch]+3600*24*0.5)
@@ -122,6 +122,9 @@ Versuch <- 20
   if(Versuch %in% 22){
     modes <- c(rep(c("0,0","1,1","1,-1","-1,-1","-1,1"),3),"0,0")
   }
+  if(Versuch %in% 24){
+    modes <- c(rep(c("0,0","100","70","1","-1","-70","-100"),2),"0,0")
+  }
   if(Versuch == 10){
     modes <- c("0,0","40","20","-20","-40","0,0")
   }
@@ -209,10 +212,10 @@ Versuch <- 20
   range(data_probes_wide$date)
   
   data <- merge(data_PPC_wide,data_probes_wide)
-  data <- merge(data,swc_sub,all.x = T)
+  #data <- merge(data,swc_sub,all.x = T)
   data <- merge(data,CO2_atm)
   data <- data %>% mutate(zeit = as.numeric(difftime(date,min(date))))
-  if(Versuch %in% c(20,22)){
+  if(Versuch %in% c(20,22,24)){
     data[,paste0("CO2_smp1_roll_",1:2)] <- NA
   }
   data_long <- tidyr::pivot_longer(data,matches("CO2_smp\\d_roll_\\d"),names_pattern = "CO2_smp(\\d)_roll_(\\d)",values_to = "CO2",names_to = c("probe","tiefe"))
@@ -300,7 +303,7 @@ Versuch <- 20
     guides(col= F)+
     geom_hline(yintercept = 0,col="grey",linetype=2)+
     geom_line(aes(date,CO2_offset / CO2_preds,col=tiefe))+
-    geom_vline(xintercept = step_date,col="grey",linetype=2)++
+    geom_vline(xintercept = step_date,col="grey",linetype=2)+
     facet_wrap(~paste("subchamber",factor(probe,levels=1:2,labels=3:2)),ncol=1)+
     labs(y = expression(CO[2]~shift~("%")), x ="",col="depth")
   #labs(y = expression(CO[2~offset]~(ppm)), x ="")

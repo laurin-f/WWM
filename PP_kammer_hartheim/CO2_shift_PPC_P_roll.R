@@ -303,7 +303,7 @@ ggpubr::ggarrange(CO2_offset_plot+labs(title = paste("Versuch",paste0(Versuch,":
 
 data_long$Versuch <- Versuch
 save(data_long,file = paste0(datapfad_PP_Kammer,"CO2_offset_",Versuch,".RData"))
-}
+#}
   #data_long$CO2_offset[data_long$CO2_offset < -300] <- NA
 
 
