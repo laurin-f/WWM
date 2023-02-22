@@ -46,6 +46,7 @@ p <- list()
 now <- now()
 tz(now) <- "UTC"
 datelim <- c(ymd_h("22.09.27 10"),now)
+datelim <- c(ymd_h("23.02.16 10","23.02.22 10"))
 
 
 
@@ -106,30 +107,10 @@ for(i in 1:nrow(pp_chamber)){
   data_long$Versuch[id_long] <- i
 }
 
-p[[paste0("CO2_")]] <-ggplot(subset(data_long,tiefe > -12))+
-#  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  #geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  #geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
-  geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe)))+
-  scale_fill_manual(values = "black")+
-  coord_cartesian(xlim=datelim)+
-  guides(fill=F)+
-  labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe")
+data_long <- data_long %>% 
+  group_by(tiefe) %>% 
+  mutate(CO2_smp2 = RcppRoll::roll_mean(CO2_smp2,10,fill=NA))
 
-
-p[[paste0("flux_")]] <- ggplot(flux)+
-  geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"))+
-  geom_line(aes(date,CO2_mumol_per_s_m2,col="Dynament"))+
- # geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  #geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-  labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
-  scale_fill_grey()+
-  guides(fill  = F)+
-  coord_cartesian(xlim=datelim)
-
-p[[paste0("PPC_")]] <- ggplot(data_PPC)+
-  geom_line(aes(date, PPC_2, col="PPC_2"))+
-  geom_line(aes(date, PPC_6, col="PPC_atm"))
 
 data_30min <- data_probe1u2 %>% 
   select(matches("date|CO2_tiefe\\d_smp2|Versuch")) %>% 
@@ -183,10 +164,19 @@ swc_agg$swc_7_roll <- RcppRoll::roll_mean(swc_agg$swc_7,3,fill=NA)
 swc_agg$swc_7_diff <- c(NA,diff(swc_agg$swc_7_roll))
 
 swc_ids <- which(abs(swc_agg$swc_7_diff) > 0.25)
-timeperiod <- swc_agg[swc_ids[1]:swc_ids[2],"swc_7"]
+timeperiod <- (swc_ids[1]-30):(swc_ids[2]+30)
+period_vals <- swc_agg[timeperiod,"swc_7"]
 
+swc_agg$swc_7_cal <- RcppRoll::roll_mean(swc_agg$swc_7,60,fill=NA)
+swc_agg$swc_7_cal[timeperiod] <- NA
+swc_agg$swc_7_cal <- imputeTS::na_interpolation(swc_agg$swc_7_cal)
+
+#swc_agg[swc_ids[1]:swc_ids[2],"swc_7_cal"] <- swc_agg[swc_ids[1]:swc_ids[2],"swc_7"] - mean(timeperiod - ,na.rm =T)
 ggplot(swc_agg)+
-  geom_line(aes(date,abs(swc_14)))
+  geom_line(aes(date,swc_21))
+#swc_agg[swc_ids[1]:swc_ids[2],"swc_7_cal"] <- swc_agg[swc_ids[1]:swc_ids[2],"swc_7"] - mean(timeperiod - ,na.rm =T)
+ggplot(swc_agg)+
+  geom_line(aes(date,swc_7_cal))
 ggplot(swc_agg)+
   geom_vline(xintercept = swc_agg$date[swc_ids],col="grey")+
   geom_hline(yintercept = 0.25)+
@@ -200,9 +190,10 @@ data$T_C <- imputeTS::na_interpolation(data$T_C)
 
 data$CO2_flux <- RcppRoll::roll_mean(data$CO2_mumol_per_s_m2,10,fill=NA,na.rm = T)
 data$CH4_flux <- RcppRoll::roll_mean(data$CH4_mumol_per_s_m2*10^3,10,fill=NA,na.rm = T)
-
+names(data)
 data <- data %>% 
-  mutate(across(matches("CO2_tiefe\\d"),~ppm_to_mol(.,T_C = data$T_C),.names = "{.col}_mol"),
+  mutate(across(matches("CO2_tiefe\\d"),~RcppRoll::roll_mean(.,10,fill = NA)),
+    across(matches("CO2_tiefe\\d"),~ppm_to_mol(.,T_C = data$T_C),.names = "{.col}_mol"),
          across(matches("CO2_tiefe\\d") & where(~length(which(!is.na(.)))>1),imputeTS::na_interpolation,maxgap=5))
 
 data$modus <- factor(data$Versuch,levels = 1:nrow(pp_chamber),labels = pp_chamber$Modus)
@@ -214,16 +205,76 @@ data$DS <- data$CO2_flux * 10^-6 / data$dC_0_10 #mol/s/m2 / (mol/m4) = m2/s
 data$D0_m2_s <- D0_T_p(data$T_C,unit = "m2/s")
 data$DSD0 <- data$DS / data$D0_m2_s
 
+
+P_step_thr <- 0.5
+names(data_PPC)
+
+data_PPC <- data_PPC[order(data_PPC$date),]
+
+PPC_steps <- data_PPC %>%
+  mutate(date = round_date(date,"10 min")) %>%
+  group_by(date) %>%
+  summarise(across(everything(),mean)) %>%
+  mutate(P_diff = abs(c(NA,diff(P_2))),
+         P_diff_3 = abs(c(NA,diff(P_3))),
+         P_step = ifelse(P_diff > P_step_thr | P_diff_3 > P_step_thr,1,0)
+  )
+ggplot(PPC_steps)+
+  
+  geom_line(aes(date,P_diff))
+
+P_step_date <- sort(unique(PPC_steps$date[PPC_steps$P_step == 1]))
+P_step_date <- P_step_date[c(as.numeric(diff(P_step_date)),100) > 100]
+P_step_date <- P_step_date[!is.na(P_step_date)]
+
+p[[paste0("CO2_")]] <-ggplot(subset(data_long,tiefe > -12))+
+  geom_vline(xintercept = P_step_date,col="grey",linetype = 2)+
+  #  geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  #geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  #geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe),linetype="probe 2"))+
+  geom_line(aes(date,CO2_smp2,col=as.factor(-tiefe)))+
+  scale_fill_manual(values = "black")+
+  coord_cartesian(xlim=datelim)+
+  guides(fill=F)+
+  labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe")+
+  coord_cartesian(xlim=datelim)
+
+
+p[[paste0("flux_")]] <- ggplot(data)+
+  #geom_point(aes(date,CO2_mumol_per_s_m2,col="GGA"))+
+  geom_vline(xintercept = P_step_date,col="grey",linetype = 2)+
+  geom_line(aes(date,CO2_flux,col="GGA"))+
+  # geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  #geom_rect(data=pp_chamber[i,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+  labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
+  scale_fill_grey()+
+  guides(fill  = F)+
+  coord_cartesian(xlim=datelim)
+names(data_PPC)
+p[[paste0("PPC_")]] <- ggplot(data)+
+  geom_line(aes(date, PPC_2, col="PPC_2"))+
+  geom_line(aes(date, PPC_6, col="PPC_atm"))+
+  coord_cartesian(xlim=datelim)
+p[[paste0("P")]] <- ggplot(data)+
+  geom_vline(xintercept = P_step_date,col="grey",linetype = 2)+
+  geom_line(aes(date, P_roll_2, col="P_2"))+
+  geom_line(aes(date, P_roll_3, col="P_3"))+
+  coord_cartesian(xlim=datelim)
 p[[paste0("DSD0_")]] <- 
   ggplot(data)+
-  geom_line(aes(date,DSD0))
-p[[paste0("dC_0_10")]] <- 
+  geom_vline(xintercept = P_step_date,col="grey",linetype = 2)+
+  geom_line(aes(date,DSD0))+
+  coord_cartesian(xlim=datelim)
+#p[[paste0("dC_0_10")]] <- 
   ggplot(data)+
-  geom_line(aes(date,dC_0_10))
+  geom_vline(xintercept = P_step_date,col="grey",linetype = 2)+
+  geom_line(aes(date,dC_0_10))+
+  coord_cartesian(xlim=datelim)
 #}
 
 
-egg::ggarrange(plots=p,ncol=1)
+egg::ggarrange(plots=p[-3],ncol=1)
+
 
 ggplot(data)+
   geom_point(aes(dC_0_10,DSD0,col=CO2_flux))

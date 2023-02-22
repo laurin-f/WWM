@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 24
+Versuch <- 25
 #for(Versuch in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
 plot <-  T
@@ -72,6 +72,7 @@ if(nrow(data_PPC) > 0){
   data_Proll <- tidyr::pivot_longer(data_Proll_wide[,1:6],paste0("id_",1:5),names_prefix = "id_",names_to = "id",values_to="P_roll")
   
   step_thr <- 0.03
+  P_step_thr <- 0.5
   data_PPC <- data_PPC[order(data_PPC$date),]
   PPC_steps <- data_PPC %>%
     filter(id %in% 1:4) %>%
@@ -79,12 +80,19 @@ if(nrow(data_PPC) > 0){
     group_by(id,date) %>%
     summarise(across(everything(),mean)) %>%
     mutate(PPC_diff = abs(c(NA,diff(PPC5))),
-           step = ifelse(PPC_diff > step_thr,1,0))
+           P_diff = abs(c(NA,diff(P_roll))),
+           step = ifelse(PPC_diff > step_thr,1,0),
+           P_step = ifelse(P_diff > P_step_thr,1,0)
+    )
   
   
   step_date <- sort(unique(PPC_steps$date[PPC_steps$step == 1]))
   step_date <- step_date[c(as.numeric(diff(step_date)),100) > 60]
   step_date <- step_date[!is.na(step_date)]
+  
+  P_step_date <- sort(unique(PPC_steps$date[PPC_steps$P_step == 1]))
+  P_step_date <- P_step_date[c(as.numeric(diff(P_step_date)),100) > 60]
+  P_step_date <- P_step_date[!is.na(P_step_date)]
   
 }
 
@@ -115,7 +123,7 @@ if(!is.null(nrow(data_probe3))){
       mutate(CO2_roll = RcppRoll::roll_mean(CO2,5,fill=NA),
              tiefe = tiefe + 3.5)
   }else{
-  data_probe3 <- NULL
+    data_probe3 <- NULL
   }
 }
 data_probe1u2 <- data_probe1u2 %>% 
@@ -173,7 +181,7 @@ flux_ls <- chamber_arduino(datelim=datelim,
                            gga_data = T,
                            return_ls = T,
                            t_init=1,
-                           plot="timeline",
+                           plot="facets",
                            t_offset = "from_df",
                            t_min=2,
                            t_max=2)
@@ -341,7 +349,6 @@ if(plot & "CH4_R2" %in% names(flux)){
   flux_gga <- subset(flux,!is.na(CO2_GGA_mumol_per_s_m2) & CO2_GGA_R2 > 0.9)
   
   CO2_GGA_flux <- ggplot(flux_gga)+
-    geom_vline(xintercept = step_date,linetype=2,col="grey")+
     #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"))+
     geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"),alpha=0.3)+
@@ -351,7 +358,6 @@ if(plot & "CH4_R2" %in% names(flux)){
     scale_fill_grey()
   
   CH4_GGA_flux <- ggplot(flux_gga)+
-    geom_vline(xintercept = step_date,linetype=2,col="grey")+
     #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_point(aes(date,CH4_mumol_per_s_m2*10^3,col="CH4"))+
     geom_line(aes(date,(CH4_mumol_per_s_m2*10^3),col="CH4"),alpha=0.3)+
@@ -373,13 +379,35 @@ if(plot & "CH4_R2" %in% names(flux)){
     guides(fill=F)+
     labs(x="",y="PPC (Pa/s)")
   
-  png(paste0(plotpfad_PPchamber,"GGA_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
-  egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,ppc_plot,plot_ls$T_C + xlim(range(flux_gga$date)),ncol=1)
-  #egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,plot_ls$PPC,ncol=1,heights=c(2,2,1))
+  p_plot <- 
+    ggplot(subset(data_PPC,date %in% round_date(date,"mins") & id %in% 1:4))+
+    geom_vline(xintercept = P_step_date,linetype=2,color="grey")+
+    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    geom_line(aes(date,P_roll,col=id))+
+    xlim(range(flux_gga$date))+
+    scale_fill_grey()+
+    #guides(fill=F,col=F)+
+    labs(x="",y="PPC (Pa/s)")
   
-  
-  dev.off()
-  
+  if(Versuch %in% c(25)){
+    ggpubr::ggarrange(CO2_GGA_flux+guides(col=F)+geom_vline(xintercept = P_step_date,linetype=2,color="grey"),
+                      CH4_GGA_flux+guides(col=F)+geom_vline(xintercept = P_step_date,linetype=2,color="grey"),
+                      p_plot,plot_ls$T_C + xlim(range(flux_gga$date)),ncol=1,align = "v")+
+      ggsave(paste0(plotpfad_PPchamber,"GGA_hartheim",Versuch,".png"),width = 9,height = 10)
+    
+  }else{
+    png(paste0(plotpfad_PPchamber,"GGA_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
+    egg::ggarrange(CO2_GGA_flux+
+                     geom_vline(xintercept = step_date,linetype=2,col="grey"),
+                   CH4_GGA_flux+
+                     geom_vline(xintercept = step_date,linetype=2,col="grey"),
+                   ppc_plot,plot_ls$T_C + xlim(range(flux_gga$date)),ncol=1)
+    #egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,plot_ls$PPC,ncol=1,heights=c(2,2,1))
+    
+    
+    dev.off()
+  }
 }
 #}#for i in Versuch
 names(flux)

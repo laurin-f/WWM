@@ -27,8 +27,8 @@ pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen_hartheim.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
 pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 
-Versuch <- 3
-datelim <- c(pp_chamber$Start[Versuch],pp_chamber$Ende[Versuch])
+Versuch <- 10
+datelim <- c(pp_chamber$Start[Versuch]- 24*3600,pp_chamber$Ende[Versuch]+ - 24*3600)
 
 plot <-  T
 load <- T
@@ -153,11 +153,13 @@ FCO2_plt <- ggplot(data_merge)+
 FCH4_plt <- ggplot(data_merge)+
   geom_line(aes(date,CH4_flux))
 P_roll_plot <- ggplot(data_merge)+
-  geom_line(aes(date,P_1 - P_3))
+  geom_line(aes(date,P_2))
+PPC_plot <- ggplot(data_merge)+
+  geom_line(aes(date,PPC_2))
 T_plot <- ggplot(data_merge)+
   geom_line(aes(date,T_C))
 swc_plot <- ggplot(data_merge)+
   geom_line(aes(date,swc_14))
 
-ggpubr::ggarrange(FCO2_plt,P_roll_plot,T_plot,ncol=1)
-ggpubr::ggarrange(FCH4_plt,P_roll_plot,T_plot,swc_plot,ncol=1)
+ggpubr::ggarrange(FCO2_plt,P_roll_plot,PPC_plot,T_plot,ncol=1)
+ggpubr::ggarrange(FCH4_plt,P_roll_plot,PPC_plot,T_plot,ncol=1)

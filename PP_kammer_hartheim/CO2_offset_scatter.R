@@ -88,6 +88,7 @@ data_Sand <- subset(data_agg,grepl("Sand",Versuch))
 Versuche_sel <- c(2:3,11:14,17:22)
 data_harth <- subset(data_agg, Versuch %in% Versuche_sel)
 
+tiefen_sel <- 3:5
 ########################
 #überblick
 Versuch_x <- 3
@@ -116,7 +117,7 @@ names(data)
 #Hartheim plots
 
 #P_mean
-ggplot(subset(data_harth,tiefe%in%3:5 & abs(P_sub) < 1 ),aes(P_sub,CO2_shift))+
+ggplot(subset(data_harth,tiefe%in%tiefen_sel & abs(P_sub) < 1 ),aes(P_sub,CO2_shift))+
   geom_point(aes(col=P_lateral))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
@@ -125,7 +126,7 @@ ggplot(subset(data_harth,tiefe%in%3:5 & abs(P_sub) < 1 ),aes(P_sub,CO2_shift))+
   scale_color_viridis_c()+
   labs(x = expression(P[mean]~"(Pa)"),y = CO[2]~shift~"(%)",col="P_lateral (Pa)")
 #  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_Pmean.png"),width = 7, height = 6)
-ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_sub,CO2_shift))+
+ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_sub,CO2_shift))+
   geom_point(aes(col=P_lateral))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
@@ -137,7 +138,7 @@ ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_sub,CO2_shift))+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_Pmean.png"),width = 7, height = 4)
 
 #PPC
-ggplot(subset(data_harth,tiefe%in%3:5 & modus != "P-lateral"),aes(PPC,CO2_shift))+
+ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus != "P-lateral"),aes(PPC,CO2_shift))+
   geom_point(aes(col=modus2))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
@@ -147,7 +148,7 @@ ggplot(subset(data_harth,tiefe%in%3:5 & modus != "P-lateral"),aes(PPC,CO2_shift)
   labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col="mode")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_PPC.png"),width = 7, height = 5)
 
-ggplot(subset(data_harth,tiefe%in%3:5 & modus2 == "PP"),aes(PPC,CO2_shift))+
+ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus2 == "PP"),aes(PPC,CO2_shift))+
   geom_point(aes(col=factor(modus)))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
@@ -162,7 +163,7 @@ legend_df <- data.frame(x = c(rep(-0.72,2),rep(-0.6,2)),
                         profile = as.character(c(1,2,1,2)))
 #P lateral
 n_Versuche <- length(unique(data_harth$Versuch))
-ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_lateral,CO2_shift,shape = profile,linetype = profile))+
+ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_lateral,CO2_shift,shape = profile,linetype = profile))+
   geom_point(aes(col=modus2))+
   geom_smooth(method = "glm",col=1,lwd = 0.8,se = F)+
   ggpubr::stat_regline_equation(label.y = c(-16,-18)+0.4,label.x = -1.1,aes(label=..rr.label..))+
@@ -174,7 +175,7 @@ ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_lateral,CO2_shift,shape = profile,
   labs(x = expression(P[lateral]~"(Pa)"),y = CO[2]~shift~"(%)",col="")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_lateral.png"),width = 7, height = 5)
 
-ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_horiz,CO2_shift))+
+ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_horiz,CO2_shift))+
   geom_point(aes(col=modus))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
@@ -184,7 +185,7 @@ ggplot(subset(data_harth,tiefe%in%3:5 ),aes(P_horiz,CO2_shift))+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_lateral_facets.png"),width = 7, height = 6)
 
 
-ggplot(subset(data_agg,Versuch %in% c(Versuche_sel) & tiefe %in% 3:5) ,aes(P_lateral,CO2_shift))+
+ggplot(subset(data_agg,Versuch %in% c(Versuche_sel) & tiefe %in% tiefen_sel) ,aes(P_lateral,CO2_shift))+
   geom_point(aes(col=probe))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   ggpubr::stat_regline_equation(aes(label= ..rr.label..))#+
@@ -197,7 +198,7 @@ ggplot(subset(data_agg,Versuch %in% c(Versuche_sel) & tiefe %in% 3:5) ,aes(P_lat
 
 data_agg$modus
 
-ggplot(subset(data_harth,tiefe%in%3:5 & modus2 == "PP"  ),aes(PPC,CO2_shift))+
+ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus2 == "PP"  ),aes(PPC,CO2_shift))+
   geom_point(aes(col=factor(Versuch)))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
@@ -265,7 +266,7 @@ facet_grid(paste("tiefe" ,tiefe)~paste("probe",probe))
 #############
 #Beide
 
-ggplot(subset(data_agg,Versuch %in% c(Sand_Versuch,Versuche_sel)& tiefe %in% 3:5) ,aes(P_lateral,CO2_shift))+
+ggplot(subset(data_agg,Versuch %in% c(Sand_Versuch,Versuche_sel)& tiefe %in% tiefen_sel) ,aes(P_lateral,CO2_shift))+
   geom_point(aes(col=soil))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
   ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
@@ -303,12 +304,12 @@ facet_grid(paste("tiefe" ,tiefe)~paste("probe",probe))
 
 
 
-ggplot(subset(data_agg,tiefe%in%3:5 & Versuch %in% c(2:3,11:14,17:18,20)))+
+ggplot(subset(data_agg,tiefe%in%tiefen_sel & Versuch %in% c(2:3,11:14,17:18,20)))+
   scale_color_viridis_c()+
   geom_point(aes(P_mean,CO2_offset,col=P_horiz),alpha=0.5)+
   #  geom_smooth(aes(P_horiz,CO2_offset,col=factor(Versuch)),method="glm")+
   facet_grid(paste("tiefe" ,tiefe)~paste("probe",probe))
-ggplot(subset(data,tiefe%in%3:5 & Versuch %in% c(3,11:14,17:18,20)))+
+ggplot(subset(data,tiefe%in%tiefen_sel & Versuch %in% c(3,11:14,17:18,20)))+
   geom_point(aes(P_horiz,CO2_offset,col=P_mean),alpha=0.5)+
   scale_color_viridis_c(limits=c(-0.5,0.5))+
   facet_grid(paste("tiefe" ,tiefe)~paste("probe",probe))
@@ -383,20 +384,22 @@ CO2_ppc_cor <- ggplot(subset(preds,tiefe %in% 2:5 & modus != "P-lateral"),aes(PP
 
 ggpubr::ggarrange(CO2_ppc,CO2_ppc_cor,ncol = 1,common.legend = T,legend = "right")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_PPC_cor.png"),width = 7, height = 8)
-  
+
 fms <- data_harth %>% 
   ungroup() %>% 
-  nest_by(probe,tiefe) %>% 
+  nest_by(profile,tiefe) %>% 
   mutate(fm = list(glm(CO2_shift ~ P_lateral,data =data)),
          R2 = R2_fm(fm),
          slope = fm$coefficients[2])
-ggplot(fms)+
-  geom_point(aes(tiefe,R2,col=factor(probe)))
-ggplot(fms)+
-  geom_point(aes(tiefe,slope,col=factor(probe)))
-fms$fm[[1]]$coefficients[2]
-R2_fm
-fm_coeffs <- fms %>% summarise(broom::tidy(fm))
+r2_plot <- ggplot(fms)+
+  geom_point(aes(tiefe,R2,col=profile))+
+  theme_bw()
+slope_plt <- ggplot(fms)+
+  geom_point(aes(tiefe,slope,col=profile))+
+  theme_bw()
+
+ggpubr::ggarrange(r2_plot,slope_plt,ncol=1)
+
 fm <- glm(CO2_shift ~ PPC_2 + P_lateral + probe,data = data_harth)
 #fm <- glm(CO2_shift ~ PPC_2,data = data_harth)
 summary(fm)

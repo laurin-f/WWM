@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 
-Versuch <- 10
+Versuch <- 25
 #for(Versuch in c(10,20,21,22)){
   if(Versuch == 20){
     datelim <- c(pp_chamber$Start[Versuch],pp_chamber$Ende[Versuch]+3600*24*0.5)
@@ -125,6 +125,9 @@ Versuch <- 10
   if(Versuch %in% 24){
     modes <- c(rep(c("0,0","100","70","1","-1","-70","-100"),2),"0,0")
   }
+  if(Versuch %in% 25){
+    modes <- c(rep(c("0,0","70,70","70,1","1,70","-40,1","1,-40","-40,-40"),2),"0,0")
+  }
   if(Versuch == 10){
     modes <- c("0,0","40","20","-20","-40","0,0")
   }
@@ -191,7 +194,18 @@ Versuch <- 10
     summarise(CO2_atm = mean(CO2,na.rm=T)) %>% 
     mutate(CO2_atm = imputeTS::na_interpolation(CO2_atm))
   
-  
+  #############
+  #CO2 flux
+  if(Versuch %in% 25){
+    load(paste0(datapfad_PP_Kammer,"flux_ls.RData"))
+    flux <- sub_daterange(flux,datelim)
+    
+    flux$CO2_flux_raw <- flux$CO2_GGA_mumol_per_s_m2
+    flux$CO2_flux <- RcppRoll::roll_mean(flux$CO2_GGA_mumol_per_s_m2,5,fill=NA)
+    
+    flux$CH4_flux_raw <- flux$CH4_mumol_per_s_m2 * 10^3
+    flux$CH4_flux <- RcppRoll::roll_mean(flux$CH4_mumol_per_s_m2 * 10^3,5,fill=NA)
+  }
   
   #########
   #swc
@@ -215,7 +229,7 @@ Versuch <- 10
   #data <- merge(data,swc_sub,all.x = T)
   data <- merge(data,CO2_atm)
   data <- data %>% mutate(zeit = as.numeric(difftime(date,min(date))))
-  if(Versuch %in% c(20,22,24)){
+  if(Versuch %in% c(20,22,24,25)){
     data[,paste0("CO2_smp1_roll_",1:2)] <- NA
   }
   data_long <- tidyr::pivot_longer(data,matches("CO2_smp\\d_roll_\\d"),names_pattern = "CO2_smp(\\d)_roll_(\\d)",values_to = "CO2",names_to = c("probe","tiefe"))
@@ -244,7 +258,8 @@ Versuch <- 10
   step_df_cal <- data_long %>% 
     filter(!is.na(step_id)) %>% 
     group_by(step_id,mode) %>% 
-    summarise(across(matches("^P_"),mean,na.rm=T)) %>% 
+    summarise(across(matches("^P_"),mean,na.rm=T)) %>%
+    ungroup() %>% 
     mutate(Start = step_df$Start,
            End = step_df$End)
   data_long <- data_long %>% 
@@ -324,6 +339,51 @@ Versuch <- 10
     scale_color_manual(values = c(cols,1))+
     labs(col="subchamber",y = expression(P[roll]~"(Pa)"))
   
+  
+  if(exists("flux")){
+    FCO2_plt <- ggplot(flux)+
+      geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+      scale_alpha_discrete(range = c(0.1,0.4))+
+      guides(alpha=F)+
+      geom_vline(xintercept = step_date,col="grey",linetype=2)+
+      geom_line(aes(date,CO2_flux_raw),alpha=.5)+
+      geom_line(aes(date,CO2_flux))+
+      xlim(range(data_long$date))+
+      labs(y = expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"))
+    
+    FCH4_plt <- ggplot(flux)+
+      geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+      scale_alpha_discrete(range = c(0.1,0.4))+
+      guides(alpha=F)+
+      geom_vline(xintercept = step_date,col="grey",linetype=2)+
+      geom_line(aes(date,CH4_flux_raw),alpha=.5)+
+      geom_line(aes(date,CH4_flux))+
+      xlim(range(data_long$date))+
+      labs(y=expression(italic(F[CH4])~"("*n * mol ~ m^{-2} ~ s^{-1}*")"))
+    
+    T_plt <- ggplot(flux)+
+      geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+      scale_alpha_discrete(range = c(0.1,0.4))+
+      guides(alpha=F)+
+      geom_vline(xintercept = step_date,col="grey",linetype=2)+
+      geom_line(aes(date,T_C))+
+      xlim(range(data_long$date))
+    
+    ggpubr::ggarrange(CO2_offset_plot+
+                      labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch]))+
+                      theme(axis.title.x = element_blank(),axis.text.x = element_blank()),
+                    #CO2_plot+theme(axis.title.x = element_blank(),
+                    #               axis.text.x = element_blank()),
+                    FCO2_plt+theme(axis.title.x = element_blank(),
+                                   axis.text.x = element_blank()),
+                    FCH4_plt+theme(axis.title.x = element_blank(),
+                                   axis.text.x = element_blank()),
+                    P_plt+theme(axis.title.x = element_blank(),
+                                   axis.text.x = element_blank()),
+                    T_plt,ncol=1,align = "v",heights = c(3,1,1,1,1),common.legend = T,legend = "right")+
+    ggsave(paste0(plotpfad_PPchamber,"CO2_offset_flux_",Versuch,".png"),width = 7,height = 10)
+    
+  }
   ggpubr::ggarrange(CO2_offset_plot+
                       labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch]))+
                       theme(axis.title.x = element_blank(),axis.text.x = element_blank()),
@@ -331,6 +391,7 @@ Versuch <- 10
                                    axis.text.x = element_blank()),
                     P_plt,ncol=1,align = "v",heights = c(3,2,1),common.legend = T,legend = "right")+
     ggsave(paste0(plotpfad_PPchamber,"CO2_offset_",Versuch,".png"),width = 7,height = 6)
+  
   if(Versuch == 20){
   ggpubr::ggarrange(CO2_offset_plot+
                       theme(axis.title.x = element_blank(),axis.text.x = element_blank()),
