@@ -7,7 +7,7 @@ plotpfad_PPchamber <- paste0(hauptpfad,"Dokumentation/Berichte/plots/PP_Kammer/"
 samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/") 
 
 
-klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
+klimapfad_CR1000<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/Hartheim CR1000/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 datapfad_PP_Kammer <- paste0(hauptpfad,"Daten/aufbereiteteDaten/PP_Kammer/") 
@@ -40,7 +40,11 @@ load <- T
 #datelim <- ymd_hm("2022.05.12 10:00","2022.05.16 16:00")
 
 
+#############
+#klima_data
 
+load(paste0(klimapfad_CR1000,"klima_data_PP_kammer.RData"))
+names(klima)
 ###############
 #load PPC
 
@@ -157,6 +161,8 @@ swc_agg$swc_7_cal[timeperiod] <- NA
 swc_agg$swc_7_cal <- imputeTS::na_interpolation(swc_agg$swc_7_cal)
 
 data_merge <- merge(data_merge,swc_agg,by="date",all.x = T)
+data_merge <- merge(data_merge,klima,all.x = T)
+
 ####################
 #Co2 flux roll
 data_merge$CO2_flux <- RcppRoll::roll_mean(data_merge$CO2_GGA_mumol_per_s_m2,5,fill=NA)
@@ -185,61 +191,61 @@ fm_CH4_swc_T <- mgcv::gam(CH4_flux ~ (swc_14) + (T_C),data = data_merge)
 
 ##################
 #lasso test
-mm_all <- model.matrix(~CO2_flux + swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data_merge)[,-1]
-
-lasso <- cv.glmnet(mm_all[,-1],mm_all[,1])
-
-plot(lasso)
-coef(lasso, s = "lambda.min")
-
-
-fm_CO2_all <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data = data_merge))
-fm_CO2_swc_T_PPC_meanr <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_meanr6_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
-fm_CO2_swc_T_PPC_meanr2 <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_meanr6_2 + dummy,data = data_merge))
-fm_CO2_swc_T_PPC <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
-fm_CO2_swc_T_P_horiz <- step(glm(CO2_flux ~ swc_14 + T_C + P_horiz_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
-
-summary((fm_CO2_all))
-summary((fm_CO2_swc_T_PPC_meanr))
-summary((fm_CO2_swc_T_PPC))
-summary((fm_CO2_swc_T_P_horiz))
-calc_flux()
-comsol_sweep()
-R2_fm(fm_CO2_swc_T)
-R2_fm(fm_CO2_all)
-R2_fm(fm_CO2_swc_T_PPC)
-R2_fm(fm_CO2_swc_T_PPC_meanr)
-R2_fm(fm_CO2_swc_T_PPC_meanr2)
-#CH4
-fm_CH4_all <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data = data_merge))
-fm_CH4_swc_T_PPC_meanr <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_meanr6_2 + P_roll_2 + PPC_outside + dummy ,data = data_merge))
-fm_CH4_swc_T_PPC <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_2  + P_roll_2 + PPC_outside + dummy,data = data_merge))
-fm_CH4_swc_T_PPC_atm <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_outside + dummy,data = data_merge))
-fm_CH4_swc_T_P_horiz <- step(glm(CH4_flux ~ swc_14 + T_C + P_horiz_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
-
-summary((fm_CH4_all))
-summary((fm_CH4_swc_T_PPC_meanr))
-summary((fm_CH4_swc_T_PPC))
-summary((fm_CH4_swc_T_PPC_atm))
-summary((fm_CH4_swc_T_P_horiz))
-
-R2_fm(fm_CH4_swc_T)
-R2_fm(fm_CH4_all)
-R2_fm(fm_CH4_swc_T_PPC)
-R2_fm(fm_CH4_swc_T_PPC_atm)
-R2_fm(fm_CH4_swc_T_PPC_meanr)
+# mm_all <- model.matrix(~CO2_flux + swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data_merge)[,-1]
+# 
+# lasso <- cv.glmnet(mm_all[,-1],mm_all[,1])
+# 
+# plot(lasso)
+# coef(lasso, s = "lambda.min")
+# 
+# 
+# fm_CO2_all <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data = data_merge))
+# fm_CO2_swc_T_PPC_meanr <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_meanr6_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
+# fm_CO2_swc_T_PPC_meanr2 <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_meanr6_2 + dummy,data = data_merge))
+# fm_CO2_swc_T_PPC <- step(glm(CO2_flux ~ swc_14 + T_C + PPC_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
+# fm_CO2_swc_T_P_horiz <- step(glm(CO2_flux ~ swc_14 + T_C + P_horiz_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
+# 
+# summary((fm_CO2_all))
+# summary((fm_CO2_swc_T_PPC_meanr))
+# summary((fm_CO2_swc_T_PPC))
+# summary((fm_CO2_swc_T_P_horiz))
+# calc_flux()
+# comsol_sweep()
+# R2_fm(fm_CO2_swc_T)
+# R2_fm(fm_CO2_all)
+# R2_fm(fm_CO2_swc_T_PPC)
+# R2_fm(fm_CO2_swc_T_PPC_meanr)
+# R2_fm(fm_CO2_swc_T_PPC_meanr2)
+# #CH4
+# fm_CH4_all <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_2 + PPC_meanr6_2 + P_roll_2 + P_horiz_2 + PPC_outside + PPC_diff_meanr_2 + dummy,data = data_merge))
+# fm_CH4_swc_T_PPC_meanr <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_meanr6_2 + P_roll_2 + PPC_outside + dummy ,data = data_merge))
+# fm_CH4_swc_T_PPC <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_2  + P_roll_2 + PPC_outside + dummy,data = data_merge))
+# fm_CH4_swc_T_PPC_atm <- step(glm(CH4_flux ~ swc_14 + T_C + PPC_outside + dummy,data = data_merge))
+# fm_CH4_swc_T_P_horiz <- step(glm(CH4_flux ~ swc_14 + T_C + P_horiz_2 + P_roll_2 + PPC_outside + dummy,data = data_merge))
+# 
+# summary((fm_CH4_all))
+# summary((fm_CH4_swc_T_PPC_meanr))
+# summary((fm_CH4_swc_T_PPC))
+# summary((fm_CH4_swc_T_PPC_atm))
+# summary((fm_CH4_swc_T_P_horiz))
+# 
+# R2_fm(fm_CH4_swc_T)
+# R2_fm(fm_CH4_all)
+# R2_fm(fm_CH4_swc_T_PPC)
+# R2_fm(fm_CH4_swc_T_PPC_atm)
+# R2_fm(fm_CH4_swc_T_PPC_meanr)
 ##########################
 #predict modells
 #CO2
 data_merge$CO2_swc_T <- predict(fm_CO2_swc_T,newdata = data_merge)
-data_merge$CO2_T <- predict(fm_CO2_T,newdata = data_merge)
-data_merge$CO2_swc_T_PPC <- predict(fm_CO2_swc_T_PPC,newdata = data_merge)
-data_merge$CO2_swc_T_PPC_meanr <- predict(fm_CO2_swc_T_PPC_meanr,newdata = data_merge)
-data_merge$CO2_all <- predict(fm_CO2_all,newdata = data_merge)
+#data_merge$CO2_T <- predict(fm_CO2_T,newdata = data_merge)
+#data_merge$CO2_swc_T_PPC <- predict(fm_CO2_swc_T_PPC,newdata = data_merge)
+#data_merge$CO2_swc_T_PPC_meanr <- predict(fm_CO2_swc_T_PPC_meanr,newdata = data_merge)
+#data_merge$CO2_all <- predict(fm_CO2_all,newdata = data_merge)
 #CH4
 data_merge$CH4_swc_T <- predict(fm_CH4_swc_T,newdata = data_merge)
-data_merge$CH4_swc_T_PPC <- predict(fm_CH4_swc_T_PPC,newdata = data_merge)
-data_merge$CH4_all <- predict(fm_CH4_all,newdata = data_merge)
+#data_merge$CH4_swc_T_PPC <- predict(fm_CH4_swc_T_PPC,newdata = data_merge)
+#data_merge$CH4_all <- predict(fm_CH4_all,newdata = data_merge)
 ##########
 #CO2 und CH4 adj sind die flüsse ohne SWC und T einfluss
 data_merge$CO2_adj <- data_merge$CO2_flux - data_merge$CO2_swc_T + mean(data_merge$CO2_flux,na.rm = T)
@@ -289,6 +295,16 @@ data_merge$modus <- factor(data_merge$Versuch,levels = 1:nrow(pp_chamber),labels
 # correlation plots
 #PerformanceAnalytics::chart.Correlation(data_merge[,c("CO2_flux","T_C","swc_7_cal","swc_7","swc_14","swc_21")])
 #PerformanceAnalytics::chart.Correlation(data_merge[,c("CH4_flux","T_C","swc_7_cal","swc_7","swc_14","swc_21")])
+names(data_merge)
+names(klima)
+
+data_merge <- data_merge %>% 
+  mutate(T_max = RcppRoll::roll_maxr(T_C,2 * 24,fill=NA),
+         T_min = RcppRoll::roll_minr(T_C,2 * 24,fill=NA),
+         dT_C = T_max - T_min
+  )
+
+PerformanceAnalytics::chart.Correlation(data_merge[,c("T_C","swc_7_cal","P_hPa","Wind_ms","Precip_1hr_mm","Precip_24Tot","CO2_flux")])
 
 PerformanceAnalytics::chart.Correlation(data_merge[,c("T_C","swc_7_cal","P_roll_2","P_lateral","PPC_outside","PPC_2","PPC_meanr3_2","CO2_flux")])
 PerformanceAnalytics::chart.Correlation(data_merge[,c("T_C","swc_7_cal","P_roll_2","P_lateral","PPC_outside","PPC_2","PPC_meanr3_2","CH4_flux")])
@@ -315,11 +331,18 @@ ggplot(subset(data_merge, Versuch %in% Versuch_x),aes(P_roll_2, CO2_flux, col=cu
   scale_color_viridis_d()
 unique(data_merge$modus)
 data_sub_PPC <- subset(data_merge,modus %in% c("2D PP","1D PP","2D, 1D, 2D, 1D"))
-ggplot(subset(data_merge,PPC_2 > 0.00),aes(PPC_2, CO2_flux, col=modus))+
+data_sub_P <- data_merge[grepl("Unterdruck",data_merge$modus),]
+ggplot(subset(data_sub_PPC),aes(PPC_2, CO2_flux, col=swc_7_cal))+
   geom_smooth(method = "glm")+
   geom_point()+
-  ggpubr::stat_regline_equation(label.x.npc = 0.5,label.y.npc =0.2,aes(label = paste(..eq.label..,..rr.label..,sep = "~")))+
-  scale_color_brewer(palette = "RdYlBu",direction = -1)
+  facet_wrap(~cut(T_C,4))+
+  ggpubr::stat_regline_equation(label.x.npc = 0.5,label.y.npc =0.2,aes(label = paste(..eq.label..,..rr.label..,sep = "~")))#+
+ggplot(subset(data_sub_P),aes(P_roll_2, CO2_flux, col=factor(Versuch)))+
+  geom_smooth(method = "glm")+
+  geom_point()+
+  #facet_wrap(~cut(T_C,4))+
+  ggpubr::stat_regline_equation(label.x.npc = 0.5,label.y.npc =0.2,aes(label = paste(..eq.label..,..rr.label..,sep = "~")))#+
+  #scale_color_brewer(palette = "RdYlBu",direction = -1)
 
 ggplot(subset(data_merge,PPC_2 > 0.00 & !is.na(swc_7_cal)),aes(P_roll_2, CH4_flux, col=cut(swc_7_cal,4)))+
   geom_smooth(method = "glm")+
@@ -444,7 +467,7 @@ ggplot(data_merge)+
 ##############################################################
 #          TIMELINE PLOTS
 ##############################################################
-Versuch_sel <- 10
+Versuch_sel <- c(14:18)
 CO2_GGA_flux <- ggplot(subset(data_merge, Versuch %in% Versuch_sel))+
   geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"))+
   geom_line(aes(date,CO2_flux,col="CO2"))+
@@ -485,11 +508,18 @@ swc_plot <- ggplot(subset(data_merge, Versuch %in% Versuch_sel))+
   geom_line(aes(date,swc_21,col="21"))+
   labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
 
+Precip_plot <- ggplot(subset(data_merge, Versuch %in% Versuch_sel))+
+  geom_line(aes(date,Precip_24Tot))
+PhPa_plot <- ggplot(subset(data_merge, Versuch %in% Versuch_sel))+
+  geom_line(aes(date,P_hPa))
+
 timelines <- ggpubr::ggarrange(CO2_GGA_flux,
                                CH4_GGA_flux,
                                PPC_sum_plot+guides(col=F),
                                P_plot+guides(col=F),
                                T_plot,
+                               #Precip_plot,
+                               #PhPa_plot,
                                #swc_plot+guides(col=F),
                                ncol=1,align = "v")
 timelines
