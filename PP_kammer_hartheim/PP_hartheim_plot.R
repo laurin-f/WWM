@@ -32,12 +32,13 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 25
+Versuch <- 26
 #for(Versuch in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
 plot <-  T
 if(is.na(datelim[2])){
   datelim[2] <- now()
+  #datelim[2] <- ymd_h("23.02.28 04")
 }
 #datelim <- c(ymd_h("2022-04-13 18"),ymd_h("2022-04-25 18"))
 #datelim <- ymd_hm("2022.05.02 00:00","2022.05.02 01:20")
@@ -204,8 +205,8 @@ names(flux)
 if(!is.null(flux)){
   flux_plot <- ggplot(flux)+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    #geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"),alpha=0.5)+
-    #geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,3,fill=NA),col="Dynament"),lwd=1)+
+    geom_point(aes(date,CO2_mumol_per_s_m2,col="Dynament"),alpha=0.5)+
+    geom_line(aes(date,RcppRoll::roll_mean(CO2_mumol_per_s_m2,20,fill=NA),col="Dynament"),lwd=1)+
     geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
@@ -294,6 +295,8 @@ egg::ggarrange(plots=plot_ls,ncol=1,heights = c(2,2,rep(1,length(plot_ls)-2)))
 if(plot){
   dev.off()
 }
+names(plot_ls)
+egg::ggarrange(plots=plot_ls[c(3,6,7)],ncol=1,heights = c(2,1,1))
 
 
 if(plot){

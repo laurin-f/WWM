@@ -49,9 +49,9 @@ names(klima)
 
 ###############
 #GGA
- # load(paste0(datapfad_PP_Kammer,"flux_ls_i.RData"))
-
-if(load){
+# load(paste0(datapfad_PP_Kammer,"flux_ls_i.RData"))
+  
+if(load & file.exists(paste0(datapfad_PP_Kammer,"flux_ls_Dyn_GGA.RData"))){
   load(paste0(datapfad_PP_Kammer,"flux_ls_Dyn_GGA.RData"))
   
 }else{
@@ -63,12 +63,12 @@ if(load){
     datelim_i <- date_seq[c(i,i+1)]
     
     flux_ls_i[[i]] <- chamber_arduino(datelim=datelim_i,
-                               gga_data = T,
-                               return_ls = T,
-                               t_init=0.5,
-                               plot="",
-                               t_min=2,
-                               t_max=4)
+                                      gga_data = T,
+                                      return_ls = T,
+                                      t_init=0.5,
+                                      plot="",
+                                      t_min=2,
+                                      t_max=4)
   }
   
   flux_ls <- lapply(flux_ls_i,"[[",1)
@@ -77,15 +77,13 @@ if(load){
   rm(flux_ls_i)
   cols <- sapply(flux_ls,names)
   cols_data <- sapply(flux_data_ls,names)
-  all_cols <- cols[[which(sapply(cols,length) == 33)[1]]]
-  dyn_cols <- cols[[which(sapply(cols,length) < 33)[1]]]
+  all_cols <- cols[[which(sapply(cols,length) == 34)[1]]]
   
-  all_data_cols <- cols_data[[which(sapply(cols,length) == 33)[1]]]
-  dyn_data_cols <- cols_data[[which(sapply(cols,length) < 33)[1]]]
+  all_data_cols <- cols_data[[which(sapply(cols,length) == 34)[1]]]
   
   for(i in which(sapply(cols,length) < 33)){
-    flux_ls[[i]][,all_cols[!all_cols %in% dyn_cols]] <- NA
-    flux_data_ls[[i]][,all_data_cols[!all_data_cols %in% dyn_data_cols]] <- NA
+    flux_ls[[i]][,all_cols[!all_cols %in% cols[[i]]]] <- NA
+    flux_data_ls[[i]][,all_data_cols[!all_data_cols %in% cols_data[[i]]]] <- NA
   }
   flux <- do.call(rbind,flux_ls)
   flux_data <- do.call(rbind,flux_data_ls)
@@ -95,6 +93,18 @@ if(load){
 }
 
 
+datelim2 <- ymd_h("22.11.17 18","22.11.18 04")
+
+test <- chamber_arduino(datelim=datelim2,
+                gga_data = T,
+                return_ls = T,
+                t_init=0.5,
+                plot="flux",
+                t_min=2,
+                t_max=4)
+data_sub$p_kPa
+any(!is.na(data_sub$p_kPa))
+range(klima$date)
 ###############
 #load PPC
 
@@ -139,6 +149,9 @@ ggplot(flux)+
   geom_line(aes(date,CO2_Dyn_roll,col="Dyn"))+
   #geom_line(data = subset(sub,CO2_R2 > 0.5),aes(date,CO2_Dyn,col="Dyn"))+
   geom_line(aes(date,CO2_GGA,col="GGA"))
+names(sub)
+ggplot(sub,aes(CO2_GGA,CO2_GGA_ppm_per_min,col=p_kPa))+
+  geom_point()
 ggplot(sub,aes(CO2_GGA,CO2_Dyn_roll,col=CO2_R2))+
   geom_point(aes(CO2_GGA,CO2_Dyn),alpha=0.2)+
   geom_point()+
@@ -148,17 +161,50 @@ ggplot(sub,aes(CO2_GGA,CO2_Dyn_roll,col=CO2_R2))+
   geom_abline(slope = 1)
 names(flux)
 
-datelim2 <- ymd_h("23.01.09 00","23.01.16 10")
-flux_plot <- ggplot(sub_daterange(flux,datelim2))+
-  geom_line(aes(date,CO2_Dyn),alpha=0.2)+
-  geom_line(aes(date,CO2_GGA,col="GGA"))+
-  geom_line(aes(date,CO2_Dyn_roll,col="Dyn"))
-PPC_sub <- subset(data_PPC,id %in% 1:4)
-P_plot <- ggplot(sub_daterange(PPC_sub,datelim2))+
-  geom_line(aes(date,P,col=factor(id)))
+#################
+#step_df
 
-ggpubr::ggarrange(flux_plot,P_plot,ncol = 1,align = "v")
-###################
+P_step_thr <- 0.5
+data_PPC <- data_PPC[order(data_PPC$date),]
+PPC_steps <- data_PPC %>%
+  filter(id %in% 1:4) %>%
+  mutate(date = round_date(date,"10 min")) %>%
+  group_by(id,date) %>%
+  summarise(across(everything(),mean)) %>%
+  mutate(P_diff = abs(c(NA,diff(P_roll))),
+         P_step = ifelse(P_diff > P_step_thr,1,0)
+  )
+
+
+
+step_date <- sort(unique(PPC_steps$date[PPC_steps$P_step == 1]))
+step_date <- P_step_date[c(as.numeric(diff(P_step_date)),100) > 60]
+step_date <- P_step_date[!is.na(P_step_date)]
+
+for(i in 20:25){
+  
+  
+  datelim2 <- c(pp_chamber$Start[i],pp_chamber$Ende[i])
+  flux_sub <- sub_daterange(flux,datelim2)
+  flux_plot <- ggplot(flux_sub)+
+    geom_vline(xintercept = step_date,linetype=2,color="grey")+
+    geom_line(aes(date,CO2_Dyn),alpha=0.2)+
+    geom_line(aes(date,CO2_GGA,col="GGA"))+
+    geom_line(aes(date,CO2_Dyn_roll,col="Dyn"))
+  PPC_sub <- subset(data_PPC,id %in% 1:4)
+  names(flux_sub)
+  T_plot <- ggplot(flux_sub)+
+    geom_vline(xintercept = step_date,linetype=2,color="grey")+
+    geom_line(aes(date,T_C,col="T_C"))
+  P_plot <- ggplot(sub_daterange(PPC_sub,datelim2))+
+    geom_vline(xintercept = step_date,linetype=2,color="grey")+
+    geom_line(aes(date,P,col=factor(id)))
+  
+  ggpubr::ggarrange(flux_plot,P_plot,T_plot,ncol = 1,align = "v")+
+    ggsave(paste0(plotpfad_PPchamber,"CO2_flux_dyn_",i,".png"),width = 7,height = 6)
+}
+
+  ###################
 #flux_data
 flux_data <- flux_data %>% 
   mutate(messid_2 = RcppRoll::roll_max(messid,120,fill=NA,na.rm = T))

@@ -164,7 +164,7 @@ legend_df <- data.frame(x = c(rep(-0.72,2),rep(-0.6,2)),
 #P lateral
 n_Versuche <- length(unique(data_harth$Versuch))
 ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_lateral,CO2_shift,shape = profile,linetype = profile))+
-  geom_point(aes(col=modus2))+
+  geom_point(aes(col=tiefe))+
   geom_smooth(method = "glm",col=1,lwd = 0.8,se = F)+
   ggpubr::stat_regline_equation(label.y = c(-16,-18)+0.4,label.x = -1.1,aes(label=..rr.label..))+
   geom_line(data = legend_df,aes(x,y),lwd = 0.8)+
@@ -172,7 +172,7 @@ ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_lateral,CO2_shift,shape = p
   #theme(legend.position = "top")+
 #  scale_color_viridis_c()+
   #facet_wrap(~probe)
-  labs(x = expression(P[lateral]~"(Pa)"),y = CO[2]~shift~"(%)",col="")+
+  labs(x = expression(P[lateral]~"(Pa)"),y = CO[2]~shift~"(%)",col="depth")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_lateral.png"),width = 7, height = 5)
 
 ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_horiz,CO2_shift))+

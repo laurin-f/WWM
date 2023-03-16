@@ -166,9 +166,9 @@ data_merge <- merge(data_merge,klima,all.x = T)
 ####################
 #Co2 flux roll
 data_merge$CO2_flux <- RcppRoll::roll_mean(data_merge$CO2_GGA_mumol_per_s_m2,5,fill=NA)
-data_merge$CO2_flux2 <- RcppRoll::roll_mean(data_merge$CO2_GGA_mumol_per_s_m2,10,fill=NA)
+data_merge$CO2_flux2 <- RcppRoll::roll_mean(data_merge$CO2_GGA_mumol_per_s_m2,50,fill=NA)
 data_merge$CH4_flux <- RcppRoll::roll_mean(data_merge$CH4_mumol_per_s_m2 * 10^3,5,fill=NA)
-data_merge$CH4_flux2 <- RcppRoll::roll_mean(data_merge$CH4_mumol_per_s_m2 * 10^3,10,fill=NA)
+data_merge$CH4_flux2 <- RcppRoll::roll_mean(data_merge$CH4_mumol_per_s_m2 * 10^3,50,fill=NA)
 
 
 
@@ -280,10 +280,10 @@ for(i in 2:nrow(pp_chamber)){
   id_i <- which(daterange_id(data_merge,c(pp_chamber$Start[i] - 3600 * 24,pp_chamber$Ende[i] + 3600 * 24)))
   if(length(id_i)){
     data_merge$Versuch[id_i] <- i
-    data_merge$CH4_group_fm[id_i] <- predict(glm(CH4_flux ~ swc_7 + T_C, data = data_merge[id_i,]))
-    data_merge$CH4_group_PPC[id_i] <- predict(glm(CH4_flux ~ swc_7 + T_C + PPC_sum, data = data_merge[id_i,]))
-    data_merge$CO2_group_fm[id_i] <- predict(glm(CO2_flux ~ swc_7 + T_C, data = data_merge[id_i,]))
-    data_merge$CO2_group_PPC[id_i] <- predict(glm(CO2_flux ~ swc_7 + T_C + PPC_sum, data = data_merge[id_i,]))
+    data_merge$CH4_group_fm[id_i] <- predict(glm(CH4_flux ~ T_C, data = data_merge[id_i,]))
+    #data_merge$CH4_group_PPC[id_i] <- predict(glm(CH4_flux ~ swc_7 + T_C + PPC_sum, data = data_merge[id_i,]))
+    data_merge$CO2_group_fm[id_i] <- predict(glm(CO2_flux ~ T_C, data = data_merge[id_i,]))
+    #data_merge$CO2_group_PPC[id_i] <- predict(glm(CO2_flux ~ swc_7 + T_C + PPC_sum, data = data_merge[id_i,]))
   }
 }#ende schleife
 ###################
@@ -304,17 +304,24 @@ data_merge <- data_merge %>%
          dT_C = T_max - T_min
   )
 
-PerformanceAnalytics::chart.Correlation(data_merge[,c("T_C","swc_7_cal","P_hPa","Wind_ms","Precip_1hr_mm","Precip_24Tot","CO2_flux")])
+#PerformanceAnalytics::chart.Correlation(data_merge[,c("T_C","swc_7_cal","P_hPa","Wind_ms","Precip_1hr_mm","Precip_24Tot","CO2_flux")])
 
+PerformanceAnalytics::chart.Correlation(data_merge[,c("T_C","swc_7_cal","swc_7","swc_14","swc_21","CH4_flux","CO2_flux")])
 PerformanceAnalytics::chart.Correlation(data_merge[,c("T_C","swc_7_cal","P_roll_2","P_lateral","PPC_outside","PPC_2","PPC_meanr3_2","CO2_flux")])
 PerformanceAnalytics::chart.Correlation(data_merge[,c("T_C","swc_7_cal","P_roll_2","P_lateral","PPC_outside","PPC_2","PPC_meanr3_2","CH4_flux")])
 ##################
 #plot Spielwiese
-Versuch_x <-  c(25,10)
+Versuch_x <-  c(25)
+
 
 ggplot(subset(data_merge, Versuch %in% Versuch_x))+
   geom_line(aes(date, CO2_flux))+
-  geom_line(aes(date, CO2_adj,col="adj"))
+  geom_line(aes(date, CO2_flux2,col="2"))
+
+ggplot(subset(data_merge, Versuch %in% Versuch_x))+
+  geom_line(aes(date, CH4_flux))+
+  geom_line(aes(date, CH4_flux2,col="2"))
+
   
 ggplot(subset(data_merge, Versuch %in% Versuch_x),aes(P_roll_2, CH4_flux))+
   geom_smooth(method = "glm")+
@@ -329,6 +336,8 @@ ggplot(subset(data_merge, Versuch %in% Versuch_x),aes(P_roll_2, CO2_flux, col=cu
   ggpubr::stat_regline_equation(label.x.npc = 0.5,label.y.npc =0.2,aes(label = paste(..eq.label..,..rr.label..,sep = "~")))+
   #  facet_wrap(~cut(T_C,4))+
   scale_color_viridis_d()
+
+
 unique(data_merge$modus)
 data_sub_PPC <- subset(data_merge,modus %in% c("2D PP","1D PP","2D, 1D, 2D, 1D"))
 data_sub_P <- data_merge[grepl("Unterdruck",data_merge$modus),]

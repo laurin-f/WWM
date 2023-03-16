@@ -32,7 +32,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 
-Versuch <- 25
+Versuch <- 20
 #for(Versuch in c(10,20,21,22)){
   if(Versuch == 20){
     datelim <- c(pp_chamber$Start[Versuch],pp_chamber$Ende[Versuch]+3600*24*0.5)
@@ -48,7 +48,7 @@ Versuch <- 25
   
   data_PPC <- read_PP(datelim = datelim,table="PP_1min",corfac = "P_corfac_date")
   
-  data_PPC <- subset(data_PPC,id %in% c(1:5))
+  data_PPC <- subset(data_PPC,id %in% c(1:6))
   dt <- round(median(diff_time(data_PPC$date[data_PPC$id == 1]),na.rm=T),2)
   
   data_PPC <- data_PPC %>% 
@@ -127,6 +127,9 @@ Versuch <- 25
   }
   if(Versuch %in% 25){
     modes <- c(rep(c("0,0","70,70","70,1","1,70","-40,1","1,-40","-40,-40"),2),"0,0")
+  }
+  if(Versuch %in% 26){
+    modes <- c("0,0",c(t(cbind(c("-100","-70","-1","30","70","100"),"0,0"))))
   }
   if(Versuch == 10){
     modes <- c("0,0","40","20","-20","-40","0,0")
@@ -275,6 +278,8 @@ Versuch <- 25
   
   data_long$CO2_cal <- ifelse(data_long$mode == "0,0",NA,data_long$CO2)
   data_long$CO2_shift <-  data_long$CO2_offset / data_long$CO2_preds * 100
+  data_long$profile <- factor(data_long$probe,levels = 2:1,labels = 1:2)
+  data_long$subchamber <- factor(data_long$probe,levels = 2:1,labels = 2:3)
   
   
   if(Versuch %in% 20:22){
@@ -292,13 +297,19 @@ Versuch <- 25
   #   facet_wrap(~probe,ncol=1)+
   #   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_fm_",Versuch,".png"),width = 7,height = 6)
   cols <- RColorBrewer::brewer.pal(4,"PuOr")
-  
+  PPC_col <- "brown"
   CO2_offset_plot <- 
     ggplot(data_long)+
     geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
-    scale_alpha_discrete(range = c(0.1,0.4))+
-    geom_line(data = subset(data_long, tiefe %in% 1:5),aes(date,CO2_cal,col=factor(tiefe,labels = c(1:4,"lateral"))))+
-    scale_color_manual("subchamber",values = c(cols,1))+
+    scale_alpha_discrete(range = c(0.1,0.4),guide = guide_legend(order = 1))+
+    geom_line(data = subset(data_long, tiefe %in% 1:4),aes(date,CO2_cal,col=factor(tiefe,labels = c(1:4))))+
+    scale_color_manual("subchamber",values = c(cols),guide = guide_legend(order = 3))+
+    ggnewscale::new_scale_color()+
+    # geom_line(data = subset(data_long, tiefe %in% 1),aes(date,CO2_cal,col=factor(tiefe,labels = "")))+
+    # scale_color_manual("ambient PPC",values = PPC_col,guide = guide_legend(order = 4))+
+    # ggnewscale::new_scale_color()+
+    geom_line(data = subset(data_long, tiefe %in% 1),aes(date,CO2_cal,col=factor(tiefe,labels = "")))+
+    scale_color_manual(expression(P[lateral]),values = 1,guide = guide_legend(order = 5))+
     ggnewscale::new_scale_color()+
     #guides(alpha = F)+
     geom_vline(xintercept = step_date,col="grey",linetype=2)+
@@ -306,8 +317,9 @@ Versuch <- 25
     geom_point(data = subset(data_long,mode == "0,0"),aes(date,CO2,col=tiefe),pch=20)+
     geom_line(aes(date,CO2,col=tiefe),alpha = 0.5)+
     geom_line(aes(date,CO2_preds,col=tiefe),linetype=2)+
+    scale_color_discrete(guide = guide_legend(order = 2))+
     labs(y = expression(CO[2]~"(ppm)"),col = "depth")+
-    facet_wrap(~paste("subchamber",factor(probe,levels=1:2,labels=3:2)),ncol=1)
+    facet_wrap(~paste0("profile ",profile," (subchamber ",subchamber,")"),ncol=1)
   
   CO2_plot <- 
     ggplot(data_long)+
@@ -317,9 +329,9 @@ Versuch <- 25
     #scale_alpha(range = c(0,0.4))+
     guides(col= F)+
     geom_hline(yintercept = 0,col="grey",linetype=2)+
-    geom_line(aes(date,CO2_offset / CO2_preds,col=tiefe))+
+    geom_line(aes(date,CO2_shift,col=tiefe))+
     geom_vline(xintercept = step_date,col="grey",linetype=2)+
-    facet_wrap(~paste("subchamber",factor(probe,levels=1:2,labels=3:2)),ncol=1)+
+    facet_wrap(~paste0("profile ",profile," (subchamber ",subchamber,")"),ncol=1)+
     labs(y = expression(CO[2]~shift~("%")), x ="",col="depth")
   #labs(y = expression(CO[2~offset]~(ppm)), x ="")
   
@@ -338,7 +350,21 @@ Versuch <- 25
     geom_line(aes(date,P_4,col="4"))+
     scale_color_manual(values = c(cols,1))+
     labs(col="subchamber",y = expression(P[roll]~"(Pa)"))
-  
+  names(data_long)
+  PPC_plt <- 
+    ggplot(data_long)+
+    geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+    scale_alpha_discrete(range = c(0,0.4))+
+    guides(alpha=F)+
+    geom_line(aes(date,PPC_1,col="1"))+
+    geom_line(aes(date,PPC_2,col="2"))+
+    geom_vline(xintercept = step_date,col="grey",linetype=2)+
+    geom_line(aes(date,PPC_3,col="3"))+
+    geom_line(aes(date,PPC_4,col="4"))+
+    #geom_line(aes(date,PPC_6,col="ambient PPC"))+
+    scale_color_manual(values = c(cols,PPC_col))+
+    theme(legend.text.align = 0.5)+
+    labs(col="subchamber",y = "PPC (Pa/s)", x ="")
   
   if(exists("flux")){
     FCO2_plt <- ggplot(flux)+
@@ -389,16 +415,20 @@ Versuch <- 25
                       theme(axis.title.x = element_blank(),axis.text.x = element_blank()),
                     CO2_plot+theme(axis.title.x = element_blank(),
                                    axis.text.x = element_blank()),
-                    P_plt,ncol=1,align = "v",heights = c(3,2,1),common.legend = T,legend = "right")+
-    ggsave(paste0(plotpfad_PPchamber,"CO2_offset_",Versuch,".png"),width = 7,height = 6)
+                    PPC_plt+theme(axis.title.x = element_blank(),
+                                  axis.text.x = element_blank()),
+                    P_plt,ncol=1,align = "v",heights = c(3,2,.8,1),common.legend = T,legend = "right")+
+    ggsave(paste0(plotpfad_PPchamber,"CO2_offset_",Versuch,".png"),width = 7,height = 7)
   
   if(Versuch == 20){
   ggpubr::ggarrange(CO2_offset_plot+
                       theme(axis.title.x = element_blank(),axis.text.x = element_blank()),
                     CO2_plot+theme(axis.title.x = element_blank(),
                                    axis.text.x = element_blank()),
-                    P_plt,ncol=1,align = "v",heights = c(3,2,1),common.legend = T,legend = "right")+
-    ggsave(paste0(plotpfad_PPchamber,"Figure_3.png"),width = 7,height = 6)
+                    PPC_plt+theme(axis.title.x = element_blank(),
+                                  axis.text.x = element_blank()),
+                    P_plt,ncol=1,align = "v",heights = c(3,2,.8,1),common.legend = T,legend = "right")+
+    ggsave(paste0(plotpfad_PPchamber,"Figure_3.png"),width = 7,height = 7)
   }
   ggpubr::ggarrange(CO2_plot+labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch])),P_plt,ncol=1,align = "v",heights = c(2,1))+
     ggsave(paste0(plotpfad_PPchamber,"CO2_offset_PPC_",Versuch,".png"),width = 7,height = 6)

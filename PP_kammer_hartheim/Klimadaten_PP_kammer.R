@@ -2,6 +2,7 @@
 detach("package:pkg.WWM", unload = TRUE)
 hauptpfad <- "C:/Users/ThinkPad/Documents/FVA/P01677_WindWaldMethan/"
 
+klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
 klimapfad_CR1000<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/Hartheim CR1000/")
 #Packages laden
 library(pkg.WWM)
