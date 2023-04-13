@@ -21,6 +21,7 @@ check.packages(packages)
 theme_set(theme_classic())
 
 
+
 flux_start <- chamber_arduino(datelim=ymd_h("22.09.27 10","22.09.27 12"),
                               gga_data = T,
                               t_init=0,
@@ -108,7 +109,25 @@ flux_11 <- chamber_arduino(datelim=ymd_hm("23.02.22 06:00","23.02.22 09:00"),
                           t_min = 2,
                           t_max=10)
 
+gga <- read_GGA(table.name = "gga",datelim = ymd_hm("23.03.13 09:00","23.03.21 12:00"))
+
+
+flux_12 <- chamber_arduino(datelim=ymd_hm("23.03.13 09:00","23.03.13 12:00"),
+                           gga_data = T,
+                           t_init=0,
+                           plot="timeline",
+                           t_offset = 270,
+                           t_min = 2,
+                           t_max=10)
+flux_13 <- chamber_arduino(datelim=ymd_hm("23.03.21 08:00","23.03.21 12:00"),
+                           gga_data = T,
+                           t_init=0,
+                           plot="timeline",
+                           t_offset = 200,
+                           t_min = 2,
+                           t_max=10)
+
 t_offset_df <- data.frame(date = 
-                            ymd_hm("2022-09-27 10:00","22.10.18 12:00","22.10.18 12:30","22.10.24 10:00","22.11.03 11:30","22.11.03 13:30","22.11.09 08:30","22.11.22 10:10","22.12.09 10:00","23.02.16 14:00","23.02.22 09:00"),
-                          offset = c(-80,-300,120,60,-50,-20,-90,-200,-390,-1250,-1300))
+                            ymd_hm("2022-09-27 10:00","22.10.18 12:00","22.10.18 12:30","22.10.24 10:00","22.11.03 11:30","22.11.03 13:30","22.11.09 08:30","22.11.22 10:10","22.12.09 10:00","23.02.16 14:00","23.02.22 09:00","23.03.13 11:00","23.03.21 10:00"),
+                          offset = c(-80,-300,120,60,-50,-20,-90,-200,-390,-1250,-1300,270,200))
 save(t_offset_df,file = paste0(datapfad_PP_Kammer,"t_offset_df.RData"))

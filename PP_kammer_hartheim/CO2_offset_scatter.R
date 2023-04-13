@@ -16,7 +16,7 @@ chamber_arduino_pfad <- paste0(hauptpfad,"/Daten/Urdaten/Kammermessungen_Arduino
 metapfad_PP <- paste0(metapfad,"PP_Kammer/")
 detach("package:pkg.WWM", unload = TRUE)
 library(pkg.WWM)
-packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS")
+packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS","wesanderson")
 check.packages(packages)
 theme_set(theme_classic())
 
@@ -64,6 +64,7 @@ data$modus[ID_2d_1d] <- ifelse(data$step_id[ID_2d_1d] %in% PP2D_stepids,"2D PP",
 ggplot(subset(data,Versuch == 23))+
   geom_line(aes(date,PPC_2,col=factor(modus),group=1))
 
+
 data$P_sub <- NA
 data$P_sub[data$probe == 1] <- data$P_3[data$probe == 1]
 data$P_lateral[data$probe == 1] <- data$P_3[data$probe == 1] - data$P_1[data$probe == 1]
@@ -74,7 +75,7 @@ data$P_mean <- rowMeans(data[,grep("P_\\d",names(data))])
 data$PPC <- rowMeans(data[,grep("PPC_\\d",names(data))],na.rm = T)
 
 
-
+names(data)
 
 data_agg <- data %>% 
   group_by(tiefe,probe,profile,step_id,Versuch,soil,modus) %>% 
@@ -86,8 +87,21 @@ data_agg$modus2[which(grepl("PP",data_agg$modus) & abs(data_agg$P_lateral) > 0.1
 data_Sand <- subset(data_agg,grepl("Sand",Versuch))
 
 Versuche_sel <- c(2:3,11:14,17:22)
-data_harth <- subset(data_agg, Versuch %in% Versuche_sel)
+#2-3 6 PP & P-lateral
 
+#11-12 3 PP und 1 PP & P-lateral
+#13-14 2 PP & P-lateral
+#17 2 PP und 2 PP & P-lateral
+#18 4 PP 
+#20-22 9 static pressure and lateral
+#PP = 9 Versuche
+#PP & P-lateral = 11 Versuche 
+
+data_harth <- subset(data_agg, Versuch %in% Versuche_sel)
+names(data_harth)
+ggplot(subset(data_harth,modus2 != "P-lateral"))+
+  geom_point(aes(date,PPC_2,group=1,col=modus2))+
+  facet_wrap(~Versuch,scales = "free")
 tiefen_sel <- 3:5
 ########################
 #überblick
@@ -138,15 +152,39 @@ ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_sub,CO2_shift))+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_Pmean.png"),width = 7, height = 4)
 
 #PPC
+data_harth %>% 
+  group_by(Versuch,modus2) %>%
+  summarise(PPC = mean(PPC,na.rm=T))
+  names(data_harth)
+  
+ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus2 == "PP"),aes(PPC,CO2_shift))+
+    geom_point(aes(,col=P_lateral,shape = modus2))+
+    geom_smooth(method = "glm",col=1,linetype = 2)+
+    #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
+    ggpubr::stat_cor(aes(label= ..rr.label..))+
+    facet_grid(~paste("profile",profile))+
+    #theme(legend.position = "top")+
+    labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col=expression(P[lateral]),shape = "mode")+
+    scale_color_viridis_c()+
+  ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC.png"),width = 7, height = 4)
+  
+
+ brewer <- RColorBrewer::brewer.pal(5,"RdYlBu")
+
 ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus != "P-lateral"),aes(PPC,CO2_shift))+
-  geom_point(aes(col=modus2))+
-  geom_smooth(method = "glm",col=1,linetype = 2)+
-  #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
-  ggpubr::stat_cor(aes(label= ..rr.label..))+
+  geom_point(aes(col=P_lateral))+
+  geom_point(aes(shape = modus2))+
+  #geom_smooth(method = "glm",col=1,linetype = 2)+
+  ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
+  #ggpubr::stat_cor(aes(label= ..rr.label..))+
   facet_grid(~paste("profile",profile))+
-  theme(legend.position = "top")+
-  labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col="mode")+
-  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_PPC.png"),width = 7, height = 5)
+  labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col=expression(P[lateral]~"(Pa)"),alpha = "mode")+
+  scale_color_gradientn(colours = c(brewer[5:4],"Yellow",brewer[1]))+
+  #scale_color_viridis_c()+
+  scale_shape_manual(expression("|P"["lateral"]*"|"<0.1~Pa),values = c(21,NA),labels = c("",""))+
+  #scale_color_discrete(labels = c("PP","PP &\nP-lateral"))+
+  ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC_P_lateral.png"),width = 7, height = 4)
+  #ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC_P_lateral_viridis.png"),width = 7, height = 4)
 
 ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus2 == "PP"),aes(PPC,CO2_shift))+
   geom_point(aes(col=factor(modus)))+
@@ -162,6 +200,7 @@ legend_df <- data.frame(x = c(rep(-0.72,2),rep(-0.6,2)),
                         y = c(-16,-18,-16,-18),
                         profile = as.character(c(1,2,1,2)))
 #P lateral
+Versuche_sel
 n_Versuche <- length(unique(data_harth$Versuch))
 ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_lateral,CO2_shift,shape = profile,linetype = profile))+
   geom_point(aes(col=tiefe))+

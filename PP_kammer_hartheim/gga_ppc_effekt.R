@@ -30,7 +30,7 @@ pp_chamber$Ende <- dmy_hm(pp_chamber$Ende)
 now <- now()
 tz(now) <- "UTC"
 datelim <- c(ymd_h("22.09.27 10","22.12.10 10"))
-datelim <- c(ymd_h("22.09.27 10","23.02.22 10"))
+datelim <- c(ymd_h("22.09.27 10"),now)
 plot <-  T
 load <- T
 

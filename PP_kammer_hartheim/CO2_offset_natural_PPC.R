@@ -8,6 +8,7 @@ samplerpfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/sampler_data/")
 
 
 klimapfad<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/")
+klimapfad_CR1000<- paste0(hauptpfad,"Daten/Urdaten/Klimadaten_Hartheim/Hartheim CR1000/")
 soilpfad<-paste0(hauptpfad,"Daten/Urdaten/Boden_Hartheim/")
 kammer_datapfad <- paste0(hauptpfad,"Daten/aufbereiteteDaten/Kammermessungen/")
 datapfad_PP_Kammer <- paste0(hauptpfad,"Daten/aufbereiteteDaten/PP_Kammer/") 
@@ -90,6 +91,14 @@ source("./PP_kammer_hartheim/SWC_hartheim.R")
 
 swc_sub <- sub_daterange(swc_wide,datelim)
 ########################
+
+
+#############
+#klima_data
+
+load(paste0(klimapfad_CR1000,"klima_data_PP_kammer.RData"))
+#############################################
+
 names(data_PPC)
 data_PPC_wide <- tidyr::pivot_wider(data_PPC[,c("date","id","P_roll","PPC")],names_from = id,values_from =c(P_roll,PPC))
 names(data_PPC_wide) <- str_replace_all(names(data_PPC_wide),c("P_roll"="P","PPC5"="PPC"))
@@ -100,6 +109,7 @@ data_probes_wide <- tidyr::pivot_wider(data_probe1u2,id_cols=c(date,T_C),names_f
 data <- merge(data_PPC_wide,data_probes_wide)
 data <- merge(data,swc_sub)
 data <- merge(data,CO2_atm,all.x = T)
+data <- merge(data,klima,all.x = T)
 data <- data %>% mutate(zeit = as.numeric(difftime(date,min(date)))) %>% 
   mutate(CO2_atm = imputeTS::na_interpolation(CO2_atm),
          T_atm = imputeTS::na_interpolation(T_atm))
@@ -107,7 +117,7 @@ data <- data %>% mutate(zeit = as.numeric(difftime(date,min(date)))) %>%
 data[,paste0("CO2_smp1_roll_",1:2)] <- NA
 data$PPC_roll <- RcppRoll::roll_mean(data$PPC_6,60,fill=NA)
 
-data$calm <- ifelse(data$PPC_roll < 0.1,1,0)
+data$calm <- ifelse(data$PPC_roll < 0.15,1,0)
 data_long <- tidyr::pivot_longer(data,matches("CO2_smp\\d_roll_\\d"),names_pattern = "CO2_smp(\\d)_roll_(\\d)",values_to = "CO2",names_to = c("probe","tiefe"))
 data_long$smp_depth <- paste(data_long$probe,data_long$tiefe,sep="_")
 #data <- data %>% mutate(zeit = as.numeric(difftime(date,min(date))))
@@ -129,7 +139,7 @@ for(i in unique(data_long$smp_depth)){
 }
 data_long$CO2_offset <- data_long$CO2 - data_long$CO2_preds
 change <- c(NA,diff(data$calm))
-PPC_dates <- data.frame(start = data$date[which(change == -1)],end = data$date[c(which(change == 1),nrow(data))])
+PPC_dates <- data.frame(start = data$date[which(change == -1)],end = data$date[c(which(change == 1))])
 
 datelim_plot <- ymd_h("22.12.20 10","23.01.10 10")
 datelim_plot <- range(data$date)
@@ -152,6 +162,14 @@ T_plot <- ggplot(data)+
   geom_line(aes(date,T_atm,col="atm"))+
   labs(y = "T (°C)",col="")
 
+names(data)
+p_plot <- ggplot(data)+
+  #geom_line(aes(date,RcppRoll::roll_mean(PPC_2,60,fill=NA)),col=4)+
+  geom_rect(data = PPC_dates,aes(xmin = start,xmax = end,ymin = -Inf,ymax = Inf),alpha=0.2)+
+  xlim(datelim_plot)+
+  geom_line(aes(date,P_hPa,col="P (hPa)"))+
+  labs(y = "P (hPa)",col="")
+
 
 CO2_plot <- 
   ggplot(data_long)+
@@ -170,7 +188,7 @@ CO2_shift_plot <-
 
 #ggpubr::ggarrange(CO2_plot,CO2_shift_plot,PPC_plot,T_plot,ncol=1,common.legend = T,legend = "right",align = "v",heights = c(3,2,1,1))  
 #ggpubr::ggarrange(CO2_plot,PPC_plot,T_plot,ncol=1,common.legend = T,legend = "right",align = "v",heights = c(3,1,1))  
-ggpubr::ggarrange(CO2_plot,PPC_plot,T_plot,ncol=1,common.legend = F,legend = "right",align = "v",heights = c(4,1,1))+
+ggpubr::ggarrange(CO2_plot,PPC_plot,T_plot,p_plot,ncol=1,common.legend = F,legend = "right",align = "v",heights = c(4,1,1,1))#+
   ggsave(paste0(plotpfad_PPchamber,"natural_PP.png"),width = 7,height = 7)
 
 ggplot(data_long)+
