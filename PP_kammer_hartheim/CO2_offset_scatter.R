@@ -66,10 +66,10 @@ ggplot(subset(data,Versuch == 23))+
 
 
 data$P_sub <- NA
-data$P_sub[data$probe == 1] <- data$P_3[data$probe == 1]
-data$P_lateral[data$probe == 1] <- data$P_3[data$probe == 1] - data$P_1[data$probe == 1]
-data$P_sub[data$probe == 2] <- data$P_2[data$probe == 2]
-data$P_lateral[data$probe == 2] <- data$P_1[data$probe == 2] - data$P_3[data$probe == 2]
+data$P_sub[data$profile == 2] <- data$P_3[data$profile == 2]
+data$P_lateral[data$profile == 2] <- data$P_3[data$profile == 2] - data$P_1[data$profile == 2]
+data$P_sub[data$profile == 1] <- data$P_1[data$profile == 1]
+data$P_lateral[data$profile == 1] <- data$P_1[data$profile == 1] - data$P_3[data$profile == 1]
 
 data$P_mean <- rowMeans(data[,grep("P_\\d",names(data))])
 data$PPC <- rowMeans(data[,grep("PPC_\\d",names(data))],na.rm = T)
@@ -98,77 +98,43 @@ Versuche_sel <- c(2:3,11:14,17:22)
 #PP & P-lateral = 11 Versuche 
 
 data_harth <- subset(data_agg, Versuch %in% Versuche_sel)
-names(data_harth)
-ggplot(subset(data_harth,modus2 != "P-lateral"))+
-  geom_point(aes(date,PPC_2,group=1,col=modus2))+
-  facet_wrap(~Versuch,scales = "free")
+
+# names(data_harth)
+# ggplot(subset(data_harth,modus2 != "P-lateral"))+
+#   geom_point(aes(date,PPC_2,group=1,col=modus2))+
+#   facet_wrap(~Versuch,scales = "free")
+
 tiefen_sel <- 3:5
 ########################
 #überblick
-Versuch_x <- 3
-ggplot(subset(data,Versuch %in% Versuch_x & probe ==1))+
-  geom_line(aes(date, CO2_shift,col=factor(tiefe)))+
-  geom_point(data = subset(data_agg,Versuch %in% Versuch_x & probe ==1),aes(date, CO2_shift))+
-  facet_wrap(~Versuch,scales = "free_x")
-names(data)
+# Versuch_x <- 3
+# ggplot(subset(data,Versuch %in% Versuch_x & probe ==1))+
+#   geom_line(aes(date, CO2_shift,col=factor(tiefe)))+
+#   geom_point(data = subset(data_agg,Versuch %in% Versuch_x & probe ==1),aes(date, CO2_shift))+
+#   facet_wrap(~Versuch,scales = "free_x")
 
-ggplot(subset(data,Versuch %in% Versuch_x & step_id %in% 9:11))+
-         geom_col(aes(CO2_shift,tiefe,fill=factor(probe)))+
-  geom_vline(xintercept = 0,linetype = 2,col="grey")+
-        scale_y_discrete(limits = factor(7:1),labels = 7:1 * -3.5)+
-  labs(x = expression(CO[2]*shift~("%")),y = "tiefe (cm)",fill = "profil")+
-  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_tiefenprofile.png"),width = 3, height = 3)
+# ggplot(subset(data,Versuch %in% Versuch_x & step_id %in% 9:11))+
+#          geom_col(aes(CO2_shift,tiefe,fill=factor(probe)))+
+#   geom_vline(xintercept = 0,linetype = 2,col="grey")+
+#         scale_y_discrete(limits = factor(7:1),labels = 7:1 * -3.5)+
+#   labs(x = expression(CO[2]*shift~("%")),y = "tiefe (cm)",fill = "profil")+
+#   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_tiefenprofile.png"),width = 3, height = 3)
+# 
 
-
-ggplot(subset(data,Versuch %in% Versuch_x & probe ==1))+
-  geom_line(aes(date, P_1),col="grey")+
-  geom_line(aes(date, P_3),col="grey")+
-  geom_line(aes(date, P_lateral))+
-  geom_point(data = subset(data_agg,Versuch %in% Versuch_x & probe ==1),aes(date, P_lateral,col=modus2))+
-  facet_wrap(~Versuch,scales = "free_x")
-names(data)
+# ggplot(subset(data,Versuch %in% Versuch_x & probe ==1))+
+#   geom_line(aes(date, P_1),col="grey")+
+#   geom_line(aes(date, P_3),col="grey")+
+#   geom_line(aes(date, P_lateral))+
+#   geom_point(data = subset(data_agg,Versuch %in% Versuch_x & probe ==1),aes(date, P_lateral,col=modus2))+
+#   facet_wrap(~Versuch,scales = "free_x")
 ##########################
 #Hartheim plots
 
-#P_mean
-ggplot(subset(data_harth,tiefe%in%tiefen_sel & abs(P_sub) < 1 ),aes(P_sub,CO2_shift))+
-  geom_point(aes(col=P_lateral))+
-  geom_smooth(method = "glm",col=1,linetype = 2)+
-  ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
-  #facet_grid(~paste("probe",probe))+
-  theme(legend.position = "top")+
-  scale_color_viridis_c()+
-  labs(x = expression(P[mean]~"(Pa)"),y = CO[2]~shift~"(%)",col="P_lateral (Pa)")
-#  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_Pmean.png"),width = 7, height = 6)
-ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_sub,CO2_shift))+
-  geom_point(aes(col=P_lateral))+
-  geom_smooth(method = "glm",col=1,linetype = 2)+
-  #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
-  ggpubr::stat_regline_equation(label.y = -15,aes(label= ..rr.label..))+
-  facet_grid(~paste("profile",profile))+
-#  theme(legend.position = "top")+
-  scale_color_viridis_c()+
-  labs(x = expression(P[subchamber]~"(Pa)"),y = CO[2]~shift~"(%)",col="P_lateral (Pa)")+
-  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_Pmean.png"),width = 7, height = 4)
 
 #PPC
-data_harth %>% 
-  group_by(Versuch,modus2) %>%
-  summarise(PPC = mean(PPC,na.rm=T))
-  names(data_harth)
-  
-ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus2 == "PP"),aes(PPC,CO2_shift))+
-    geom_point(aes(,col=P_lateral,shape = modus2))+
-    geom_smooth(method = "glm",col=1,linetype = 2)+
-    #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
-    ggpubr::stat_cor(aes(label= ..rr.label..))+
-    facet_grid(~paste("profile",profile))+
-    #theme(legend.position = "top")+
-    labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col=expression(P[lateral]),shape = "mode")+
-    scale_color_viridis_c()+
-  ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC.png"),width = 7, height = 4)
-  
 
+###################
+# Fig 5
  brewer <- RColorBrewer::brewer.pal(5,"RdYlBu")
 
 ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus != "P-lateral"),aes(PPC,CO2_shift))+
@@ -186,16 +152,18 @@ ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus != "P-lateral"),aes(PPC,CO2
   ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC_P_lateral.png"),width = 7, height = 4)
   #ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC_P_lateral_viridis.png"),width = 7, height = 4)
 
-ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus2 == "PP"),aes(PPC,CO2_shift))+
-  geom_point(aes(col=factor(modus)))+
-  geom_smooth(method = "glm",col=1,linetype = 2)+
-  ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
-  facet_grid(~paste("profile",profile))+
-  theme(legend.position = "top")+
-  labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col="mode")+
-  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_PPC_sub.png"),width = 7, height = 5)
+#######################
+# ggplot(subset(data_harth,tiefe%in%tiefen_sel & modus2 == "PP"),aes(PPC,CO2_shift))+
+#   geom_point(aes(col=factor(modus)))+
+#   geom_smooth(method = "glm",col=1,linetype = 2)+
+#   ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
+#   facet_grid(~paste("profile",profile))+
+#   theme(legend.position = "top")+
+#   labs(x = "PPC (Pa/s)",y = CO[2]~shift~"(%)",col="mode")+
+#   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_PPC_sub.png"),width = 7, height = 5)
 
-
+###############################
+#Figure 6
 legend_df <- data.frame(x = c(rep(-0.72,2),rep(-0.6,2)),
                         y = c(-16,-18,-16,-18),
                         profile = as.character(c(1,2,1,2)))
@@ -214,21 +182,23 @@ ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_lateral,CO2_shift,shape = p
   labs(x = expression(P[lateral]~"(Pa)"),y = CO[2]~shift~"(%)",col="depth")+
   ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_lateral.png"),width = 7, height = 5)
 
-ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_horiz,CO2_shift))+
-  geom_point(aes(col=modus))+
-  geom_smooth(method = "glm",col=1,linetype = 2)+
-  ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
-  facet_grid(~paste("probe",probe))+
-  theme(legend.position = "top")+
-#facet_grid(paste("tiefe" ,tiefe)~paste("probe",probe))+
-  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_lateral_facets.png"),width = 7, height = 6)
 
 
-ggplot(subset(data_agg,Versuch %in% c(Versuche_sel) & tiefe %in% tiefen_sel) ,aes(P_lateral,CO2_shift))+
-  geom_point(aes(col=probe))+
+###################################
+#P_mean
+ggplot(subset(data_harth,tiefe%in%tiefen_sel ),aes(P_sub,CO2_shift))+
+  geom_point(aes(col=P_lateral))+
   geom_smooth(method = "glm",col=1,linetype = 2)+
-  ggpubr::stat_regline_equation(aes(label= ..rr.label..))#+
-  #ggsave(paste0(plotpfad_PPchamber,"CO2_offset_lateral_scatter_hartheim_probes.png"),width = 7, height = 6)
+  #ggpubr::stat_regline_equation(aes(label= ..rr.label..))+
+  ggpubr::stat_regline_equation(label.y = -15,aes(label= ..rr.label..))+
+  facet_grid(~paste("profile",profile))+
+  #  theme(legend.position = "top")+
+  scale_color_gradientn(colours = c(brewer[5:4],"Yellow",brewer[1]))+
+  #scale_color_viridis_c()+
+  labs(x = expression(P[subchamber]~"(Pa)"),y = CO[2]~shift~"(%)",col="P_lateral (Pa)")+
+  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_scatter_hartheim_Pmean.png"),width = 7, height = 4)
+
+
 
 
 #############################

@@ -480,6 +480,17 @@ Versuch <- 20
 #}
 
 
+  
+  
+  
+  ggpubr::ggarrange(CO2_offset_plot+
+                      theme(axis.title.x = element_blank(),axis.text.x = element_blank()),
+                    P_plt,ncol=1,align = "v",heights = c(3,1),common.legend = T,legend = "right")+
+    ggsave(paste0(plotpfad_PPchamber,"CO2_offset_flux_Werkst1.png"),width = 7,height = 6)
+  ggpubr::ggarrange(CO2_plot+theme(axis.title.x = element_blank(),
+                                   axis.text.x = element_blank()),
+                    P_plt,ncol=1,align = "v",heights = c(3,1),common.legend = T,legend = "right")+
+    ggsave(paste0(plotpfad_PPchamber,"CO2_offset_flux_Werkst2.png"),width = 7,height = 6)
 ########################################
 ########################################
 ########################################

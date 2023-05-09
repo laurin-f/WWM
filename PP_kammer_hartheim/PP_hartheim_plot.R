@@ -23,10 +23,6 @@ theme_set(theme_classic())
 
 ##################
 #Metadata
-bemerkungen <- read_ods(paste0(metapfad_PP,"PP_Kammer_Bemerkungen_hartheim.ods"))
-bemerkungen$Start <- dmy_hm(bemerkungen$Start)
-bemerkungen$Ende <- dmy_hm(bemerkungen$Ende)
-
 
 pp_chamber <- read_ods(paste0(metapfad_PP,"PP_Kammer_Messungen_hartheim.ods"))
 pp_chamber$Start <- dmy_hm(pp_chamber$Start)
@@ -37,7 +33,7 @@ injections$Start <- dmy_hm(injections$Start)
 injections$Ende <- dmy_hm(injections$Ende)
 
 Versuch <- nrow(pp_chamber)
-Versuch <- 29
+#Versuch <- 29
 #for(Versuch in 1:nrow(pp_chamber)){
 datelim <- c(pp_chamber$Start[Versuch]-3600*24*0.5,pp_chamber$Ende[Versuch]+3600*24*0.5)
 plot <-  T
@@ -141,32 +137,32 @@ data_probe1u2 <- data_probe1u2 %>%
   )
 
 
-plot_ls[["probe1"]] <- ggplot(data_probe1u2)+
+plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
   geom_vline(xintercept = step_date,linetype=2,color="grey")+
-  geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
-  geom_line(aes(date,CO2_smp1_roll,col=as.factor(-tiefe)))+
+  geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.09)+
+  geom_line(aes(date,CO2_smp2_roll,col=as.factor(-tiefe)))+
   scale_fill_manual(values = "blue")+
   scale_color_discrete(limits = factor(0:7*3.5))+
   coord_cartesian(xlim=datelim)+
   guides(fill=F)+
-  labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",title=paste("Versuch",Versuch,"Modus",pp_chamber$Modus[Versuch]),subtitle = "probe 1")
-plot_ls[["probe2"]] <- ggplot(data_probe1u2)+
+  labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",title=paste("Versuch",Versuch,"Modus",pp_chamber$Modus[Versuch]),subtitle = "profile 1")
+plot_ls[["probe1"]] <- ggplot(data_probe1u2)+
   geom_vline(xintercept = step_date,linetype=2,color="grey")+
-  geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.2)+
+  geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.09)+
   #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
-  geom_line(aes(date,CO2_smp2_roll,col=as.factor(-tiefe)))+
+  geom_line(aes(date,CO2_smp1_roll,col=as.factor(-tiefe)))+
   #geom_line(aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
   scale_fill_manual(values = "blue")+
   scale_color_discrete(limits = factor(0:7*3.5))+
   coord_cartesian(xlim=datelim)+
   guides(col=F)+
-  labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",subtitle = "probe 2")
+  labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",subtitle = "profile 2")
 
 if(!is.null(data_probe3)){
   
   plot_ls[["probe3"]] <- ggplot(data_probe3)+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.2)+
+    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.09)+
     #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="injection"),alpha=0.1)+
     geom_line(aes(date,CO2_roll,col=as.factor(-tiefe)))+
     #geom_line(aes(date,CO2_smp1,col=as.factor(-tiefe),linetype="probe 1"))+
@@ -177,27 +173,7 @@ if(!is.null(data_probe3)){
     labs(y = expression(CO[2]~"(ppm)"),fill="",col="tiefe",subtitle = "probe 3")
 }  
 
-######################
-#CH4 im Boden
-if(Versuch %in% c(29)){
-  gga_times <- bemerkungen[grep("soil CH4",bemerkungen$Bemerkung),]
-  gga_times$gga <- str_extract(gga_times$Bemerkung,"gga|micro")
-  gga_times[2,2] <- now()
-gga_soil <- read_GGA(datelim = c(gga_times[1,1],gga_times[1,2]),table.name = gga_times$gga[1])
-micro_soil <- read_GGA(datelim = c(gga_times[2,1],gga_times[2,2]),table.name = gga_times$gga[2])
 
-GGA_soil_CO2 <- 
-  ggplot(gga_soil)+
-  geom_line(aes(date,CO2,col="gga"))+
-  geom_line(data = subset(data_probe1u2,tiefenstufe == 3),aes(date,CO2_smp1_roll,col="profile 2"))+
-  geom_line(data = subset(data_probe1u2,tiefenstufe == 3),aes(date,CO2_smp2_roll,col="profile 1"))+
-  coord_cartesian(xlim=datelim)+
-  labs(x = "",y = CO[2]~(ppm),col="tiefe = -10.5 cm")
-GGA_soil_CH4 <- ggplot(gga_soil)+
-  geom_line(aes(date,CH4))+
-  coord_cartesian(xlim=datelim)+
-  labs(x = "", y = CH[4]~(ppm))
-}
 ############################
 #kammermessungen
 if(exists("flux")){
@@ -208,7 +184,16 @@ if(exists("flux")){
 gga_data_T <- !is.na(pp_chamber$GGA_kammermessung[Versuch])
 gga <- "gga"
 #datelim <- ymd_hm("22.09.28 11:20","22.09.28 11:40")
-flux_ls <- chamber_arduino(datelim=datelim,
+
+soil_CH4_dates <- ymd_h("2023-03-28 12","2023-04-07 11")
+if(Versuch %in% c(29)){
+  datelim_flux <- c(soil_CH4_dates[2],datelim[2])
+}else if(Versuch == 28){
+  datelim_flux <- c(datelim[1],soil_CH4_dates[1] - 60*60)
+}else{
+  datelim_flux <- datelim
+}
+flux_ls <- chamber_arduino(datelim=datelim_flux,
                            gga_data = T,
                            return_ls = T,
                            t_init=1,
@@ -218,8 +203,22 @@ flux_ls <- chamber_arduino(datelim=datelim,
                            t_max=2)
 flux <- flux_ls[[1]]
 flux_data <- flux_ls[[2]]
-range(flux_data$date)
 
+
+ggplot(flux_data)+
+  geom_line(aes(date,CO2_GGA))+
+  xlim(ymd_h("23.04.13 10","23.04.13 12"))
+egg::ggarrange(ggplot(flux_data)+
+  geom_line(aes(date,CO2_GGA))+
+  xlim(ymd_h("23.04.08 10","23.04.15 10")),
+ggplot(flux)+
+  geom_line(aes(date,CO2_GGA_mumol_per_s_m2))+
+  xlim(ymd_h("23.04.08 10","23.04.15 10")))
+
+if(Versuch %in% c(30)){
+  #zu dem Zeitpunkt habe ich reingepustet
+  flux[flux$date == ymd_hm("2023-04-19 12:30"),-1] <- NA
+}
 if(!is.null(flux_data)){
   flux_data$atm <- ifelse(minute(flux_data$date) %% 30 > 5 & minute(flux_data$date) %% 30 < 29,1,0)
   CO2_atm_plot <- ggplot()+
@@ -231,11 +230,11 @@ if(!is.null(flux_data)){
 # egg::ggarrange(CO2_atm_plot+coord_cartesian(xlim=datelim)+geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
 #                  scale_alpha(range = c(0,0.3))+
 #                  guides(alpha = F),plot_ls$PPC)
-names(flux)
+
 if(!is.null(flux)){
   flux_plot <- ggplot(flux)+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.09)+
     #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     labs(x="",y=expression(italic(F[CO2])~"("*mu * mol ~ m^{-2} ~ s^{-1}*")"),col="")+
     scale_fill_manual(values = "blue")+
@@ -268,48 +267,39 @@ if(nrow(swc_sub) > 0){
     labs(x="",y="SWC (Vol. %)",col="tiefe (cm)")
 }
 
+cols <- RColorBrewer::brewer.pal(4,"PuOr")
 
 ###############
 #plot PPC
 if(nrow(data_PPC) > 0){
   plot_ls[["PPC"]] <- 
-    ggplot(subset(data_PPC,date %in% round_date(date,"mins")))+
+    ggplot(subset(data_PPC, id != 5))+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.09)+
     #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,PPC,col=id))+
     coord_cartesian(xlim=datelim)+
+    scale_color_manual(values = c(cols,1))+
     scale_fill_manual(values = "blue")+
     guides(fill=F)+
-    labs(x="",y="PPC (Pa/s)")
+    labs(x="",y="PPC (Pa/s)",col ="subspace")
   
   plot_ls[["P_roll"]] <- ggplot(subset(data_Proll,id %in% c(1:4) & date %in% round_date(date,"mins")) )+
     geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.2)+
+    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.09)+
     #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,P_roll,col=id))+
     coord_cartesian(xlim=datelim)+
     scale_fill_manual(values = "blue")+
-    scale_color_discrete(limits=c(1:5,"outside"))+
+    #scale_color_discrete(limits=c(1:5,"outside"))+
+    scale_color_manual(values = c(cols))+
     guides(fill=F,col=F)+
-    labs(x="",y=expression(P["moving average"]~"(Pa)"))
+    labs(x="",y=expression(P["mean"]~"(Pa)"))
 }
 
 
-if(plot){
-  png(paste0(plotpfad_PPchamber,"GGA_soil_",Versuch,".png"),width = 9,height = 8,units = "in",res=300)
-}
-egg::ggarrange(GGA_soil_CO2+coord_cartesian(range(gga_soil$date)),
-                  GGA_soil_CH4+coord_cartesian(range(gga_soil$date)),
-                  ggplot(subset(data_Proll,id %in% c(1)))+
-                    geom_line(aes(date,P_roll))+
-                    coord_cartesian(xlim=range(gga_soil$date))+
-                    labs(x="",y=expression(P["mean"]~"(Pa)")),
-               plot_ls[["PPC"]]+coord_cartesian(range(gga_soil$date)),ncol = 1)
-if(plot){
-  dev.off()
-}
-  #ggsave()
+
+#ggsave()
 #################
 #ws
 
@@ -350,14 +340,14 @@ if(plot){
   png(paste0(plotpfad_PPchamber,"CO2_profile_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
 }
 if(!is.null(data_probe3)){
-  egg::ggarrange(plot_ls$probe1+
+  egg::ggarrange(plot_ls$probe2+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
                    guides(alpha = F),
-                 plot_ls$probe2+
+                 plot_ls$probe1+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3)),#+
-                   #guides(alpha = F),
+                 #guides(alpha = F),
                  plot_ls$probe3+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
@@ -372,14 +362,14 @@ if(!is.null(data_probe3)){
                    guides(alpha = F),
                  ncol=1,heights = c(2,2,2,1,1))
 }else{
-  egg::ggarrange(plot_ls$probe1+
+  egg::ggarrange(plot_ls$probe2+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
                    guides(alpha = F),
-                 plot_ls$probe2+
+                 plot_ls$probe1+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3)),#+
-                   #guides(alpha = F),
+                 #guides(alpha = F),
                  plot_ls$PPC+
                    geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
                    scale_alpha(range = c(0,0.3))+
@@ -399,7 +389,7 @@ if(plot & "CH4_R2" %in% names(flux)){
   flux_gga <- subset(flux,!is.na(CO2_GGA_mumol_per_s_m2) & CO2_GGA_R2 > 0.9)
   
   CO2_GGA_flux <- ggplot(flux_gga)+
-    #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    #geom_rect(data=pp_chamber,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.09)+
     geom_point(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"))+
     geom_line(aes(date,CO2_GGA_mumol_per_s_m2,col="CO2"),alpha=0.3)+
     geom_line(aes(date,RcppRoll::roll_mean(CO2_GGA_mumol_per_s_m2,5,fill=NA),col="CO2"))+
@@ -419,40 +409,45 @@ if(plot & "CH4_R2" %in% names(flux)){
     scale_color_manual(values = scales::hue_pal()(2)[2])
   
   ppc_plot <- 
-    ggplot(subset(data_PPC,date %in% round_date(date,"mins")))+
-    geom_vline(xintercept = step_date,linetype=2,color="grey")+
-    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    ggplot(subset(data_PPC,id != 5))+
     #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
     geom_line(aes(date,PPC5,col=id))+
     xlim(range(flux_gga$date))+
-    scale_fill_grey()+
+    scale_color_manual(values = c(cols,1))+
     guides(fill=F)+
     labs(x="",y="PPC (Pa/s)")
   
   p_plot <- 
-    ggplot(subset(data_PPC,date %in% round_date(date,"mins") & id %in% 1:4))+
+    ggplot(subset(data_PPC,id %in% 1:4))+
     geom_vline(xintercept = P_step_date,linetype=2,color="grey")+
-    geom_rect(data=injections,aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
-    #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.1)+
+    #geom_rect(data=pp_chamber[Versuch,],aes(xmin=Start,xmax=Ende,ymin=-Inf,ymax=Inf,fill="PP_chamber"),alpha=0.09)+
     geom_line(aes(date,P_roll,col=id))+
     xlim(range(flux_gga$date))+
     scale_fill_grey()+
+    scale_color_manual(values = c(cols))+
     #guides(fill=F,col=F)+
     labs(x="",y="PPC (Pa/s)")
   
-  if(Versuch %in% c(25)){
+  if(grepl("Unterdruck",pp_chamber$Modus[Versuch])){
     ggpubr::ggarrange(CO2_GGA_flux+guides(col=F)+geom_vline(xintercept = P_step_date,linetype=2,color="grey"),
                       CH4_GGA_flux+guides(col=F)+geom_vline(xintercept = P_step_date,linetype=2,color="grey"),
-                      p_plot,plot_ls$T_C + xlim(range(flux_gga$date)),ncol=1,align = "v")+
+                      ppc_plot+
+                        geom_vline(xintercept = P_step_date,linetype=2,color="grey")+guides(col=F),
+                      p_plot+guides(col=F)+geom_vline(xintercept = P_step_date,linetype=2,color="grey"),
+                      plot_ls$T_C + xlim(range(flux_gga$date)),ncol=1,align = "v",heights = c(2,2,1,1,1))+
       ggsave(paste0(plotpfad_PPchamber,"GGA_hartheim",Versuch,".png"),width = 9,height = 10)
     
   }else{
     png(paste0(plotpfad_PPchamber,"GGA_hartheim",Versuch,".png"),width = 9,height = 10,units = "in",res=300)
     egg::ggarrange(CO2_GGA_flux+
-                     geom_vline(xintercept = step_date,linetype=2,col="grey"),
+                     geom_vline(xintercept = step_date,linetype=2,col="grey")+guides(col=F),
                    CH4_GGA_flux+
-                     geom_vline(xintercept = step_date,linetype=2,col="grey"),
-                   ppc_plot,plot_ls$T_C + xlim(range(flux_gga$date)),ncol=1)
+                     geom_vline(xintercept = step_date,linetype=2,col="grey")+guides(col=F),
+                   ppc_plot+
+                     geom_vline(xintercept = step_date,linetype=2,color="grey")+guides(col=F),
+                   p_plot+
+                     geom_vline(xintercept = step_date,linetype=2,color="grey")+guides(col=F),
+                   plot_ls$T_C + xlim(range(flux_gga$date)),ncol=1,heights = c(2,2,1,1,1))
     #egg::ggarrange(CO2_GGA_flux,CH4_GGA_flux,plot_ls$PPC,ncol=1,heights=c(2,2,1))
     
     

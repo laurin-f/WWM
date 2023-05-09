@@ -33,7 +33,7 @@ injections$Ende <- dmy_hm(injections$Ende)
 
 PP_Versuche <- grep("PP|\\dD",pp_chamber$Modus)
 Versuch <- 3
-for(Versuch in PP_Versuche){
+#for(Versuch in PP_Versuche){
   datelim <- c(pp_chamber$Start[Versuch]-3600 * 12,pp_chamber$Ende[Versuch]+3600*12)
   
   if(Versuch == 1){
@@ -218,6 +218,7 @@ for(Versuch in PP_Versuche){
   
   
   data_long$P_horiz <- data_long$P_1 - data_long$P_3
+  #data_long$P_horiz <- (data_long$P_1 + data_long$P_2)/2 - (data_long$P_3 + data_long$P_4)/2
   
   # ggplot(data_long)+
   #   geom_line(aes(date,mode_zeit))+
@@ -297,13 +298,15 @@ for(Versuch in PP_Versuche){
     labs(y = expression(CO[2]*"-shift"~("%")), x ="")
   #labs(y = expression(CO[2~offset]~(ppm)), x ="")
   
-  P_plt <- ggplot(data_long)+
+
+  P_plt <- 
+    ggplot(data_long)+
     geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
     scale_alpha_discrete(range = c(0.4,0.1),guide = guide_legend(order = 1))+
     guides(alpha=F)+
-    geom_line(aes(date,P_horiz,col="lateral",linetype=""))+
-    geom_hline(yintercept = 0,col="grey",linetype=2)+
     geom_vline(xintercept = step_date,col="grey",linetype=2)+
+    geom_hline(yintercept = 0,col="grey",linetype=2)+
+    geom_line(aes(date,P_horiz,col="lateral",linetype=""))+
     geom_line(aes(date,P_1,col="1"))+
     geom_line(aes(date,P_2,col="2"))+
     geom_line(aes(date,P_3,col="3"))+
@@ -339,7 +342,7 @@ for(Versuch in PP_Versuche){
   
   data_long$Versuch <- Versuch
   save(data_long,file = paste0(datapfad_PP_Kammer,"CO2_offset_",Versuch,".RData"))
-}
+#}
 #data_long$CO2_offset[data_long$CO2_offset < -300] <- NA
 
 
