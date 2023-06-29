@@ -351,7 +351,7 @@ Versuch <- 3
 ######################################
 
 if(Versuch == 3){
-  
+  Sys.setlocale("LC_ALL", "English")
   ggpubr::ggarrange(CO2_offset_plot+theme(axis.title.x = element_blank(),                                                                                       axis.text.x = element_blank()),
                     CO2_plot+theme(axis.title.x = element_blank(),
                                    axis.text.x = element_blank()),
@@ -362,6 +362,7 @@ if(Versuch == 3){
   # ggpubr::ggarrange(CO2_offset_plot,CO2_plot,PPC_plt,P_plt,ncol=1,align = "v",heights = c(3,2,1,1))+
   #   ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC_.png"),width = 7,height = 8)
   # 
+  Sys.setlocale("LC_ALL", "")
 }
 P_scatter <- ggplot(subset(data_long,mode_zeit > 9))+
   geom_point(aes(P_horiz,CO2_offset,col=factor(tiefe)))+

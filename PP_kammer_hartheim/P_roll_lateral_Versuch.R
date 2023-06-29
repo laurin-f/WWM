@@ -457,6 +457,7 @@ Versuch <- 20
     ggsave(paste0(plotpfad_PPchamber,"CO2_offset_",Versuch,".png"),width = 7,height = 7)
   
   if(Versuch == 20){
+    Sys.setlocale("LC_ALL", "English")
   ggpubr::ggarrange(CO2_offset_plot+
                       scale_alpha_discrete("mode",range = c(0.1,0.4),labels = 
                                              expression("1: high P",
@@ -470,6 +471,8 @@ Versuch <- 20
                     #              axis.text.x = element_blank()),
                     P_plt,ncol=1,align = "v",heights = c(3,2,1),common.legend = T,legend = "right")+
     ggsave(paste0(plotpfad_PPchamber,"Figure_3.png"),width = 7,height = 7)
+    Sys.setlocale("LC_ALL", "")
+  
   }
   ggpubr::ggarrange(CO2_plot+labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch])),P_plt,ncol=1,align = "v",heights = c(2,1))+
     ggsave(paste0(plotpfad_PPchamber,"CO2_offset_PPC_",Versuch,".png"),width = 7,height = 6)

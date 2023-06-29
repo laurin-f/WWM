@@ -117,6 +117,9 @@ data_probe1u2 <- data_probe1u2 %>%
   mutate(CO2_smp1_roll = RcppRoll::roll_mean(CO2_smp1,5,fill=NA),
          CO2_smp2_roll = RcppRoll::roll_mean(CO2_smp2,5,fill=NA)
   )
+
+
+
 ######################
 #CH4 im Boden
 gga_times <- bemerkungen[grep("soil CH4",bemerkungen$Bemerkung),]
@@ -131,6 +134,24 @@ micro_soil$gga <- "micro"
 gga <- rbind(gga_soil,micro_soil)
 gga <- gga[order(gga$date),]
 gga$CH4[gga$CH4 > 10 | gga$CH4 < 0] <- NA
+
+##################
+#Kammermessungen
+
+flux_ls <- chamber_arduino(datelim=c(gga_times[2,1],gga_times[2,2]),
+                           gga_data = T,
+                           return_ls = T,
+                           t_init=1,
+                           plot="facets",
+                           t_offset = "from_df",
+                           t_min=2,
+                           t_max=5)
+flux <- flux_ls[[1]]
+flux_data <- flux_ls[[2]]
+
+flux$CO2_flux <- RcppRoll::roll_mean(flux$CO2_GGA_mumol_per_s_m2,5,fill=NA)
+flux$CH4_flux <- RcppRoll::roll_mean(flux$CH4_mumol_per_s_m2 * 10^3,5,fill=NA)
+
 
 GGA_soil_CO2 <- 
   ggplot(gga)+
@@ -150,12 +171,26 @@ GGA_soil_CH4 <-
  coord_cartesian(xlim=datelim)+
   labs(x = "", y = CH[4]~(ppm))
 
+FCO2_plt <- 
+  ggplot(flux)+
+  geom_vline(xintercept = P_step_date,linetype=2,color="grey")+
+  geom_line(aes(date,CO2_flux))+
+  coord_cartesian(xlim=datelim)+
+  labs(x = "", y = expression(italic(F[CO2])~(mu * mol ~ m^{-2} ~ s^{-1})))
+FCH4_plt <- 
+  ggplot(flux)+
+  geom_vline(xintercept = P_step_date,linetype=2,color="grey")+
+  geom_line(aes(date,CH4_flux))+
+  coord_cartesian(xlim=datelim)+
+  labs(x = "", y = expression(italic(F[CH4])~(nmol ~ m^{-2} ~ s^{-1})))
+  
+cols <- RColorBrewer::brewer.pal(4,"PuOr")
 
-
-PPC_plot <- ggplot(data_PPC)+
+PPC_plot <- ggplot(subset(data_PPC,id != 5))+
   geom_vline(xintercept = P_step_date,linetype=2,color="grey")+
   geom_line(aes(date,PPC,col=id))+
   coord_cartesian(xlim=datelim)+
+  scale_color_manual("subspace",values = c(cols,1))
   labs(x="",y="PPC (Pa/s)")
 P_plot <- ggplot(subset(data_Proll,id %in% c(1)))+
   geom_vline(xintercept = P_step_date,linetype=2,color="grey")+
@@ -166,11 +201,13 @@ P_plot <- ggplot(subset(data_Proll,id %in% c(1)))+
 #Prec_plot <- 
 #ggplot(klima)+
 #  geom_line(aes(date,Precip_24Tot),col="blue")
-png(paste0(plotpfad_PPchamber,"GGA_soil_",Versuch,".png"),width = 9,height = 8,units = "in",res=300)
+png(paste0(plotpfad_PPchamber,"GGA_soil_",Versuch,".png"),width = 9,height = 9,units = "in",res=300)
 
 egg::ggarrange(GGA_soil_CO2,
+               FCO2_plt,
                GGA_soil_CH4,
+               FCH4_plt,
                P_plot,
-               PPC_plot,ncol = 1)
+               PPC_plot,ncol = 1,heights = c(rep(2,4),1,1))
 
 dev.off()
