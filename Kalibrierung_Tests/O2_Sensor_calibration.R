@@ -28,7 +28,7 @@ ggplot(data)+
 sensors <- c("Grove","SK25","KE50")
 cal_df <- data %>% 
   summarise(across(matches(sensors),function(x) c(x[date == atm_date],x[date == CO2_date]))) %>% 
-  mutate(O2_perc = rep(c(20.5,0)))
+  mutate(O2_perc = rep(c(20.95,0)))
 fm_df <- cal_df %>% 
   summarise(across(matches(sensors),function(x)(glm(O2_perc ~ x))$coefficients))
 names(data)
@@ -68,11 +68,11 @@ data_long <- tidyr::pivot_longer(data,matches("_perc"),values_to = "O2",names_to
 
 ggplot(subset(data_long))+
   geom_vline(xintercept = c(atm_date,CO2_date),linetype = 2,col = "grey")+
-  geom_hline(yintercept = c(20.5,0),linetype = 2,col = "grey")+
+  geom_hline(yintercept = c(20.95,0),linetype = 2,col = "grey")+
   geom_line(aes(date,O2,col=sensor))+
-  geom_point(data = data.frame(x= c(atm_date,CO2_date), y= c(20.5,0)),aes(x,y),pch= 3,size=3,stroke = 1)+
+  geom_point(data = data.frame(x= c(atm_date,CO2_date), y= c(20.95,0)),aes(x,y),pch= 3,size=3,stroke = 1)+
   labs(y = "O2 (%)",title = "calibration points")+
-  ggsave(paste0(plotpfad_O2_test,"calibration2.png"),width = 6,height = 5)
+  ggsave(paste0(plotpfad_O2_test,"O2_calibration.png"),width = 6,height = 5)
 
 O2_fm <- fm_df
 save(O2_fm,file = paste0(datapfad_Pico,"O2_fm.Rdata"))
