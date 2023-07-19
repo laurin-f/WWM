@@ -170,12 +170,12 @@ p_plot <- ggplot(data)+
   geom_line(aes(date,P_hPa,col="P (hPa)"))+
   labs(y = "P (hPa)",col="")
 
-
+names(data_long)
 CO2_plot <- 
   ggplot(data_long)+
   geom_rect(data = PPC_dates,aes(xmin = start,xmax = end,ymin = -Inf,ymax = Inf),alpha=0.2)+
   #geom_point(data = subset(data_long,calm == 1),aes(date,CO2,col=factor(tiefe)))+
-  #geom_line(aes(date,CO2_preds,col=factor(tiefe)),linetype=2)+
+  geom_line(aes(date,CO2_preds,col=factor(tiefe)),linetype=2)+
   geom_line(aes(date,CO2,col=factor(tiefe)))+
   xlim(datelim_plot)+
   facet_wrap(~probe,ncol=1)+
@@ -191,8 +191,9 @@ CO2_shift_plot <-
 ggpubr::ggarrange(CO2_plot,PPC_plot,T_plot,p_plot,ncol=1,common.legend = F,legend = "right",align = "v",heights = c(4,1,1,1))#+
   ggsave(paste0(plotpfad_PPchamber,"natural_PP.png"),width = 7,height = 7)
 
-ggplot(data_long)+
-  geom_point(aes(PPC_roll,CO2_offset))+
+ggplot(data_long,aes(PPC_roll,CO2_offset,col=tiefe))+
+  geom_smooth(method = "glm")+
+  geom_point()+
   facet_wrap(~probe)
 ggplot(data_long)+
   geom_point(aes(CO2,T_C,col=probe))+

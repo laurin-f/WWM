@@ -19,7 +19,7 @@ library(pkg.WWM)
 packages<-c("lubridate","stringr","ggplot2","units","dplyr","readODS")
 check.packages(packages)
 theme_set(theme_classic())
-
+plot <- F
 
 ##################
 #Metadata
@@ -33,7 +33,7 @@ injections$Ende <- dmy_hm(injections$Ende)
 
 PP_Versuche <- grep("PP|\\dD",pp_chamber$Modus)
 Versuch <- 3
-#for(Versuch in PP_Versuche){
+for(Versuch in PP_Versuche){
   datelim <- c(pp_chamber$Start[Versuch]-3600 * 12,pp_chamber$Ende[Versuch]+3600*12)
   
   if(Versuch == 1){
@@ -182,7 +182,7 @@ Versuch <- 3
   
   
   data <- merge(data_PPC_wide,data_probes_wide)
-  #data <- merge(data,swc_sub)
+  data <- merge(data,swc_sub,all.x = T)
   data <- merge(data,CO2_atm)
   data <- data %>% mutate(zeit = as.numeric(difftime(date,min(date))))
   if(Versuch %in% c(23)){
@@ -228,121 +228,124 @@ Versuch <- 3
   data_long$CO2_shift <-  data_long$CO2_offset / data_long$CO2_preds * 100
   data_long$profile <- factor(data_long$probe,levels = 2:1,labels = 1:2)
   data_long$subspace <- factor(data_long$probe,levels = 2:1,labels = 2:3)
+  data_long$depth <- factor(as.numeric(data_long$tiefe) * 3.5)
   
   step_df$Start[1] <- min(data_long$date)
   step_df$End[nrow(step_df)] <- max(data_long$date)
   
-  cols <- RColorBrewer::brewer.pal(4,"PuOr")
-  
-  
-  PPC_col <- "brown"
-  
-  
-  step_df <- step_df %>% 
-    ungroup() %>% 
-    mutate(period = cumsum(cal)) %>% 
-    group_by(period) %>% 
-    mutate(step = factor(cumsum(abs(cal-1))))
-  
-  CO2_offset_plot <- 
-    ggplot(data_long)+
-    geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
-    scale_alpha_discrete("PPC level",range = c(0.4,0.1),guide = guide_legend(order = 1))+
-    geom_line(data = subset(data_long, tiefe %in% 1:4),aes(date,CO2_cal,col=factor(tiefe,labels = c(1:4))))+
-    scale_color_manual("subspace",values = c(cols),guide = guide_legend(order = 3))+
-    # ggnewscale::new_scale_color()+
-    # geom_line(data = subset(data_long, tiefe %in% 1),aes(date,CO2_cal,col=factor(tiefe,labels = "")))+
-    # scale_color_manual("ambient PPC",values = PPC_col,guide = guide_legend(order = 4))+
-    ggnewscale::new_scale_color()+
-    geom_line(data = subset(data_long, tiefe %in% 1),aes(date,CO2_cal,col=factor(tiefe,labels = "")))+
-    scale_color_manual(expression(P[lateral]),values = 1,guide = guide_legend(order = 5))+
-    ggnewscale::new_scale_color()+
-    #guides(alpha = F)+
-    geom_vline(xintercept = step_date,col="grey",linetype=2)+
-    geom_line(aes(date,CO2_cal,col=tiefe))+
-    geom_point(data = subset(data_long,cal == 1),aes(date,CO2,col=tiefe),pch=20)+
-    geom_line(aes(date,CO2,col=tiefe),alpha = 0.5)+
-    geom_line(aes(date,CO2_preds,col=tiefe),linetype=2)+
-    scale_color_discrete(guide = guide_legend(order = 2))+
-    labs(y = expression(CO[2]~"(ppm)"),col = "depth")+
-    facet_wrap(~paste0("profile ",profile," (subspace ",subspace,")"),ncol=1)
-  # CO2_offset_plot <- 
-  #   ggplot(data_long)+
-  #   geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
-  #   scale_alpha(range = c(0,0.4))+
-  #   geom_line(data = subset(data_long, tiefe %in% 1:5),aes(date,CO2_cal,col=factor(tiefe,labels = c(1:4,"lateral"))))+
-  #   scale_color_manual("subspace",values = c(cols,1))+
-  #   ggnewscale::new_scale_color()+
-  #   geom_vline(xintercept = step_date,col="grey",linetype=2)+
-  #   geom_line(aes(date,CO2_cal,col=tiefe))+
-  #   geom_point(data = subset(data_long,cal == 1),aes(date,CO2,col=tiefe),pch=20)+
-  #   geom_line(aes(date,CO2,col=tiefe),alpha = 0.5)+
-  #   geom_line(aes(date,CO2_preds,col=tiefe),linetype=2)+
-  #   #guides(alpha=F)+
-  #   labs(y = expression(CO[2]~"(ppm)"),col="depth")+
-  #   #theme(legend.justification = "right") +
-  #   facet_wrap(~paste0("profile ",profile," (subspace ",subspace,")"),ncol=1)
-  # 
-  
-  
-  
-  CO2_plot <- 
-    ggplot(data_long)+
-    geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
-    scale_alpha_discrete(range = c(0.4,0.1),guide = guide_legend(order = 1))+
-    guides(alpha=F)+
-    geom_hline(yintercept = 0,col="grey",linetype=2)+
-    geom_line(aes(date,CO2_shift,col=tiefe))+
-    geom_vline(xintercept = step_date,col="grey",linetype=2)+
-    facet_wrap(~paste0("profile ",profile," (subspace ",subspace,")"),ncol=1)+
-    labs(y = expression(CO[2]*"-shift"~("%")), x ="")
-  #labs(y = expression(CO[2~offset]~(ppm)), x ="")
-  
-
-  P_plt <- 
-    ggplot(data_long)+
-    geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
-    scale_alpha_discrete(range = c(0.4,0.1),guide = guide_legend(order = 1))+
-    guides(alpha=F)+
-    geom_vline(xintercept = step_date,col="grey",linetype=2)+
-    geom_hline(yintercept = 0,col="grey",linetype=2)+
-    geom_line(aes(date,P_horiz,col="lateral",linetype=""))+
-    geom_line(aes(date,P_1,col="1"))+
-    geom_line(aes(date,P_2,col="2"))+
-    geom_line(aes(date,P_3,col="3"))+
-    geom_line(aes(date,P_4,col="4"))+
-    scale_color_manual(values = c(cols,1))+
-    guides(col=F)+
-    labs(linetype="lateral gradient",y = expression(P[mean]~"(Pa)"))
-  
-  PPC_plt <- 
-    ggplot(data_long)+
-    geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
-    scale_alpha_discrete(range = c(0.4,0.1),guide = guide_legend(order = 1))+
-    guides(alpha=F)+
-    geom_line(aes(date,PPC_1,col="1"))+
-    geom_line(aes(date,PPC_2,col="2"))+
-    geom_vline(xintercept = step_date,col="grey",linetype=2)+
-    geom_line(aes(date,PPC_3,col="3"))+
-    geom_line(aes(date,PPC_4,col="4"))+
-    #    geom_line(aes(date,PPC_6,col="ambient PPC"))+
-    scale_color_manual(values = c(cols,PPC_col))+
-    theme(legend.text.align = 0.5)+
-    labs(col="subspace",y = "PPC (Pa/s)", x ="")
-  
-  ggpubr::ggarrange(CO2_offset_plot+labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch]))+theme(axis.title.x = element_blank(),                                                                                       axis.text.x = element_blank()),
-                    CO2_plot+theme(axis.title.x = element_blank(),
-                                   axis.text.x = element_blank()),
-                    PPC_plt+theme(axis.title.x = element_blank(),
-                                  axis.text.x = element_blank()),
-                    P_plt,ncol=1,align = "v",heights = c(3,2,0.8,1),common.legend = T,legend = "right")+
-    ggsave(paste0(plotpfad_PPchamber,"CO2_offset_",Versuch,".png"),width = 7,height = 8)
-  #ggpubr::ggarrange(CO2_plot+labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch])),PPC_plt,P_plt,ncol=1,align = "v",heights = c(2,1,1))+
-  #  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_PPC_",Versuch,".png"),width = 7,height = 6)
-  
+  if(plot){
+    
+    cols <- RColorBrewer::brewer.pal(4,"PuOr")
+    
+    PPC_col <- "brown"
+    
+    
+    step_df <- step_df %>% 
+      ungroup() %>% 
+      mutate(period = cumsum(cal)) %>% 
+      group_by(period) %>% 
+      mutate(step = factor(cumsum(abs(cal-1))))
+    
+    CO2_offset_plot <- 
+      ggplot(data_long)+
+      geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+      scale_alpha_discrete("PPC level",range = c(0.4,0.1),guide = guide_legend(order = 1))+
+      geom_line(data = subset(data_long, tiefe %in% 1:4),aes(date,CO2_cal,col=factor(tiefe,labels = c(1:4))))+
+      scale_color_manual("subspace",values = c(cols),guide = guide_legend(order = 3))+
+      # ggnewscale::new_scale_color()+
+      # geom_line(data = subset(data_long, tiefe %in% 1),aes(date,CO2_cal,col=factor(tiefe,labels = "")))+
+      # scale_color_manual("ambient PPC",values = PPC_col,guide = guide_legend(order = 4))+
+      ggnewscale::new_scale_color()+
+      geom_line(data = subset(data_long, tiefe %in% 1),aes(date,CO2_cal,col=factor(tiefe,labels = "")))+
+      scale_color_manual(expression(P[lateral]),values = 1,guide = guide_legend(order = 5))+
+      ggnewscale::new_scale_color()+
+      #guides(alpha = F)+
+      geom_vline(xintercept = step_date,col="grey",linetype=2)+
+      geom_line(aes(date,CO2_cal,col=depth))+
+      geom_point(data = subset(data_long,cal == 1),aes(date,CO2,col=depth),pch=20)+
+      geom_line(aes(date,CO2,col=depth),alpha = 0.5)+
+      geom_line(aes(date,CO2_preds,col=depth),linetype=2)+
+      scale_color_discrete(guide = guide_legend(order = 2))+
+      labs(y = expression(CO[2]~"(ppm)"),col = "depth (cm)")+
+      facet_wrap(~paste0("profile ",profile," (subspace ",subspace,")"),ncol=1)
+    # CO2_offset_plot <- 
+    #   ggplot(data_long)+
+    #   geom_rect(data=step_df,aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=PPC))+
+    #   scale_alpha(range = c(0,0.4))+
+    #   geom_line(data = subset(data_long, tiefe %in% 1:5),aes(date,CO2_cal,col=factor(tiefe,labels = c(1:4,"lateral"))))+
+    #   scale_color_manual("subspace",values = c(cols,1))+
+    #   ggnewscale::new_scale_color()+
+    #   geom_vline(xintercept = step_date,col="grey",linetype=2)+
+    #   geom_line(aes(date,CO2_cal,col=tiefe))+
+    #   geom_point(data = subset(data_long,cal == 1),aes(date,CO2,col=tiefe),pch=20)+
+    #   geom_line(aes(date,CO2,col=tiefe),alpha = 0.5)+
+    #   geom_line(aes(date,CO2_preds,col=tiefe),linetype=2)+
+    #   #guides(alpha=F)+
+    #   labs(y = expression(CO[2]~"(ppm)"),col="depth")+
+    #   #theme(legend.justification = "right") +
+    #   facet_wrap(~paste0("profile ",profile," (subspace ",subspace,")"),ncol=1)
+    # 
+    
+    
+    
+    CO2_plot <- 
+      ggplot(data_long)+
+      geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+      scale_alpha_discrete(range = c(0.4,0.1),guide = guide_legend(order = 1))+
+      guides(alpha=F)+
+      geom_hline(yintercept = 0,col="grey",linetype=2)+
+      geom_line(aes(date,CO2_shift,col=tiefe))+
+      geom_vline(xintercept = step_date,col="grey",linetype=2)+
+      facet_wrap(~paste0("profile ",profile," (subspace ",subspace,")"),ncol=1)+
+      labs(y = expression(CO[2]*"-shift"~("%")), x ="")
+    #labs(y = expression(CO[2~offset]~(ppm)), x ="")
+    
+    
+    P_plt <- 
+      ggplot(data_long)+
+      geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+      scale_alpha_discrete(range = c(0.4,0.1),guide = guide_legend(order = 1))+
+      guides(alpha=F)+
+      geom_vline(xintercept = step_date,col="grey",linetype=2)+
+      geom_hline(yintercept = 0,col="grey",linetype=2)+
+      geom_line(aes(date,P_horiz,col="lateral",linetype=""))+
+      geom_line(aes(date,P_1,col="1"))+
+      geom_line(aes(date,P_2,col="2"))+
+      geom_line(aes(date,P_3,col="3"))+
+      geom_line(aes(date,P_4,col="4"))+
+      scale_color_manual(values = c(cols,1))+
+      guides(col=F)+
+      labs(linetype="lateral gradient",y = expression(P[mean]~"(Pa)"))
+    
+    PPC_plt <- 
+      ggplot(data_long)+
+      geom_rect(data=subset(step_df,step != 0),aes(xmin = Start, xmax=End,ymin=-Inf,ymax = Inf,alpha=step))+
+      scale_alpha_discrete(range = c(0.4,0.1),guide = guide_legend(order = 1))+
+      guides(alpha=F)+
+      geom_line(aes(date,PPC_1,col="1"))+
+      geom_line(aes(date,PPC_2,col="2"))+
+      geom_vline(xintercept = step_date,col="grey",linetype=2)+
+      geom_line(aes(date,PPC_3,col="3"))+
+      geom_line(aes(date,PPC_4,col="4"))+
+      #    geom_line(aes(date,PPC_6,col="ambient PPC"))+
+      scale_color_manual(values = c(cols,PPC_col))+
+      theme(legend.text.align = 0.5)+
+      labs(col="subspace",y = "PPC (Pa/s)", x ="")
+    
+    ggpubr::ggarrange(CO2_offset_plot+labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch]))+theme(axis.title.x = element_blank(),                                                                                       axis.text.x = element_blank()),
+                      CO2_plot+theme(axis.title.x = element_blank(),
+                                     axis.text.x = element_blank()),
+                      PPC_plt+theme(axis.title.x = element_blank(),
+                                    axis.text.x = element_blank()),
+                      P_plt,ncol=1,align = "v",heights = c(3,2,0.8,1),common.legend = T,legend = "right")+
+      ggsave(paste0(plotpfad_PPchamber,"CO2_offset_",Versuch,".png"),width = 7,height = 8)
+    #ggpubr::ggarrange(CO2_plot+labs(title = paste("Versuch",paste0(Versuch,":"),pp_chamber$Modus[Versuch])),PPC_plt,P_plt,ncol=1,align = "v",heights = c(2,1,1))+
+    #  ggsave(paste0(plotpfad_PPchamber,"CO2_offset_PPC_",Versuch,".png"),width = 7,height = 6)
+    
+  }
   data_long$Versuch <- Versuch
   save(data_long,file = paste0(datapfad_PP_Kammer,"CO2_offset_",Versuch,".RData"))
-#}
+}
 #data_long$CO2_offset[data_long$CO2_offset < -300] <- NA
 
 
@@ -358,7 +361,7 @@ if(Versuch == 3){
                     PPC_plt+theme(axis.title.x = element_blank(),
                                   axis.text.x = element_blank()),
                     P_plt,ncol=1,align = "v",heights = c(3,2,0.8,1),common.legend = T,legend = "right")+
-    ggsave(paste0(plotpfad_PPchamber,"Figure_4.png"),width = 7,height = 7)
+    ggsave(paste0(plotpfad_PPchamber,"Figure_5.png"),width = 7,height = 7)
   # ggpubr::ggarrange(CO2_offset_plot,CO2_plot,PPC_plt,P_plt,ncol=1,align = "v",heights = c(3,2,1,1))+
   #   ggsave(paste0(plotpfad_PPchamber,"CO2_shift_PPC_.png"),width = 7,height = 8)
   # 

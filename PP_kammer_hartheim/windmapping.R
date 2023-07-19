@@ -91,6 +91,10 @@ data_PPC <- data_PPC %>%
          PPC1 = RcppRoll::roll_mean(P_diff,30,fill=NA),
          P_roll = RcppRoll::roll_mean(P,3*60,fill=NA))
 
+
+ggplot(data_PPC_ws)+
+  geom_line(aes(date,P_roll,col=id))
+
 data_PPC2 <- data_PPC
 data_PPC2$date <- data_PPC$date + t_lag
 
@@ -156,26 +160,69 @@ ws_plot <-
 
  #############
 
+ #########
+ #calibration
+ range(data_PPC_ws$date)
+ data_PPC_ws$mode <- "WS"
+ data_PPC_ws$mode[data_PPC_ws$date < ymd_hm("22-10-28 10:05") | data_PPC_ws$date > ymd_hm("22-10-28 11:20")] <- "cal"
+ cal_period <- data_PPC_ws %>% 
+   filter(mode == "cal") %>% 
+   filter(!is.na(P_roll)) %>% 
+   group_by(id) %>% 
+   mutate(zeit = as.numeric(difftime(date,min(date))),
+          sensor_drift = predict(glm(P_roll ~ zeit)),
+          P_roll_cal = P_roll - sensor_drift)
+ 
+ data_PPC_ws <- merge(data_PPC_ws,cal_period[,c("date","sensor_drift","id")],all = T)
+ data_PPC_ws <- data_PPC_ws %>% 
+   group_by(id) %>% 
+   mutate(sensor_drift = imputeTS::na_interpolation(sensor_drift),
+          P_roll_cal = P_roll - sensor_drift,
+          P_tot = RcppRoll::roll_sumr(P_roll_cal,24*60))
+ 
+ data_ws2_merge <- merge(data_ws2,data_PPC_ws)
+ 
 egg::ggarrange(PPC_plot,ws_plot)
 
 
  ggplot(subset(data_PPC_ws,id %in% 1:5))+
    geom_rect(data = ws_dates_df,aes(xmin = start,xmax=stop,ymin = -Inf, ymax = Inf,alpha = factor(PWM)))+
+   geom_line(aes(date,sensor_drift,col=as.factor(id)))+
    geom_line(aes(date,P_roll,col=as.factor(id)))+
    scale_alpha_discrete("pwm",range=c(0,0.4))
  
+ ggplot(subset(data_PPC_ws,id %in% 1:5))+
+   geom_rect(data = ws_dates_df,aes(xmin = start,xmax=stop,ymin = -Inf, ymax = Inf,alpha = factor(PWM)))+
+   geom_line(aes(date,P_roll_cal,col=as.factor(id)))+
+   scale_alpha_discrete("pwm",range=c(0,0.4))
  
  
- ggplot(subset(data_ws2_merge,id %in% 1:5 & file %in% c(32,33)))+
+
+  
+ws_plot <- ggplot(subset(data_ws2_merge,id %in% 1:5 & file %in% c(32)))+
    geom_vline(xintercept = ws_dates,alpha=0.3,linetype=2)+
-   geom_rect(data = ws_dates_df[1:8,],aes(xmin = start,xmax=stop,ymin = -Inf, ymax = Inf,alpha = factor(PWM)))+
-   geom_line(aes(date,P_roll/10,col=as.factor(id)))+
+   geom_rect(data = ws_dates_df[1:4,],aes(xmin = start,xmax=stop,ymin = -Inf, ymax = Inf,alpha = factor(PWM)))+
    geom_line(aes(date,ws_roll))+
    labs(col="P")+
-   scale_alpha_discrete("pwm",range=c(0,0.4))+
-   scale_y_continuous(name="windspeed (m/s)",sec.axis = sec_axis(~(.)*10,name="P (Pa)"))+
+   scale_alpha_discrete("fanspeed (%)",range=c(0,0.4))+
+   labs(y="windspeed (m/s)")+
    theme_classic()+
-   ggsave(paste0(plotpfad_PPchamber,"WS_Versuch_P_roll.png"),width = 7,height = 5)
+  guides(alpha = F)+
+  theme(axis.text.x = element_blank(),
+    axis.title.x = element_blank())
+
+P_plot <- ggplot(subset(data_ws2_merge,id %in% 1:5 & file %in% c(32)))+
+   geom_vline(xintercept = ws_dates,alpha=0.3,linetype=2)+
+   geom_rect(data = ws_dates_df[1:4,],aes(xmin = start,xmax=stop,ymin = -Inf, ymax = Inf,alpha = factor(PWM)))+
+   geom_line(aes(date,P_roll_cal,col=as.factor(id)))+
+   labs(y = "P (Pa)",col="P")+
+   scale_alpha_discrete("fanspeed (%)",range=c(0,0.4))+
+  #guides(alpha = F)+
+   theme_classic()+
+  theme(axis.title.x = element_blank())
+
+ggpubr::ggarrange(ws_plot,P_plot,align = "v",ncol = 1,common.legend = T,legend = "right")+        
+ggsave(paste0(plotpfad_PPchamber,"WS_Versuch_P_roll.png"),width = 5,height = 5)
  
  
 
